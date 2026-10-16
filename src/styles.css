@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* Theme is a class on <html> (set by ThemeProvider), not the media query, so it can be overridden. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Beyond shadcn's set: a third text level and the status tones. */
+  --color-faint: var(--faint);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #f7f7f5;
+  --foreground: #1c1c1a;
+  --card: #ffffff;
+  --card-foreground: #1c1c1a;
+  --popover: #ffffff;
+  --popover-foreground: #1c1c1a;
+  --primary: #1c1c1a;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1ee;
+  --secondary-foreground: #1c1c1a;
+  --muted: #f1f1ee;
+  --muted-foreground: #6b6b66;
+  --accent: #f1f1ee;
+  --accent-foreground: #1c1c1a;
+  --destructive: #b42318;
+  --border: #e4e4df;
+  --input: #e4e4df;
+  --ring: #9a9a94;
+  --faint: #9a9a94;
+
+  --good: #1f7a4d;
+  --good-soft: #e3f3ea;
+  --bad: #b42318;
+  --bad-soft: #fde8e6;
+  --warn: #a15c07;
+  --warn-soft: #fdf1dc;
+  --info: #2f5bd3;
+  --info-soft: #e6ecfc;
+
+  color-scheme: light;
+}
+
+/* Midnight: the deep, slightly desaturated navy of Apple's Midnight and Sony's Midnight Blue. */
+.dark {
+  --background: #0e1420;
+  --foreground: #e4e9f1;
+  --card: #151d2b;
+  --card-foreground: #e4e9f1;
+  --popover: #182131;
+  --popover-foreground: #e4e9f1;
+  --primary: #dbe4f3;
+  --primary-foreground: #0e1420;
+  --secondary: #1d2738;
+  --secondary-foreground: #e4e9f1;
+  --muted: #1d2738;
+  --muted-foreground: #9aa7bb;
+  --accent: #222d40;
+  --accent-foreground: #e4e9f1;
+  --destructive: #f2766b;
+  --border: #253045;
+  --input: #2b3750;
+  --ring: #4b5d7d;
+  --faint: #66738a;
+
+  --good: #5cc79a;
+  --good-soft: #12302a;
+  --bad: #f2867c;
+  --bad-soft: #3a1d26;
+  --warn: #e8b45a;
+  --warn-soft: #33291a;
+  --info: #8fb0f5;
+  --info-soft: #1a2846;
+
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
