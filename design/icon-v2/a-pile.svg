@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2738"/><stop offset="1" stop-color="#0e1420"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="url(#tile)"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" fill="none" stroke="#e4e9f1" stroke-opacity="0.14"/>
+  <!-- Pile of work, slightly askew: note, PR, meeting, ticket -->
+  <rect x="17" y="12" width="28" height="5" rx="1.5" fill="#e4e9f1" transform="rotate(-4 31 14.5)"/>
+  <rect x="13" y="18.5" width="30" height="5" rx="1.5" fill="#5cc79a" transform="rotate(3 28 21)"/>
+  <rect x="18" y="25" width="30" height="5" rx="1.5" fill="#e8b45a" transform="rotate(-2 33 27.5)"/>
+  <rect x="14" y="31" width="32" height="5" rx="1.5" fill="#8fb0f5"/>
+  <rect x="9" y="38" width="46" height="6" rx="2" fill="#e4e9f1"/>
+  <rect x="14" y="44" width="5" height="10" rx="1.5" fill="#e4e9f1"/>
+  <rect x="45" y="44" width="5" height="10" rx="1.5" fill="#e4e9f1"/>
+</svg>

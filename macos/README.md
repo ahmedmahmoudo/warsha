@@ -150,7 +150,16 @@ describes them), and the TypeScript is the reference.
    moved or deleted meetings; what's there the first time is noted silently. Open at login and a
    global shortcut (⌃⌥⌘W, changeable) are in Settings → General. Turn on open at login from the
    installed copy (`npm run app:install`), since it registers the app where it runs.
-9. **Productivity**: app usage tracking (`NSWorkspace`, idle and lock), breaks, focus stats.
+9. **Productivity** (not started): app usage tracking (`NSWorkspace`, idle and lock), breaks,
+   focus stats.
+
+Since step 8: nudges and sends remembered per PR, new PRs to send for review, ticket states that
+are fine after merging, no Sydney or en-AU assumptions, text size (View → Zoom In / Out), the v2
+icon, a Get started sheet, and sign-in with GitHub, Linear and Google using Workbench's own
+clients (tokens still work).
+
+**What's left** is in [TODO.md](TODO.md): step 9, a few fixes, what's waiting on others, and what
+hasn't been tried by hand.
 
 With step 7 done, the web version (`server/`, `src/`, `shared/`) and the launchd service can go
 once you're happy with the app; the parity tests need the web version running, so they'd go too.

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2738"/><stop offset="1" stop-color="#0e1420"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="url(#tile)"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" fill="none" stroke="#e4e9f1" stroke-opacity="0.14"/>
+  <rect x="9" y="9" width="21.5" height="21.5" rx="5" fill="#5cc79a"/>
+  <rect x="33.5" y="9" width="21.5" height="21.5" rx="5" fill="#e8b45a"/>
+  <rect x="9" y="33.5" width="21.5" height="21.5" rx="5" fill="#8fb0f5"/>
+  <rect x="33.5" y="33.5" width="21.5" height="21.5" rx="5" fill="#e4e9f1"/>
+  <g fill="none" stroke="#0e1420" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- PR -->
+    <circle cx="15.5" cy="15.5" r="2.2"/><circle cx="24" cy="24" r="2.2"/>
+    <path d="M15.5 17.7v8.5"/><path d="M19.5 15.5h2.5a2 2 0 0 1 2 2v4.3"/>
+    <!-- Calendar -->
+    <rect x="38.5" y="15" width="11.5" height="10.5" rx="1.8"/><path d="M38.5 19h11.5M41.5 13v3M47 13v3"/>
+    <!-- Notes -->
+    <path d="M39.5 40h10M39.5 44.2h10M39.5 48.4h6"/>
+  </g>
+  <!-- Ticket: a stub with notched sides -->
+  <path d="M13.25 41.75a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v.5a2 2 0 0 0 0 4v.5a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-.5a2 2 0 0 0 0-4z" fill="none" stroke="#0e1420" stroke-width="2.4" stroke-linejoin="round"/>
+</svg>
