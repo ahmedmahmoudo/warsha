@@ -6,42 +6,52 @@ import SwiftUI
 @main
 struct WorkbenchApp: App {
   @NSApplicationDelegateAdaptor private var delegate: AppDelegate
-  @State private var settings = AppSettings()
-  @State private var store = Store.open()
-  @State private var navigation = Navigation()
-  @State private var pullRequests = PullRequestsModel()
-  @State private var calendar = CalendarModel()
+  private let state = AppState.shared
 
   var body: some Scene {
     Window("Workbench", id: "main") {
       ContentView()
-        .environment(settings)
-        .environment(store)
-        .environment(navigation)
-        .environment(pullRequests)
-        .environment(calendar)
+        .environment(state.settings)
+        .environment(state.store)
+        .environment(state.navigation)
+        .environment(state.pullRequests)
+        .environment(state.calendar)
         .tint(.workbenchAccent)
         .frame(minWidth: 760, minHeight: 480)
     }
     .defaultSize(width: 1280, height: 860)
-    .commands { PageCommands(navigation: navigation) }
+    .commands { PageCommands(navigation: state.navigation) }
 
     Settings {
       SettingsView()
-        .environment(settings)
-        .environment(store)
-        .environment(calendar)
+        .environment(state.settings)
+        .environment(state.store)
+        .environment(state.calendar)
         .tint(.workbenchAccent)
     }
 
-    MenuBarExtra("Workbench", systemImage: "wrench.and.screwdriver") {
-      MenuBarMenu(navigation: navigation)
+    MenuBarExtra {
+      MenuBarMenu()
+        .environment(state.pullRequests)
+        .environment(state.store)
+    } label: {
+      MenuBarLabel()
     }
   }
 }
 
 /// Closing the window keeps Workbench in the menu bar; the Dock icon brings the window back.
+/// Background work, notifications and the global shortcut start here, apart from any window.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    MainActor.assumeIsolated {
+      let state = AppState.shared
+      state.notifier.activate()
+      GlobalShortcut.apply()
+      state.startBackground()
+    }
+  }
+
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
 
@@ -95,15 +105,41 @@ private struct PageCommands: Commands {
   }
 }
 
-private struct MenuBarMenu: View {
-  let navigation: Navigation
+/// The menu bar icon, with how many of your PRs need you. Being always there, it's also where the
+/// app learns how to open its window.
+private struct MenuBarLabel: View {
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
-    Button("Open Workbench") { show(nil) }
+    let count = AppState.shared.needsYou.count
+    HStack(spacing: 3) {
+      Image(systemName: "wrench.and.screwdriver")
+      if count > 0 { Text("\(count)").monospacedDigit() }
+    }
+    .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
+  }
+}
+
+private struct MenuBarMenu: View {
+  private var state: AppState { .shared }
+
+  var body: some View {
+    let needsYou = state.needsYou
+    Button("Open Workbench") { state.show() }
+    if !needsYou.isEmpty {
+      Divider()
+      Section("Needs you") {
+        ForEach(needsYou.prefix(8)) { pr in
+          Button("\(pr.status.label) · \(pr.title)") { state.show(pr: PrKey(pr)) }
+        }
+        if needsYou.count > 8 {
+          Button("All \(needsYou.count) in Pull Requests…") { state.show(page: .pullRequests) }
+        }
+      }
+    }
     Divider()
     ForEach(Page.allCases) { page in
-      Button(page.title) { show(page) }
+      Button(page.title) { state.show(page: page) }
     }
     Divider()
     SettingsLink { Text("Settings…") }
@@ -111,11 +147,5 @@ private struct MenuBarMenu: View {
     Divider()
     Button("Quit Workbench") { NSApp.terminate(nil) }
       .keyboardShortcut("q")
-  }
-
-  private func show(_ page: Page?) {
-    if let page { navigation.page = page }
-    openWindow(id: "main")
-    NSApp.activate()
   }
 }

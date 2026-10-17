@@ -1,14 +1,19 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 /// Credentials and preferences (what .env.local held in the web version), plus Workbench's data.
 struct SettingsView: View {
+  /// Settings reopens on the tab you last used, as Mac apps do.
+  @AppStorage("settingsTab") private var tab = "accounts"
+
   var body: some View {
-    TabView {
+    TabView(selection: $tab) {
       // The palette's text colours go on each form, not the window: the native tab bar can't draw them.
-      Tab("Accounts", systemImage: "person.crop.circle") { AccountsSettings().palettedText() }
-      Tab("General", systemImage: "gearshape") { GeneralSettings().palettedText() }
-      Tab("Data", systemImage: "externaldrive") { DataSettings().palettedText() }
+      Tab("Accounts", systemImage: "person.crop.circle", value: "accounts") { AccountsSettings().palettedText() }
+      Tab("General", systemImage: "gearshape", value: "general") { GeneralSettings().palettedText() }
+      Tab("Notifications", systemImage: "bell.badge", value: "notifications") { NotificationSettings().palettedText() }
+      Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings().palettedText() }
     }
     .frame(width: 560)
     .scenePadding()
@@ -144,6 +149,8 @@ private struct GeneralSettings: View {
         ForEach(AppSettings.Appearance.allCases) { Text($0.label).tag($0) }
       }
       .pickerStyle(.segmented)
+      OpenAtLogin()
+      ShortcutSetting()
       Picker("Time zone", selection: $settings.timeZone) {
         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
       }
@@ -155,6 +162,112 @@ private struct GeneralSettings: View {
       }
     }
     .formStyle(.grouped)
+  }
+}
+
+/// Open at login, through macOS's login items.
+private struct OpenAtLogin: View {
+  @State private var status = LoginItem.status
+  @State private var error: String?
+
+  var body: some View {
+    Toggle("Open at login", isOn: Binding(
+      get: { status == .enabled || status == .requiresApproval },
+      set: { on in
+        do { try LoginItem.set(on) } catch { self.error = error.localizedDescription }
+        status = LoginItem.status
+      }
+    ))
+    if status == .requiresApproval {
+      HStack {
+        Text("macOS needs you to allow it in Login Items.").foregroundStyle(Tone.warn.color)
+        Button("Open Login Items") { LoginItem.openSystemSettings() }
+      }
+      .font(.callout)
+    }
+    if let error { Text(error).font(.callout).foregroundStyle(Tone.bad.color) }
+  }
+}
+
+/// The shortcut that brings Workbench forward from any app: on or off, and which keys.
+private struct ShortcutSetting: View {
+  @State private var enabled = GlobalShortcut.isEnabled
+  @State private var combo = GlobalShortcut.combo
+  @State private var recording = false
+  @State private var monitor: Any?
+
+  var body: some View {
+    LabeledContent("Bring Workbench forward") {
+      HStack(spacing: 8) {
+        Toggle("Shortcut", isOn: $enabled).labelsHidden().toggleStyle(.switch)
+          .onChange(of: enabled) { _, on in GlobalShortcut.isEnabled = on }
+        Button(recording ? "Press a shortcut…" : combo.display) { recording ? stop() : record() }
+          .monospaced()
+          .disabled(!enabled)
+          .help("Click, then press the keys you want, with ⌘, ⌥ or ⌃. Esc cancels.")
+        if combo != .standard {
+          Button("Reset", systemImage: "arrow.uturn.backward") {
+            combo = .standard
+            GlobalShortcut.combo = .standard
+          }
+          .labelStyle(.iconOnly).buttonStyle(.borderless).help("Back to ⌃⌥⌘W")
+        }
+      }
+    }
+    .onDisappear(perform: stop)
+  }
+
+  private func record() {
+    recording = true
+    monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+      if event.keyCode == 53 { // Esc
+        stop()
+        return nil
+      }
+      guard let next = GlobalShortcut.combo(from: event) else { return nil }
+      combo = next
+      GlobalShortcut.combo = next
+      stop()
+      return nil
+    }
+  }
+
+  private func stop() {
+    recording = false
+    if let monitor { NSEvent.removeMonitor(monitor) }
+    monitor = nil
+  }
+}
+
+private struct NotificationSettings: View {
+  var body: some View {
+    Form {
+      Section {
+        ForEach(Notifier.Kind.allCases) { kind in
+          NotificationToggle(kind: kind)
+        }
+      } header: {
+        Text("Notify me about")
+      } footer: {
+        Text("Workbench notes what's already there the first time, so you only hear about changes. Clicking a PR's notification opens it here. macOS asks once whether Workbench may notify you; you can change that in System Settings → Notifications.")
+          .foregroundStyle(.secondary)
+      }
+    }
+    .formStyle(.grouped)
+  }
+}
+
+private struct NotificationToggle: View {
+  let kind: Notifier.Kind
+  @AppStorage private var on: Bool
+
+  init(kind: Notifier.Kind) {
+    self.kind = kind
+    _on = AppStorage(wrappedValue: true, kind.settingKey)
+  }
+
+  var body: some View {
+    Toggle(kind.label, isOn: $on)
   }
 }
 

@@ -9,6 +9,7 @@ struct ContentView: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @Environment(\.openSettings) private var openSettings
+  @Environment(\.openWindow) private var openWindow
   @Environment(CalendarModel.self) private var calendar
 
   var body: some View {
@@ -37,23 +38,8 @@ struct ContentView: View {
         DevHooks.borrowGoogleSignIn()
         await DevHooks.apply(to: navigation, openSettings: openSettings)
       }
-      // The saved meetings stay in step with Google, for Today's panels and the changes they flag.
-      .task {
-        while !Task.isCancelled {
-          await calendar.sync(settings, store)
-          try? await Task.sleep(for: .seconds(60))
-        }
-      }
-      // Your own PRs stay fresh for the Dock badge, whichever page is open.
-      .task {
-        while !Task.isCancelled {
-          await pullRequests.load(.mine, settings: settings, maxAge: .seconds(15))
-          try? await Task.sleep(for: PullRequestsModel.refreshInterval)
-        }
-      }
-      .onChange(of: pullRequests.needsYou(store: store), initial: true) { _, count in
-        NSApp.dockTile.badgeLabel = count > 0 ? String(count) : nil
-      }
+
+      .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
   }
 
   /// Each page has its own navigation stack, so the PR list keeps its back stack while you look

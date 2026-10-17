@@ -50,6 +50,8 @@ blank.
 Sources/Workbench/
   WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu (⌘1–⌘4)
   ContentView.swift     the pages as toolbar tabs, the Dock badge
+  Extras/               app-level state and background refresh (AppState), notifications (Notifier),
+                        the global shortcut and open at login (HotKey)
   Theme.swift           the web version's palette: background, text, borders and status tones
   DevHooks.swift        launch arguments for opening a page and saving a snapshot of the window
   SettingsView.swift    accounts, general preferences, data import
@@ -111,7 +113,13 @@ describes them), and the TypeScript is the reference.
 7. **Activity** (done): Day, Week and Month in your home zone or this Mac's, from GitHub's events
    feed and searches and Linear's ticket history; stuck and slow flags, linked PRs on the Day
    view's ticket cards, the totals line and Copy summary.
-8. **Native extras**: Dock and menu bar badge, notifications, open at login, global shortcut.
+8. **Native extras** (done): your PRs, review requests and calendar refresh in the background, window
+   open or not. The Dock badge and the menu bar icon count PRs that need you, and the menu lists
+   them. Notifications (each kind switchable in Settings → Notifications) cover PRs that newly
+   need you or are ready to merge, review requests, meetings five minutes before (with Join), and
+   moved or deleted meetings; what's there the first time is noted silently. Open at login and a
+   global shortcut (⌃⌥⌘W, changeable) are in Settings → General. Turn on open at login from the
+   installed copy (`npm run app:install`), since it registers the app where it runs.
 9. **Productivity**: app usage tracking (`NSWorkspace`, idle and lock), breaks, focus stats.
 
 With step 7 done, the web version (`server/`, `src/`, `shared/`) and the launchd service can go
