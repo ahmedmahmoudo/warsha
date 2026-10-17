@@ -4,6 +4,9 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { API_PORT } from '../shared/ports'
 import { activityRoute } from './activity/route'
+import { calendarRoute } from './calendar/route'
+import { syncMeetings } from './calendar/sync'
+import { googleRoute } from './google/route'
 import { imagesRoute } from './images/route'
 import { prsRoute } from './prs/route'
 import { storeRoute } from './store/route'
@@ -26,6 +29,8 @@ app.route('/api/store', storeRoute)
 app.route('/api/today', todayRoute)
 app.route('/api/activity', activityRoute)
 app.route('/api/github-image', imagesRoute)
+app.route('/api/google', googleRoute)
+app.route('/api/calendar', calendarRoute)
 app.onError((error, c) => {
   console.error(error)
   return c.json({ error: error.message }, 500)
@@ -38,4 +43,8 @@ if (process.env.NODE_ENV === 'production') {
 
 // Locally the API can open Terminal and act with your token, so it only listens on this machine.
 const hostname = process.env.NODE_ENV === 'production' ? undefined : '127.0.0.1'
-serve({ fetch: app.fetch, port: API_PORT, hostname }, ({ port }) => console.log(`API on http://localhost:${port}`))
+serve({ fetch: app.fetch, port: API_PORT, hostname }, ({ port }) => {
+  console.log(`API on http://localhost:${port}`)
+  // Catch up on what changed in your calendar while Workbench was closed.
+  void syncMeetings()
+})

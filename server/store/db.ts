@@ -42,6 +42,24 @@ const MIGRATIONS = [
      until text,
      parked_at text not null
    );`,
+  // Google Calendar meetings as last seen, so the next sync can tell what moved or disappeared.
+  `create table meetings (
+     id text primary key,
+     title text not null,
+     start text not null,
+     end text not null,
+     all_day integer not null,
+     join_url text,
+     html_url text,
+     location text,
+     declined integer not null default 0,
+     previous_start text,
+     previous_end text,
+     rescheduled_at text,
+     deleted_at text,
+     first_seen_at text not null,
+     updated_at text not null
+   );`,
 ]
 
 function open(): DatabaseSync {

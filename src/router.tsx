@@ -3,6 +3,7 @@ import type { ActivityView } from '../shared/activity'
 import type { PrScope, WaitingOn } from '../shared/prs'
 import { AppShell } from './components/AppShell'
 import { ActivityPage } from './routes/ActivityPage'
+import { CalendarPage } from './routes/CalendarPage'
 import { PrDetailPage } from './routes/PrDetailPage'
 import { PullRequestsPage } from './routes/PullRequestsPage'
 import { TodayPage } from './routes/TodayPage'
@@ -51,9 +52,28 @@ const activityRoute = createRoute({
   component: ActivityPage,
 })
 
-const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage })
+const calendarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/calendar',
+  // `date` is any day in the range; absent means today.
+  validateSearch: (search: Record<string, unknown>): { view?: ActivityView; date?: string } => ({
+    view: ACTIVITY_VIEWS.find((view) => view === search.view),
+    date: typeof search.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.date) ? search.date : undefined,
+  }),
+  component: CalendarPage,
+})
 
-export const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute, prsRoute, prDetailRoute, activityRoute, settingsRoute]) })
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  // `google` is how a Google sign-in went: "connected", or what went wrong.
+  validateSearch: (search: Record<string, unknown>): { google?: string } => ({
+    google: typeof search.google === 'string' ? search.google : undefined,
+  }),
+  component: SettingsPage,
+})
+
+export const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute, prsRoute, prDetailRoute, activityRoute, calendarRoute, settingsRoute]) })
 
 declare module '@tanstack/react-router' {
   interface Register {

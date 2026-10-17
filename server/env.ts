@@ -26,6 +26,9 @@ export const env = {
   githubRepos: list(process.env.GITHUB_REPOS),
   githubTeam: list(process.env.GITHUB_TEAM),
   linearApiKey: process.env.LINEAR_API_KEY || null,
+  /** OAuth Desktop client for Google Calendar; you connect your account from Settings. */
+  googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
   /** Where each repo is cloned on this machine; unset repos are looked for next to this project. */
   localRepos: repoPaths(process.env.LOCAL_REPOS),
   /** Where "a day" and "a week" start for the Activity page. */

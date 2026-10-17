@@ -1,4 +1,6 @@
 import type { ActivityResponse, ActivityView } from '../shared/activity'
+import type { CalendarRangeResponse, MeetingsTodayResponse } from '../shared/calendar'
+import type { GoogleStatus } from '../shared/google'
 import type { PrChecksResponse, PrDetail } from '../shared/prDetail'
 import type { PrScope, PrsResponse } from '../shared/prs'
 import type { TodayResponse } from '../shared/today'
@@ -91,4 +93,38 @@ export async function markTodaySeen(): Promise<{ lastSeenAt: string }> {
   const response = await fetch('/api/today/seen', { method: 'POST', headers: { 'x-workbench-action': '1' } })
   if (!response.ok) throw new ApiError(`Couldn't mark as seen (${response.status})`, false)
   return response.json() as Promise<{ lastSeenAt: string }>
+}
+
+export async function fetchGoogleStatus(): Promise<GoogleStatus> {
+  const response = await fetch('/api/google/status')
+  if (!response.ok) throw new ApiError(`Couldn't check Google (${response.status})`, false)
+  return response.json() as Promise<GoogleStatus>
+}
+
+export async function disconnectGoogle(): Promise<void> {
+  const response = await fetch('/api/google/disconnect', { method: 'POST', headers: { 'x-workbench-action': '1' } })
+  if (!response.ok) throw new ApiError(`Couldn't disconnect Google (${response.status})`, false)
+}
+
+export async function fetchMeetingsToday(fresh = false): Promise<MeetingsTodayResponse> {
+  const response = await fetch(`/api/calendar/today${fresh ? '?fresh=1' : ''}`)
+  if (!response.ok) throw new ApiError(`Couldn't load meetings (${response.status})`, false)
+  return response.json() as Promise<MeetingsTodayResponse>
+}
+
+/** Meetings overlapping [start, end), both UTC ISO instants. */
+export async function fetchCalendarRange(start: string, end: string, fresh = false): Promise<CalendarRangeResponse> {
+  const params = new URLSearchParams({ start, end })
+  if (fresh) params.set('fresh', '1')
+  const response = await fetch(`/api/calendar/range?${params}`)
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string }
+    throw new ApiError(body.error ?? `Couldn't load the calendar (${response.status})`, false)
+  }
+  return response.json() as Promise<CalendarRangeResponse>
+}
+
+export async function dismissMeetingChange(id: string): Promise<void> {
+  const response = await fetch(`/api/calendar/changes/${encodeURIComponent(id)}/dismiss`, { method: 'POST', headers: { 'x-workbench-action': '1' } })
+  if (!response.ok) throw new ApiError(`Couldn't dismiss (${response.status})`, false)
 }

@@ -1,4 +1,6 @@
+import type { Meeting } from '../../shared/calendar'
 import type { Note, Parked, Pin, Todo } from '../../shared/store'
+import type { GoogleEvent } from '../integrations/google'
 import { db } from './db'
 
 /** All reads and writes of Workbench's own data go through here, so the storage can change later. */
@@ -105,4 +107,84 @@ export const settings = {
   get: (key: string): string | null => (db.prepare('select value from settings where key = ?').get(key) as { value: string } | undefined)?.value ?? null,
   set: (key: string, value: string) =>
     db.prepare('insert into settings (key, value) values (?, ?) on conflict(key) do update set value = excluded.value').run(key, value),
+  remove: (key: string) => db.prepare('delete from settings where key = ?').run(key),
+}
+
+type MeetingRow = {
+  id: string
+  title: string
+  start: string
+  end: string
+  all_day: number
+  join_url: string | null
+  html_url: string | null
+  location: string | null
+  declined: number
+  previous_start: string | null
+  previous_end: string | null
+  rescheduled_at: string | null
+  deleted_at: string | null
+  first_seen_at: string
+  updated_at: string
+}
+
+const toMeeting = (row: MeetingRow): Meeting => ({
+  id: row.id,
+  title: row.title,
+  start: row.start,
+  end: row.end,
+  allDay: row.all_day === 1,
+  joinUrl: row.join_url,
+  htmlUrl: row.html_url,
+  location: row.location,
+  declined: row.declined === 1,
+  change: row.deleted_at
+    ? { kind: 'deleted', at: row.deleted_at }
+    : row.previous_start && row.previous_end && row.rescheduled_at
+      ? { kind: 'rescheduled', previousStart: row.previous_start, previousEnd: row.previous_end, at: row.rescheduled_at }
+      : null,
+})
+
+export const meetings = {
+  list: (): Meeting[] => (db.prepare('select * from meetings order by start').all() as MeetingRow[]).map(toMeeting),
+  get: (id: string): Meeting | null => {
+    const row = db.prepare('select * from meetings where id = ?').get(id) as MeetingRow | undefined
+    return row ? toMeeting(row) : null
+  },
+  /**
+   * Saves what Google returned. A new time on a saved meeting marks it rescheduled, remembering the
+   * time you knew; moving back to that time clears the mark. Reappearing undoes a deletion.
+   */
+  save(event: GoogleEvent, at: string) {
+    const row = db.prepare('select * from meetings where id = ?').get(event.id) as MeetingRow | undefined
+    if (!row) {
+      db.prepare(
+        `insert into meetings (id, title, start, end, all_day, join_url, html_url, location, declined, first_seen_at, updated_at)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(event.id, event.title, event.start, event.end, Number(event.allDay), event.joinUrl, event.htmlUrl, event.location, Number(event.response === 'declined'), at, at)
+      return
+    }
+    let { previous_start: previousStart, previous_end: previousEnd, rescheduled_at: rescheduledAt } = row
+    if (row.start !== event.start || row.end !== event.end) {
+      if (!previousStart) [previousStart, previousEnd, rescheduledAt] = [row.start, row.end, at]
+      else if (previousStart === event.start && previousEnd === event.end) [previousStart, previousEnd, rescheduledAt] = [null, null, null]
+      else rescheduledAt = at
+    }
+    db.prepare(
+      `update meetings set title = ?, start = ?, end = ?, all_day = ?, join_url = ?, html_url = ?, location = ?, declined = ?,
+         previous_start = ?, previous_end = ?, rescheduled_at = ?, deleted_at = null, updated_at = ?
+       where id = ?`,
+    ).run(
+      event.title, event.start, event.end, Number(event.allDay), event.joinUrl, event.htmlUrl, event.location, Number(event.response === 'declined'),
+      previousStart, previousEnd, rescheduledAt, at, event.id,
+    )
+  },
+  /** Marks a saved meeting deleted, keeping when that was first noticed. */
+  markDeleted: (id: string, at: string) => db.prepare('update meetings set deleted_at = coalesce(deleted_at, ?) where id = ?').run(at, id),
+  remove: (id: string) => db.prepare('delete from meetings where id = ?').run(id).changes > 0,
+  /** Forgets every meeting, for when the Google account is disconnected. */
+  clear: () => db.prepare('delete from meetings').run(),
+  /** Hides a reschedule notice: the new time becomes the one you know. */
+  acknowledge: (id: string) =>
+    db.prepare('update meetings set previous_start = null, previous_end = null, rescheduled_at = null where id = ?').run(id).changes > 0,
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ApiError, fetchActivity } from '../api'
 import { rangeLabel, step, todayIn } from '../components/activity/calendar'
 import { AttentionSummary, DayView, MonthView, WeekView } from '../components/activity/views'
+import { Segmented } from '../components/Segmented'
 import { timeAgo } from '../format'
 
 const REFRESH_MS = 60_000
@@ -89,36 +90,6 @@ function CopySummaryButton({ data }: { data: ActivityResponse }) {
       {result === 'copied' ? <Check /> : <ClipboardCopy />}
       {result === 'copied' ? 'Copied' : result === 'failed' ? 'Copy failed' : 'Copy summary'}
     </Button>
-  )
-}
-
-function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-  label,
-}: {
-  options: { value: T; label: string; title?: string }[]
-  value: T
-  onChange: (value: T) => void
-  label: string
-}) {
-  return (
-    <div role="radiogroup" aria-label={label} className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-sm">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={option.value === value}
-          title={option.title}
-          onClick={() => onChange(option.value)}
-          className={`rounded-md px-2.5 py-1 ${option.value === value ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
   )
 }
 

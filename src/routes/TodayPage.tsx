@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { ApiError, fetchToday, markTodaySeen } from '../api'
+import { ApiError, fetchMeetingsToday, fetchToday, markTodaySeen } from '../api'
 import { todayIn } from '../components/activity/calendar'
+import { MeetingChangesSection, MeetingsTodaySection } from '../components/today/meetings'
 import {
   DeadlinesSection,
   FocusSection,
@@ -32,6 +33,8 @@ export function TodayPage() {
   const queryClient = useQueryClient()
   const [refreshing, setRefreshing] = useState(false)
   const query = useQuery({ queryKey: ['today'], queryFn: () => fetchToday(), refetchInterval: REFRESH_MS })
+  // Meetings load on their own, so they show even while GitHub and Linear are slow or failing.
+  const meetings = useQuery({ queryKey: ['meetings-today'], queryFn: () => fetchMeetingsToday(), refetchInterval: REFRESH_MS })
   const seen = useMutation({
     mutationFn: markTodaySeen,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['today'] }),
@@ -40,7 +43,10 @@ export function TodayPage() {
   async function refresh() {
     setRefreshing(true)
     try {
-      await queryClient.fetchQuery({ queryKey: ['today'], queryFn: () => fetchToday(true), staleTime: 0 })
+      await Promise.all([
+        queryClient.fetchQuery({ queryKey: ['today'], queryFn: () => fetchToday(true), staleTime: 0 }),
+        queryClient.fetchQuery({ queryKey: ['meetings-today'], queryFn: () => fetchMeetingsToday(true), staleTime: 0 }),
+      ])
     } finally {
       setRefreshing(false)
     }
@@ -119,6 +125,7 @@ export function TodayPage() {
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-5">
+          {meetings.data && <MeetingChangesSection data={meetings.data} />}
           <FocusSection data={data} />
           {data && (
             <>
@@ -128,6 +135,7 @@ export function TodayPage() {
           )}
         </div>
         <aside className="flex min-w-0 flex-col gap-5">
+          <MeetingsTodaySection data={meetings.data} error={meetings.error} />
           {data && <NewForYouSection data={data} since={since} onSeen={() => seen.mutate()} marking={seen.isPending} />}
           <TodosSection today={today} />
           <ParkedSection />

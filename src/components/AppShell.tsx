@@ -32,6 +32,14 @@ export function AppShell() {
             >
               Activity
             </Link>
+            <Link
+              to="/calendar"
+              search={{}}
+              className="rounded-md px-2.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              activeProps={{ className: 'bg-muted text-foreground!' }}
+            >
+              Calendar
+            </Link>
           </nav>
           <Link
             to="/settings"
