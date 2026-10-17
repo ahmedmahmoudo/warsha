@@ -97,6 +97,7 @@ struct TodayView: View {
   @ViewBuilder
   private var main: some View {
     VStack(alignment: .leading, spacing: 20) {
+      MeetingChangesSection()
       FocusSection(tickets: data?.tickets)
       if let data {
         NeedsYouSection(data: data)
@@ -111,6 +112,7 @@ struct TodayView: View {
   @ViewBuilder
   private var side: some View {
     VStack(alignment: .leading, spacing: 20) {
+      MeetingsTodaySection()
       if let data { NewForYouSection(data: data, since: since) }
       TodosSection(timeZone: data?.timeZone ?? settings.timeZone)
       ParkedSection()

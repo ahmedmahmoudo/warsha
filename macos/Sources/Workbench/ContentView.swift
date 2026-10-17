@@ -9,6 +9,7 @@ struct ContentView: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @Environment(\.openSettings) private var openSettings
+  @Environment(CalendarModel.self) private var calendar
 
   var body: some View {
     @Bindable var navigation = navigation
@@ -33,7 +34,15 @@ struct ContentView: View {
       .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
       .task {
         settings.applyAppearance()
+        DevHooks.borrowGoogleSignIn()
         await DevHooks.apply(to: navigation, openSettings: openSettings)
+      }
+      // The saved meetings stay in step with Google, for Today's panels and the changes they flag.
+      .task {
+        while !Task.isCancelled {
+          await calendar.sync(settings, store)
+          try? await Task.sleep(for: .seconds(60))
+        }
       }
       // Your own PRs stay fresh for the Dock badge, whichever page is open.
       .task {
@@ -60,7 +69,9 @@ struct ContentView: View {
         PullRequestsView()
           .navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
       }
-    case .activity, .calendar:
+    case .calendar:
+      NavigationStack { CalendarView() }
+    case .activity:
       NavigationStack { NotPortedView(page: navigation.page) }
     }
   }

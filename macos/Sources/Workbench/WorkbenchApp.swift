@@ -10,6 +10,7 @@ struct WorkbenchApp: App {
   @State private var store = Store.open()
   @State private var navigation = Navigation()
   @State private var pullRequests = PullRequestsModel()
+  @State private var calendar = CalendarModel()
 
   var body: some Scene {
     Window("Workbench", id: "main") {
@@ -18,6 +19,7 @@ struct WorkbenchApp: App {
         .environment(store)
         .environment(navigation)
         .environment(pullRequests)
+        .environment(calendar)
         .tint(.workbenchAccent)
         .frame(minWidth: 760, minHeight: 480)
     }
@@ -28,6 +30,7 @@ struct WorkbenchApp: App {
       SettingsView()
         .environment(settings)
         .environment(store)
+        .environment(calendar)
         .tint(.workbenchAccent)
     }
 

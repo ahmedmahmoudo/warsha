@@ -32,7 +32,8 @@ Without one, builds are signed to run locally and the Keychain asks after each r
 
 **Checking the app without clicking through it:** launch arguments open a page or PR, force light
 or dark, and save the window as a PNG, with settings read from a file instead of the Keychain (so
-nothing prompts). See `DevHooks.swift`:
+nothing prompts; `-WorkbenchGoogleFrom data/workbench.sqlite` borrows the web version's Google
+sign-in). See `DevHooks.swift`:
 
 ```bash
 open -n macos/build/Workbench.app --args -WorkbenchEnvFile "$PWD/.env.local" \
@@ -61,6 +62,8 @@ Sources/Workbench/
                         CODEOWNERS, the loader with its caches (PrService), and the views
     Detail/             a PR's details page: queries, timeline and merge readiness (BuildDetail),
                         the Claude hand-off, live checks, and a native Markdown renderer
+  Calendar/             Google sign-in and events (GoogleCalendar), meeting sync and the meetings
+                        table (Meetings), the Calendar page's grids, and the meeting panels
   Today/                the Today page: Linear queries, the rules (BuildToday), pin, note and park
                         controls with posting the park reason, and the sections
 Tests/WorkbenchTests/   swift-testing tests; PrParityTests compares with the running web version
@@ -97,8 +100,12 @@ describes them), and the TypeScript is the reference.
    you with Mark seen (shared with the web version), Focus, Todos, Parked, Deadlines and Waiting on
    others. Every item has pin, note and park; parking can post its reason to Linear and the PRs.
    Meetings arrive with the Calendar port.
-6. **Google Calendar**: sign-in via `ASWebAuthenticationSession`, meeting sync with reschedule and
-   deletion tracking, the Calendar page, and meetings on Today.
+6. **Google Calendar** (done): Settings → Accounts → Connect opens Google in your browser, which
+   comes back to a one-off listener on 127.0.0.1 (the desktop-app flow Google's Desktop clients
+   allow, PKCE-protected). The refresh token goes in the Keychain; one in an imported web database
+   is moved there. Meetings sync every minute for the next 30 days, marking rescheduled and
+   deleted ones. Calendar shows Day, Week and Month in your home zone or this Mac's; Today shows
+   Meetings today and Meeting changes.
 7. **Activity**: Day, Week and Month views, stuck-ticket flags, Copy summary.
 8. **Native extras**: Dock and menu bar badge, notifications, open at login, global shortcut.
 9. **Productivity**: app usage tracking (`NSWorkspace`, idle and lock), breaks, focus stats.

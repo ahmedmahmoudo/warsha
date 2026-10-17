@@ -16,6 +16,17 @@ enum DevHooks {
 
   static var envFile: String? { defaults.string(forKey: "WorkbenchEnvFile") }
 
+  /// `-WorkbenchGoogleFrom /path/workbench.sqlite` borrows the web version's Google sign-in for this
+  /// launch, so the calendar can be checked with real meetings.
+  @MainActor
+  static func borrowGoogleSignIn() {
+    guard Keychain.memoryOnly, let path = defaults.string(forKey: "WorkbenchGoogleFrom"),
+          let db = try? Database(path: path),
+          let token = try? db.query("select value from settings where key = 'google.refreshToken'").first?.string("value")
+    else { return }
+    Keychain.set(GoogleCalendar.refreshTokenKey, token)
+  }
+
   /// The app is hosting Xcode's tests: it leaves the Keychain and your settings alone.
   static var isHostingTests: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
 

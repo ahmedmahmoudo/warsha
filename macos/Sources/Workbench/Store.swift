@@ -56,6 +56,8 @@ final class Store {
 
   let path: URL
   @ObservationIgnored private let db: Database?
+  /// For the extensions that keep their own tables (meetings), outside the observed lists.
+  var database: Database? { db }
 
   /// Each entry runs once, in order; the database remembers how far it got (user_version).
   /// Mirrors server/store/db.ts, so a file from either version opens in the other.

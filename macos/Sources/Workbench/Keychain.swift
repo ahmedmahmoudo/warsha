@@ -19,13 +19,22 @@ enum Keychain {
   /// still there, so writes wait until a read works.
   private static var readable = false
 
+  /// In memory only, never the login keychain: while the app runs from a settings file or hosts
+  /// tests (see DevHooks), so nothing prompts and nothing real is touched.
+  static var memoryOnly: Bool { DevHooks.envFile != nil || DevHooks.isHostingTests }
+
   static func get(_ key: String) -> String? {
+    if memoryOnly { return values[key] }
     load()
     return values[key]
   }
 
   /// An empty or nil value removes the key.
   static func set(_ key: String, _ value: String?) {
+    if memoryOnly {
+      values[key] = value?.isEmpty == false ? value : nil
+      return
+    }
     load()
     guard readable else { return }
     if let value, !value.isEmpty { values[key] = value } else { values[key] = nil }

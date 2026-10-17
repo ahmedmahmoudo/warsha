@@ -51,14 +51,58 @@ private struct AccountsSettings: View {
       Section {
         TextField("Client ID", text: $settings.googleClientId)
         SecureField("Client secret", text: $settings.googleClientSecret)
+        GoogleConnection()
       } header: {
         Text("Google Calendar")
       } footer: {
-        Text("A Desktop app client from Google Cloud Console. Signing in arrives with the Calendar page.")
+        Text("A Desktop app client from Google Cloud Console. Signing in opens Google in your browser and comes back here.")
           .foregroundStyle(.secondary)
       }
     }
     .formStyle(.grouped)
+  }
+}
+
+/// Connect or disconnect your Google account, and which one is connected.
+private struct GoogleConnection: View {
+  @Environment(AppSettings.self) private var settings
+  @Environment(Store.self) private var store
+  @Environment(CalendarModel.self) private var calendar
+  @State private var error: String?
+  @State private var confirmingDisconnect = false
+
+  var body: some View {
+    LabeledContent("Account") {
+      HStack(spacing: 8) {
+        switch calendar.connection(settings, store) {
+        case .unconfigured:
+          Text("Add the client ID and secret first").foregroundStyle(.secondary)
+        case .disconnected:
+          if calendar.signingIn {
+            ProgressView().controlSize(.small)
+            Text("Finish signing in in your browser…").foregroundStyle(.secondary)
+          }
+          Button("Connect Google Calendar") {
+            error = nil
+            Task {
+              do { try await calendar.signIn(settings, store) } catch { self.error = error.localizedDescription }
+            }
+          }
+          .disabled(calendar.signingIn)
+        case .connected:
+          Text(calendar.email(store) ?? "Connected").foregroundStyle(Tone.good.color)
+          Button("Disconnect") { confirmingDisconnect = true }
+            .confirmationDialog("Disconnect Google Calendar?", isPresented: $confirmingDisconnect) {
+              Button("Disconnect", role: .destructive) { Task { await calendar.disconnect(store) } }
+            } message: {
+              Text("Workbench's access is revoked at Google, and the meetings it saved are forgotten.")
+            }
+        }
+      }
+    }
+    if let error {
+      Text(error).font(.callout).foregroundStyle(Tone.bad.color)
+    }
   }
 }
 
