@@ -7,6 +7,9 @@ struct PrDetailView: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @State private var model: PrDetailModel
+  /// The page's width, to put the side column beside the main one when there's room, as the web
+  /// version does from its `lg` breakpoint.
+  @State private var width: CGFloat = 0
 
   init(key: PrKey) {
     self.key = key
@@ -16,7 +19,7 @@ struct PrDetailView: View {
   var body: some View {
     ScrollView {
       if let detail = model.detail {
-        content(detail).padding(20)
+        content(detail).padding(.horizontal, 24).padding(.vertical, 20)
       } else if let error = model.error {
         ContentUnavailableView("Couldn't Load This Pull Request", systemImage: "exclamationmark.triangle", description: Text(error.localizedDescription))
           .padding(.top, 80)
@@ -24,6 +27,7 @@ struct PrDetailView: View {
         ProgressView("Loading pull request…").padding(.top, 120)
       }
     }
+    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     .workbenchPage()
     .navigationTitle(model.detail?.pr.title ?? "\(key.repo)#\(key.number)")
     .navigationSubtitle(subtitle)
@@ -77,21 +81,24 @@ struct PrDetailView: View {
     pr.tickets.first.map { ticketRef($0.key) } ?? prRef(pr.repo, pr.number)
   }
 
+  /// The web's layout: the main column and a 22rem side column, side by side when there's room,
+  /// otherwise the side column first. Content stops at the web's max-w-6xl and centres.
   private func content(_ detail: PrDetail) -> some View {
     VStack(alignment: .leading, spacing: 20) {
       header(detail)
-      ViewThatFits(in: .horizontal) {
+      if width >= 880 {
         HStack(alignment: .top, spacing: 20) {
-          main(detail).frame(minWidth: 460)
-          side(detail).frame(width: 340)
+          main(detail).frame(maxWidth: .infinity, alignment: .leading)
+          side(detail).frame(width: 352)
         }
+      } else {
         VStack(alignment: .leading, spacing: 20) {
           side(detail)
           main(detail)
         }
       }
     }
-    .frame(maxWidth: 1180, alignment: .leading)
+    .frame(maxWidth: 1120, alignment: .leading)
     .frame(maxWidth: .infinity)
   }
 
@@ -162,30 +169,62 @@ struct PrDetailView: View {
   }
 }
 
-/// A titled section of the page, as a native group box.
-struct Panel<Content: View>: View {
+/// A section of the page as the web draws it: a card with a header row (a chevron to collapse it,
+/// the title, and anything else on the right), then the content.
+struct Panel<Accessory: View, Content: View>: View {
   let title: String
-  var aside: String?
-  @ViewBuilder let content: Content
+  let accessory: Accessory
+  let content: Content
+  @State private var expanded = true
 
-  init(_ title: String, aside: String? = nil, @ViewBuilder content: () -> Content) {
+  init(_ title: String, @ViewBuilder accessory: () -> Accessory, @ViewBuilder content: () -> Content) {
     self.title = title
-    self.aside = aside
+    self.accessory = accessory()
     self.content = content()
   }
 
   var body: some View {
-    GroupBox {
-      VStack(alignment: .leading, spacing: 10) { content }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(6)
-    } label: {
-      HStack {
-        Text(title).font(.headline)
-        Spacer()
-        if let aside { Text(aside).font(.caption).foregroundStyle(.secondary) }
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(spacing: 8) {
+        Button {
+          withAnimation(.snappy) { expanded.toggle() }
+        } label: {
+          HStack(spacing: 6) {
+            Image(systemName: "chevron.down")
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(.secondary)
+              .rotationEffect(.degrees(expanded ? 0 : -90))
+            Text(title).font(.callout.weight(.semibold))
+          }
+          .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(expanded ? "Collapses the section" : "Expands the section")
+        Spacer(minLength: 8)
+        accessory.font(.caption)
+      }
+      .padding(.horizontal, 14).padding(.vertical, 10)
+      if expanded {
+        Divider().overlay(Palette.border)
+        VStack(alignment: .leading, spacing: 10) { content }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(14)
       }
     }
+    .background(Palette.card, in: .rect(cornerRadius: 10))
+    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.border))
+  }
+}
+
+extension Panel where Accessory == EmptyView {
+  init(_ title: String, @ViewBuilder content: () -> Content) {
+    self.init(title, accessory: { EmptyView() }, content: content)
+  }
+}
+
+extension Panel where Accessory == Text {
+  init(_ title: String, aside: String, @ViewBuilder content: () -> Content) {
+    self.init(title, accessory: { Text(aside).foregroundStyle(.secondary) }, content: content)
   }
 }
 

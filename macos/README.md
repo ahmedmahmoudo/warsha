@@ -23,6 +23,18 @@ secret; the first launch moves them over and deletes them, which can ask once fo
 The app is ad-hoc signed, so macOS treats every rebuild as a new app and asks again. Choose Always
 Allow. A stable signing identity (step 2) ends that.
 
+**Checking the app without clicking through it:** launch arguments open a page or PR, force light
+or dark, and save the window as a PNG, with settings read from a file instead of the Keychain (so
+nothing prompts). See `DevHooks.swift`:
+
+```bash
+open -n macos/build/Workbench.app --args -WorkbenchEnvFile "$PWD/.env.local" \
+  -WorkbenchOpen everlab-au/ev-admin#18945 -WorkbenchAppearance dark -WorkbenchSnapshot /tmp/pr.png
+```
+
+The snapshot is drawn by the app itself, so it needs no screen-recording permission, but it can't
+draw Liquid Glass: the sidebar comes out blank.
+
 ## Layout
 
 ```
@@ -30,6 +42,7 @@ Sources/Workbench/
   WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu
   ContentView.swift     sidebar and pages; pages not ported yet link to the web version
   Theme.swift           the web version's palette: background, text, borders and status tones
+  DevHooks.swift        launch arguments for opening a page and saving a snapshot of the window
   SettingsView.swift    accounts, general preferences, data import
   AppSettings.swift     what .env.local held: secrets in the Keychain, the rest in UserDefaults
   Keychain.swift        every secret in one generic password (service com.workbench.app)

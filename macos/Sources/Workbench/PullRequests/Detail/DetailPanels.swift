@@ -76,7 +76,7 @@ private struct ConflictAction: View {
               outcome = Outcome(good: false, text: error.localizedDescription)
             }
           }
-          .buttonStyle(.glassProminent)
+          .buttonStyle(.borderedProminent)
         }
         CopyButton(text: conflicts.prompt, label: "Copy Prompt")
         if let command = conflicts.command { CopyButton(text: command, label: "Copy Command") }
@@ -120,6 +120,7 @@ private struct UpdateBranchAction: View {
       }
       if updatedFrom != update.headOid {
         Button("Update with \(update.base)", systemImage: "arrow.clockwise") { confirming = true }
+          .buttonStyle(.bordered)
           .controlSize(.small)
           .disabled(!update.canUpdate || running)
           .confirmationDialog("Update \(pr.headRef) with \(update.base)?", isPresented: $confirming) {
@@ -268,16 +269,15 @@ struct ChecksPanel: View {
     Panel("Checks") {
       HStack(spacing: 8) {
         if let verdict = Self.verdict(checks) { Chip(text: verdict.label, tone: verdict.tone).help(verdict.detail) }
-        Spacer()
         count(checks, .passed, "passed", .good)
         count(checks, .failed, "failed", .bad)
         count(checks, .pending, "running", .warn)
         if !model.isFinished {
           Button("Check Now", systemImage: "arrow.clockwise") { Task { await model.pollChecks(settings: settings) } }
-            .labelStyle(.iconOnly).buttonStyle(.borderless).disabled(model.checkingNow)
+            .labelStyle(.iconOnly).buttonStyle(.borderless).disabled(model.checkingNow).help("Check now")
         }
       }
-      .font(.caption)
+    } content: {
       if !model.isFinished {
         HStack(spacing: 0) {
           Text("Checked \(fetchedAt, format: .relative(presentation: .named)) · \(running ? "every 10s while checks run" : "every minute")")

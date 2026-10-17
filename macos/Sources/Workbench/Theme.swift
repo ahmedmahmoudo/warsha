@@ -6,6 +6,8 @@ import SwiftUI
 /// its foreground, muted and faint as the primary, secondary and tertiary styles.
 enum Palette {
   static let background = Color.dynamic(light: 0xF7F7F5, dark: 0x0E1420)
+  /// `--card`: panels on the details page.
+  static let card = Color.dynamic(light: 0xFFFFFF, dark: 0x151D2B)
   static let border = Color.dynamic(light: 0xE4E4DF, dark: 0x253045)
   /// `--muted` as a fill: neutral chips and placeholders.
   static let fill = Color.dynamic(light: 0xF1F1EE, dark: 0x1D2738)
@@ -62,10 +64,12 @@ extension Tone {
 }
 
 extension Color {
-  /// The app's accent: the web's primary in light mode, its midnight slate in dark mode, where the
-  /// web's near-white primary can't carry the white text macOS draws on the accent. Matches
-  /// AccentColor in Resources/Assets.xcassets, which also covers what `.tint` can't, like list selection.
-  static let workbenchAccent = dynamic(light: 0x1C1C1A, dark: 0x4B5D7D)
+  /// The app's accent: the web's primary in light mode. In dark mode it's a mid blue from the web's
+  /// info family: macOS draws white text on the accent (selection) and the accent as text (buttons,
+  /// links) on the navy page, and this is readable both ways (about 4.5:1 and 4.2:1), where the web's
+  /// near-white primary fails the first and its slate the second. Matches AccentColor in
+  /// Resources/Assets.xcassets, which also covers what `.tint` can't, like list selection.
+  static let workbenchAccent = dynamic(light: 0x1C1C1A, dark: 0x4F74D0)
 
   /// A colour that changes with light and dark appearance, from 0xRRGGBB values.
   static func dynamic(light: UInt32, dark: UInt32) -> Color {

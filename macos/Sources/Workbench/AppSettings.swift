@@ -5,24 +5,40 @@ import Foundation
 @MainActor
 @Observable
 final class AppSettings {
-  var githubToken: String { didSet { Keychain.set("githubToken", githubToken) } }
-  var linearApiKey: String { didSet { Keychain.set("linearApiKey", linearApiKey) } }
-  var googleClientSecret: String { didSet { Keychain.set("googleClientSecret", googleClientSecret) } }
+  var githubToken: String { didSet { saveSecret("githubToken", githubToken) } }
+  var linearApiKey: String { didSet { saveSecret("linearApiKey", linearApiKey) } }
+  var googleClientSecret: String { didSet { saveSecret("googleClientSecret", googleClientSecret) } }
 
   /// Comma-separated repos to search; empty searches every repo you can see.
-  var githubRepos: String { didSet { defaults.set(githubRepos, forKey: "githubRepos") } }
+  var githubRepos: String { didSet { save(githubRepos, "githubRepos") } }
   /// Comma-separated GitHub logins whose PRs the Team view shows.
-  var githubTeam: String { didSet { defaults.set(githubTeam, forKey: "githubTeam") } }
+  var githubTeam: String { didSet { save(githubTeam, "githubTeam") } }
   /// OAuth Desktop client for Google Calendar.
-  var googleClientId: String { didSet { defaults.set(googleClientId, forKey: "googleClientId") } }
+  var googleClientId: String { didSet { save(googleClientId, "googleClientId") } }
   /// Comma-separated owner/repo=/path pairs for where repos are cloned on this Mac.
-  var localRepos: String { didSet { defaults.set(localRepos, forKey: "localRepos") } }
+  var localRepos: String { didSet { save(localRepos, "localRepos") } }
   /// Where Activity's days and weeks start.
-  var timeZone: String { didSet { defaults.set(timeZone, forKey: "timeZone") } }
+  var timeZone: String { didSet { save(timeZone, "timeZone") } }
 
   @ObservationIgnored private let defaults = UserDefaults.standard
+  /// False when the settings came from a file for this launch only (`-WorkbenchEnvFile`): nothing
+  /// is saved, and the Keychain isn't touched.
+  @ObservationIgnored private var persists = true
 
   init() {
+    githubToken = ""
+    linearApiKey = ""
+    googleClientSecret = ""
+    githubRepos = ""
+    githubTeam = ""
+    googleClientId = ""
+    localRepos = ""
+    timeZone = "Australia/Sydney"
+    if let file = DevHooks.envFile {
+      persists = false
+      _ = try? importEnvFile(URL(fileURLWithPath: file))
+      return
+    }
     githubToken = Keychain.get("githubToken") ?? ""
     linearApiKey = Keychain.get("linearApiKey") ?? ""
     googleClientSecret = Keychain.get("googleClientSecret") ?? ""
@@ -31,6 +47,14 @@ final class AppSettings {
     googleClientId = defaults.string(forKey: "googleClientId") ?? ""
     localRepos = defaults.string(forKey: "localRepos") ?? ""
     timeZone = defaults.string(forKey: "timeZone") ?? "Australia/Sydney"
+  }
+
+  private func saveSecret(_ key: String, _ value: String) {
+    if persists { Keychain.set(key, value) }
+  }
+
+  private func save(_ value: String, _ key: String) {
+    if persists { defaults.set(value, forKey: key) }
   }
 
   nonisolated static func list(_ value: String) -> [String] {

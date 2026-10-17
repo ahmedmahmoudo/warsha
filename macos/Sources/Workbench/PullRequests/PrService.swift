@@ -1,4 +1,8 @@
 import Foundation
+import os
+
+/// Failures that only make part of a page less complete, for Console (subsystem com.workbench.app).
+let log = Logger(subsystem: "com.workbench.app", category: "github")
 
 /// The credentials and preferences a load needs, copied off the main actor.
 struct PrConfig: Sendable, Hashable {
@@ -193,9 +197,7 @@ actor PrService {
       repo: key.repo, number: raw.base.number, title: raw.base.title, url: raw.base.url, head: raw.base.headRefName, base: raw.base.baseRefName
     )
     async let conflicts = conflicted ? ClaudeHandoff.conflictAction(pr, localRepos: config.localRepos) : nil
-    async let comparison = try? GitHub.branchComparison(
-      repo: key.repo, base: raw.base.baseRefName, head: raw.base.headRefName, token: config.githubToken
-    )
+    async let comparison = Self.comparison(key, raw, token: config.githubToken)
     let behindBy = await comparison?.behindBy ?? 0
     return PrActions(
       conflicts: await conflicts,
@@ -208,6 +210,15 @@ actor PrService {
         )
         : nil
     )
+  }
+
+  private static func comparison(_ key: PrKey, _ raw: GithubPrDetail, token: String) async -> (aheadBy: Int, behindBy: Int)? {
+    do {
+      return try await GitHub.branchComparison(repo: key.repo, base: raw.base.baseRefName, head: raw.base.headRefName, token: token)
+    } catch {
+      log.error("Couldn't compare \(raw.base.headRefName, privacy: .public) with \(raw.base.baseRefName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+      return nil
+    }
   }
 
   /// Straight from GitHub every time: this is what the page polls while CI runs.
