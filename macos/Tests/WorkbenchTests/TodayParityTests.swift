@@ -3,7 +3,7 @@ import Testing
 @testable import Workbench
 
 /// Builds Today natively and fetches it from the running web version (the launchd service), and
-/// compares them. Live data, so it only runs when asked:
+/// compares them (Send for review is the app's own, so it's off here). Live data, so it only runs when asked:
 ///   WORKBENCH_PARITY=1 swift test --package-path macos --filter TodayParity
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["WORKBENCH_PARITY"] == "1"))
 struct TodayParityTests {
@@ -13,7 +13,7 @@ struct TodayParityTests {
       githubToken: env["GITHUB_TOKEN"] ?? "", linearApiKey: env["LINEAR_API_KEY"] ?? "",
       githubRepos: AppSettings.list(env["GITHUB_REPOS"] ?? ""), githubTeam: AppSettings.list(env["GITHUB_TEAM"] ?? "")
     )
-    async let native = TodayService.shared.build(config: config, timeZone: env["TIMEZONE"] ?? "Australia/Sydney")
+    async let native = TodayService.shared.build(config: config, timeZone: env["TIMEZONE"] ?? "Australia/Sydney", newPrHours: 0)
     async let webData = URLSession.shared.data(from: URL(string: "http://127.0.0.1:5180/api/today?fresh=1")!)
     let ours = try await native
     let web = try JSONSerialization.jsonObject(with: try await webData.0) as! [String: Any]

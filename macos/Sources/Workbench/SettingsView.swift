@@ -155,6 +155,20 @@ private struct GeneralSettings: View {
         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
       }
       Section {
+        Picker("A PR counts as new for", selection: $settings.newPrHours) {
+          Text("Off").tag(0)
+          ForEach([6, 12, 24, 48, 72], id: \.self) { Text(hoursLabel($0)).tag($0) }
+        }
+        Picker("Suggest a nudge again after", selection: $settings.nudgeAgainHours) {
+          ForEach([4, 8, 24, 48, 72, 120], id: \.self) { Text(hoursLabel($0)).tag($0) }
+        }
+      } header: {
+        Text("Reviews")
+      } footer: {
+        Text("A new PR nobody has reviewed yet shows on Today as Send for review. Once you've sent it or nudged its reviewers, it waits on them until this long has passed without an approval.")
+          .foregroundStyle(.secondary)
+      }
+      Section {
         TextField("Ticket states after merge", text: $settings.afterMergeStates, prompt: Text("Merged"))
       } footer: {
         Text("Ticket states that are fine once a PR has merged, besides done and canceled, separated by commas. A merged PR whose ticket is in any other state shows a ticket mismatch.")
@@ -334,4 +348,8 @@ private struct DataSettings: View {
     panel.canChooseDirectories = false
     return panel.runModal() == .OK ? panel.url : nil
   }
+}
+
+private func hoursLabel(_ hours: Int) -> String {
+  hours % 24 == 0 ? "\(hours / 24) day\(hours == 24 ? "" : "s")" : "\(hours) hours"
 }

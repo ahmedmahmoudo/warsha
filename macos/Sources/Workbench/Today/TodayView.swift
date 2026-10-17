@@ -61,16 +61,29 @@ struct TodayView: View {
   }
 
   /// Parked tickets and PRs leave everything that asks for attention; they're listed under Parked.
+  /// A PR you've sent for review, or nudged within the nudge interval, waits on others instead.
   private var data: TodayData? {
     guard let raw = model.data else { return nil }
     let parkedTicket = { (key: String) in store.activeParked(ticketRef(key)) != nil }
+    let active = raw.needsYou.filter { store.activeParked($0.ref) == nil && !($0.pr.map { store.parked(for: $0) != nil } ?? false) }
+    let pinged = active.filter(isPinged)
     return TodayData(
-      viewer: raw.viewer, timeZone: raw.timeZone,
-      needsYou: raw.needsYou.filter { store.activeParked($0.ref) == nil && !($0.pr.map { store.parked(for: $0) != nil } ?? false) },
+      viewer: raw.viewer, timeZone: raw.timeZone, needsYou: active.filter { !isPinged($0) },
       upNext: raw.upNext.filter { !parkedTicket($0.ticket.key) }, tickets: raw.tickets, reviewRequests: raw.reviewRequests,
-      inbox: raw.inbox, deadlines: raw.deadlines, waiting: raw.waiting.filter { store.parked(for: $0) == nil },
+      inbox: raw.inbox, deadlines: raw.deadlines,
+      waiting: pinged.compactMap(\.pr) + raw.waiting.filter { store.parked(for: $0) == nil },
       warnings: raw.warnings, fetchedAt: raw.fetchedAt
     )
+  }
+
+  private func isPinged(_ item: NeedsYouItem) -> Bool {
+    guard let pr = item.pr, let ping = store.pings[pr.url] else { return false }
+    switch item.kind {
+    case .sendForReview: return ping.sentAt != nil
+    case .stuckReview, .slowReview:
+      return ping.last.map { Date().timeIntervalSince($0) < Double(settings.nudgeAgainHours) * 3600 } ?? false
+    default: return false
+    }
   }
 
   private var since: String { store.setting(TodayModel.lastSeenKey) ?? firstVisitSince }
@@ -80,11 +93,12 @@ struct TodayView: View {
     let greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
     var line = Date().formatted(.dateTime.weekday(.wide).day().month(.wide))
     if let data {
+      let send = data.needsYou.filter { $0.kind == .sendForReview }.count
       let fix = data.needsYou.filter { $0.tone == .bad }.count
       let address = data.needsYou.filter { $0.tone == .warn }.count
       let ready = data.needsYou.filter { $0.tone == .good }.count
       let fresh = data.inbox.filter { $0.at > since }.count + data.reviewRequests.count
-      let parts = [fix > 0 ? "\(fix) to fix" : nil, address > 0 ? "\(address) to address" : nil, ready > 0 ? "\(ready) ready to merge" : nil, fresh > 0 ? "\(fresh) new" : nil]
+      let parts = [fix > 0 ? "\(fix) to fix" : nil, send > 0 ? "\(send) to send for review" : nil, address > 0 ? "\(address) to address" : nil, ready > 0 ? "\(ready) ready to merge" : nil, fresh > 0 ? "\(fresh) new" : nil]
         .compactMap { $0 }
       line += " · " + (parts.isEmpty ? "nothing urgent" : parts.joined(separator: " · "))
     }
@@ -139,7 +153,7 @@ final class TodayModel {
     loading = true
     defer { loading = false }
     do {
-      data = try await TodayService.shared.build(config: PrConfig(settings), timeZone: settings.timeZone)
+      data = try await TodayService.shared.build(config: PrConfig(settings), timeZone: settings.timeZone, newPrHours: settings.newPrHours)
       error = nil
     } catch is CancellationError {
     } catch {
@@ -256,6 +270,7 @@ private let actionGroups = [
   ActionGroup(id: "resolve", title: "Resolve conflicts", kinds: [.conflicts], tone: .bad),
   ActionGroup(id: "ci", title: "Fix CI", kinds: [.ciFailing], tone: .bad),
   ActionGroup(id: "reply", title: "Reply", kinds: [.changesRequested, .threads], tone: .warn),
+  ActionGroup(id: "send", title: "Send for review", kinds: [.sendForReview], tone: .info),
   ActionGroup(id: "nudge", title: "Nudge", kinds: [.stuckReview, .slowReview], tone: .warn),
   ActionGroup(id: "update", title: "Update branch", kinds: [.behind], tone: .warn),
   ActionGroup(id: "merge", title: "Merge", kinds: [.ready], tone: .good),
@@ -335,6 +350,17 @@ private struct FilterChip: View {
 
 private struct NeedsYouRow: View {
   let item: NeedsYouItem
+  @Environment(Navigation.self) private var navigation
+  @Environment(Store.self) private var store
+
+  /// Sending for review and nudging are pings: done once you've told people, then left alone.
+  private var ping: Ping.Kind? {
+    switch item.kind {
+    case .sendForReview: .sent
+    case .stuckReview, .slowReview: .nudged
+    default: nil
+    }
+  }
 
   var body: some View {
     let title = item.ticket?.title ?? item.pr?.title ?? ""
@@ -342,7 +368,12 @@ private struct NeedsYouRow: View {
       VStack(alignment: .leading, spacing: 4) {
         HStack(spacing: 8) {
           TicketOrPr(ticket: item.ticket, pr: item.pr)
-          Text(title).font(.callout.weight(.medium)).lineLimit(1).help(title)
+          if let pr = item.pr {
+            Button { navigation.open(PrKey(pr)) } label: { Text(title).font(.callout.weight(.medium)).lineLimit(1) }
+              .buttonStyle(.plain).clickable(underline: true).help(title)
+          } else {
+            Text(title).font(.callout.weight(.medium)).lineLimit(1).help(title)
+          }
         }
         Text("\(Text(item.title).foregroundStyle(.primary).fontWeight(.medium))\(item.pr.map { Text(" · #\(String($0.number))").foregroundStyle(.tertiary) } ?? Text(""))\(item.detail.map { Text(" · \($0)") } ?? Text(""))")
           .font(.caption).foregroundStyle(.secondary)
@@ -351,8 +382,14 @@ private struct NeedsYouRow: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       HStack(spacing: 4) {
-        if item.nudge != nil, let pr = item.pr { CopyLinkButton(url: pr.url) }
-        ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
+        if let ping, let pr = item.pr {
+          CopyLinkButton(url: pr.url) { store.ping(pr.url, ping) }
+          Button(ping == .sent ? "Sent" : "Nudged", systemImage: "checkmark") { store.ping(pr.url, ping) }
+            .buttonStyle(.bordered).tint(item.tone.color).controlSize(.small).clickable()
+            .help(ping == .sent ? "Mark as sent to the team for review" : "Mark the reviewers as nudged")
+        } else {
+          ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
+        }
         ItemControls(ref: item.ref, title: title, url: item.ticket?.url ?? item.pr?.url, prs: item.pr.map { [PrKey($0)] } ?? [])
       }
     }
@@ -362,12 +399,15 @@ private struct NeedsYouRow: View {
 
 private struct CopyLinkButton: View {
   let url: String
+  /// What copying also means: the link is about to be sent to someone.
+  var onCopy: () -> Void = {}
   @State private var copied = false
 
   var body: some View {
     Button(copied ? "Copied" : "Copy link", systemImage: copied ? "checkmark" : "link") {
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(url, forType: .string)
+      onCopy()
       copied = true
       Task {
         try? await Task.sleep(for: .seconds(2))
@@ -869,13 +909,28 @@ private struct DeadlinesSection: View {
 
 private struct WaitingSection: View {
   let data: TodayData
+  @Environment(Store.self) private var store
 
   var body: some View {
     Panel("Waiting on others", aside: "\(data.waiting.count) PRs") {
       if data.waiting.isEmpty { Text("Nothing of yours is waiting on others.").foregroundStyle(.tertiary) }
       ForEach(data.waiting) { pr in
-        PrLine(pr: pr) { Image(systemName: "clock").font(.caption).foregroundStyle(.tertiary) }
+        PrLine(pr: pr) { PingLabel(ping: store.pings[pr.url]) }
       }
+    }
+  }
+}
+
+/// "sent 2 hours ago" / "nudged yesterday" beside a waiting PR, or a clock when neither happened.
+private struct PingLabel: View {
+  let ping: Ping?
+
+  var body: some View {
+    if let ping, let last = ping.last {
+      let nudged = ping.nudgedAt.flatMap(TodayRules.parseInstant).map { $0 >= last } ?? false
+      Text("\(nudged ? "nudged" : "sent") \(last, format: .relative(presentation: .named))").font(.caption).foregroundStyle(.tertiary)
+    } else {
+      Image(systemName: "clock").font(.caption).foregroundStyle(.tertiary)
     }
   }
 }

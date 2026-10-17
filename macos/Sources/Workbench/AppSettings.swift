@@ -23,6 +23,10 @@ final class AppSettings {
   /// Comma-separated ticket states that are fine once a PR has merged (besides done and canceled),
   /// for teams that move tickets to, say, "Merged" until they ship.
   var afterMergeStates: String { didSet { save(afterMergeStates, "afterMergeStates") } }
+  /// How long a PR counts as new, to send to the team for review rather than nudge (hours).
+  var newPrHours: Int { didSet { defaults.set(newPrHours, forKey: "newPrHours") } }
+  /// How long after sending or nudging before Today suggests a nudge again (hours).
+  var nudgeAgainHours: Int { didSet { defaults.set(nudgeAgainHours, forKey: "nudgeAgainHours") } }
   /// Light, dark, or whatever macOS is set to, like the web version's theme switch.
   var appearance: Appearance {
     didSet {
@@ -58,6 +62,8 @@ final class AppSettings {
     localRepos = ""
     timeZone = TimeZone.current.identifier
     afterMergeStates = "Merged"
+    newPrHours = 24
+    nudgeAgainHours = 24
     appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
     if let file = DevHooks.envFile {
       persists = false
@@ -77,6 +83,8 @@ final class AppSettings {
     localRepos = defaults.string(forKey: "localRepos") ?? ""
     timeZone = defaults.string(forKey: "timeZone") ?? TimeZone.current.identifier
     afterMergeStates = defaults.string(forKey: "afterMergeStates") ?? "Merged"
+    newPrHours = defaults.object(forKey: "newPrHours") as? Int ?? 24
+    nudgeAgainHours = defaults.object(forKey: "nudgeAgainHours") as? Int ?? 24
   }
 
   /// Sets every window's appearance; nil follows macOS, switching live when it changes.

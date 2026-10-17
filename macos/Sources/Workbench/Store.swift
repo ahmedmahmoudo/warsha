@@ -51,6 +51,8 @@ final class Store {
   private(set) var notes: [Note] = []
   private(set) var todos: [Todo] = []
   private(set) var parked: [Parked] = []
+  /// When you sent each PR (by URL) for review or last nudged its reviewers.
+  private(set) var pings: [String: Ping] = [:]
   /// The last failure, shown where the data is; nil once something works again.
   private(set) var error: String?
 
@@ -163,10 +165,27 @@ final class Store {
           until: $0.string("until"), parkedAt: $0.string("parked_at")!
         )
       }
+      pings = (try db.query("select value from settings where key = ?", .text(Self.pingsKey)).first?.string("value"))
+        .flatMap { try? JSONDecoder().decode([String: Ping].self, from: Data($0.utf8)) } ?? [:]
       error = nil
     } catch {
       self.error = error.localizedDescription
     }
+  }
+
+  private static let pingsKey = "pings"
+
+  /// Notes that you sent a PR for review, or nudged its reviewers, now.
+  func ping(_ url: String, _ kind: Ping.Kind) {
+    var ping = pings[url] ?? Ping()
+    switch kind {
+    case .sent: ping.sentAt = Self.timestamp(Date())
+    case .nudged: ping.nudgedAt = Self.timestamp(Date())
+    }
+    var all = pings
+    all[url] = ping
+    guard let json = try? JSONEncoder().encode(all) else { return }
+    setSetting(Self.pingsKey, String(decoding: json, as: UTF8.self))
   }
 
   // MARK: Writes
@@ -297,4 +316,14 @@ final class Store {
   }
 
   private static func now() -> String { timestamp(Date()) }
+}
+
+/// When a PR was sent to the team for review, and when its reviewers were last nudged.
+struct Ping: Codable, Equatable, Sendable {
+  enum Kind { case sent, nudged }
+  var sentAt: String?
+  var nudgedAt: String?
+
+  /// The later of the two: when the reviewers last heard about it.
+  var last: Date? { [sentAt, nudgedAt].compactMap { $0.flatMap(TodayRules.parseInstant) }.max() }
 }

@@ -33,6 +33,8 @@ struct OpenTicket: Equatable, Sendable {
 enum NeedsYouKind: String, CaseIterable, Sendable {
   case conflicts, ciFailing = "ci-failing", changesRequested = "changes-requested", stuckReview = "stuck-review"
   case threads, behind, slowReview = "slow-review", ready, mergedNotDone = "merged-not-done"
+  /// A PR opened recently that nobody has reviewed yet: send it to the team.
+  case sendForReview = "send-for-review"
 }
 
 /// A code owner (team or person) a review waits on; a team lists its members, minus you and the author.

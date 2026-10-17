@@ -12,7 +12,8 @@ actor TodayService {
 
   private var teams: [String: (at: Date, members: [Person])] = [:]
 
-  func build(config: PrConfig, timeZone: String) async throws -> TodayData {
+  /// `newPrHours` is how long a PR counts as new, to send for review rather than nudge; 0 turns it off.
+  func build(config: PrConfig, timeZone: String, newPrHours: Int = 24) async throws -> TodayData {
     var warnings: [String] = []
     // Today is only as fresh as the PR lists it's built from, so it takes them recent too.
     async let mineLoad = PrService.shared.load(.mine, config: config, maxAge: Self.prListMaxAge)
@@ -69,7 +70,13 @@ actor TodayService {
       let ticket = pr.tickets.first
       let age = ticket.flatMap { ages[$0.key] }
       let ageMessage = age.flatMap { $0.level != .ok && $0.message != nil ? ($0.level, $0.message!) : nil }
-      guard let need = TodayRules.prNeed(pr, ageMessage: ageMessage) else {
+      var need = TodayRules.prNeed(pr, ageMessage: ageMessage)
+      // A new PR nobody has looked at yet goes to the team first; nudging comes later.
+      if need == nil || need?.kind == .stuckReview || need?.kind == .slowReview,
+         let fresh = TodayRules.sendForReview(pr, now: now, newPrHours: newPrHours) {
+        need = fresh
+      }
+      guard let need else {
         waiting.append(pr)
         continue
       }
@@ -78,7 +85,7 @@ actor TodayService {
         ticket: ticket, pr: pr, actionLabel: need.actionLabel, action: need.action,
         ref: ticket.map { ticketRef($0.key) } ?? prRef(pr.repo, pr.number)
       )
-      if need.kind == .stuckReview || need.kind == .slowReview {
+      if need.kind == .stuckReview || need.kind == .slowReview || need.kind == .sendForReview {
         item.nudge = await nudgeTargets(pr, viewer: mine.viewer, token: config.githubToken, warnings: &warnings)
       }
       needsYou.append(item)
@@ -333,6 +340,17 @@ enum TodayRules {
       )
     }
     return nil
+  }
+
+  /// A PR opened in the last `newPrHours` that's waiting on reviewers with nothing from them yet.
+  static func sendForReview(_ pr: Pr, now: Date, newPrHours: Int) -> Need? {
+    guard newPrHours > 0, pr.waitingOn == .reviewer, pr.approvals.isEmpty, pr.changesRequestedBy.isEmpty,
+          let opened = parseInstant(pr.createdAt), now.timeIntervalSince(opened) < Double(newPrHours) * 3600
+    else { return nil }
+    return Need(
+      kind: .sendForReview, tone: .info, title: "Send for review", detail: "opened \(opened.formatted(.relative(presentation: .named)))",
+      actionLabel: "Open", action: .details(PrKey(pr))
+    )
   }
 
   /// How long a status can last before it's flagged, in working days. Review should move faster

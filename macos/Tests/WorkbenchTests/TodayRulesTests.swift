@@ -32,4 +32,28 @@ struct TodayRulesTests {
     #expect(TodayRules.snippet("**Hey** [@ahmed](https://x) see `code`\n\n> quoted") == "Hey @ahmed see code quoted")
     #expect(TodayRules.snippet("   ") == nil)
   }
+
+  @Test func newPrsAreSentForReviewNotNudged() throws {
+    let raw = try JSONDecoder().decode(GithubPr.self, from: JSONSerialization.data(withJSONObject: [
+      "id": "PR_1", "number": 7, "title": "T", "url": "https://github.com/o/r/pull/7", "body": "", "isDraft": false,
+      "createdAt": "2026-10-17T00:00:00Z", "updatedAt": "2026-10-17T00:00:00Z", "mergedAt": NSNull(), "headRefName": "b",
+      "baseRefName": "main", "additions": 1, "deletions": 1, "mergeStateStatus": "BLOCKED", "reviewDecision": NSNull(),
+      "author": ["login": "me", "avatarUrl": "a"], "repository": ["nameWithOwner": "o/r"],
+      "baseRef": ["rules": ["nodes": [["type": "PULL_REQUEST", "repositoryRuleset": ["id": "x"], "parameters": ["requiredApprovingReviewCount": 1]]]], "branchProtectionRule": NSNull()],
+      "files": ["pageInfo": ["hasNextPage": false, "endCursor": NSNull()], "nodes": []],
+      "commits": ["nodes": []], "reviewThreads": ["nodes": []], "latestOpinionatedReviews": ["nodes": []], "reviewRequests": ["nodes": []],
+    ] as [String: Any]))
+    let pr = Derive.pr(raw, tickets: nil)
+    #expect(pr.waitingOn == .reviewer)
+    let hoursLater = { (hours: Double) in TodayRules.parseInstant("2026-10-17T00:00:00Z")!.addingTimeInterval(hours * 3600) }
+    #expect(TodayRules.sendForReview(pr, now: hoursLater(3), newPrHours: 24)?.kind == .sendForReview)
+    #expect(TodayRules.sendForReview(pr, now: hoursLater(30), newPrHours: 24) == nil)
+    #expect(TodayRules.sendForReview(pr, now: hoursLater(3), newPrHours: 0) == nil)
+  }
+
+  @Test func aPingIsItsLatestMoment() {
+    let ping = Ping(sentAt: "2026-10-17T00:00:00.000Z", nudgedAt: "2026-10-18T09:00:00.000Z")
+    #expect(ping.last == TodayRules.parseInstant("2026-10-18T09:00:00.000Z"))
+    #expect(Ping().last == nil)
+  }
 }
