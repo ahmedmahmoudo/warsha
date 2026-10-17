@@ -56,6 +56,55 @@ struct PrParityTests {
     #expect(differences.isEmpty, "\(differences.joined(separator: "\n"))")
   }
 
+  /// Every PR in Mine, opened both ways.
+  @Test func detailsMatchTheWebVersion() async throws {
+    let config = try Self.config()
+    let list = try await PrService.shared.load(.mine, config: config)
+    var differences: [String] = []
+    for pr in list.open + list.recentlyMerged {
+      let key = PrKey(pr)
+      async let native = PrService.shared.detail(key, config: config)
+      async let webData = URLSession.shared.data(from: URL(string: "\(Self.web)/\(key.repo)/\(key.number)?fresh=1")!)
+      let ours = try await native
+      let web = try JSONSerialization.jsonObject(with: try await webData.0) as! [String: Any]
+      let merge = web["merge"] as! [String: Any]
+      let actions = web["actions"] as! [String: Any]
+      let update = actions["updateBranch"] as? [String: Any]
+      let conflicts = actions["conflicts"] as? [String: Any]
+      let compare: [(String, String, String)] = [
+        ("state", "\(ours.state)", web["state"] as! String),
+        ("blockers", ours.merge.blockers.map { "\($0.kind.rawValue):\($0.label):\($0.items.joined(separator: "|"))" }.joined(separator: "; "),
+         (merge["blockers"] as! [[String: Any]]).map { "\($0["kind"]!):\($0["label"]!):\(($0["items"] as! [String]).joined(separator: "|"))" }.joined(separator: "; ")),
+        ("notes", ours.merge.notes.joined(separator: "; "), (merge["notes"] as! [String]).joined(separator: "; ")),
+        ("activity", ours.activity.map { "\($0.kind.rawValue) \($0.actor?.id ?? "-") \($0.title)" }.joined(separator: "\n"),
+         (web["activity"] as! [[String: Any]]).map { "\($0["kind"]!) \((($0["actor"] as? [String: Any])?["id"] as? String) ?? "-") \($0["title"]!)" }.joined(separator: "\n")),
+        ("activityBodies", ours.activity.map { $0.body ?? "" }.joined(separator: "\u{1}"),
+         (web["activity"] as! [[String: Any]]).map { ($0["body"] as? String) ?? "" }.joined(separator: "\u{1}")),
+        ("threads", ours.openThreads.map(\.id).joined(separator: ","), (web["openThreads"] as! [[String: Any]]).map { $0["id"] as! String }.joined(separator: ",")),
+        ("changeRequests", ours.changeRequests.map { "\($0.reviewer.id):\($0.threadIds.joined(separator: "|"))" }.joined(separator: ","),
+         (web["changeRequests"] as! [[String: Any]]).map { "\(($0["reviewer"] as! [String: Any])["id"]!):\(($0["threadIds"] as! [String]).joined(separator: "|"))" }.joined(separator: ",")),
+        ("checks", ours.checks.map { "\($0.name):\($0.state):\($0.required)" }.sorted().joined(separator: ","),
+         (web["checks"] as! [[String: Any]]).map { "\($0["name"]!):\($0["state"]!):\($0["required"] as! Bool)" }.sorted().joined(separator: ",")),
+        ("updateBranch", ours.actions.updateBranch.map { "\($0.behindBy) \($0.canUpdate) \($0.reason ?? "-")" } ?? "-",
+         update.map { "\($0["behindBy"]!) \(($0["canUpdate"] as! Bool)) \(($0["reason"] as? String) ?? "-")" } ?? "-"),
+        ("conflictPrompt", ours.actions.conflicts?.prompt ?? "-", (conflicts?["prompt"] as? String) ?? "-"),
+      ]
+      for (field, native, web) in compare where native != web {
+        differences.append("\(key.repo)#\(key.number) \(field):\n  native \"\(native)\"\n  web    \"\(web)\"")
+      }
+    }
+    print("[details] compared \(list.open.count + list.recentlyMerged.count) PRs")
+    #expect(differences.isEmpty, "\(differences.joined(separator: "\n"))")
+  }
+
+  private static func config() throws -> PrConfig {
+    let env = try envFile()
+    return PrConfig(
+      githubToken: env["GITHUB_TOKEN"] ?? "", linearApiKey: env["LINEAR_API_KEY"] ?? "",
+      githubRepos: AppSettings.list(env["GITHUB_REPOS"] ?? ""), githubTeam: AppSettings.list(env["GITHUB_TEAM"] ?? "")
+    )
+  }
+
   private static func mismatchLabel(_ web: String) -> String {
     ["no-ticket": Mismatch.noTicket, "ticket-closed-pr-open": .ticketClosedPrOpen, "ticket-not-started": .ticketNotStarted,
      "pr-merged-ticket-open": .prMergedTicketOpen][web]!.label

@@ -6,19 +6,30 @@ struct PrConfig: Sendable, Hashable {
   let linearApiKey: String
   let githubRepos: [String]
   let githubTeam: [String]
+  /// Where repos are cloned on this Mac, keyed by lower-case "owner/repo".
+  let localRepos: [String: String]
 
-  nonisolated init(githubToken: String, linearApiKey: String, githubRepos: [String], githubTeam: [String]) {
+  nonisolated init(
+    githubToken: String, linearApiKey: String, githubRepos: [String], githubTeam: [String], localRepos: [String: String] = [:]
+  ) {
     self.githubToken = githubToken
     self.linearApiKey = linearApiKey
     self.githubRepos = githubRepos
     self.githubTeam = githubTeam
+    self.localRepos = localRepos
   }
 
   @MainActor
   init(_ settings: AppSettings) {
+    var localRepos: [String: String] = [:]
+    for pair in AppSettings.list(settings.localRepos) {
+      let parts = pair.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+      if parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty { localRepos[parts[0].lowercased()] = parts[1] }
+    }
     self.init(
       githubToken: settings.githubToken, linearApiKey: settings.linearApiKey,
-      githubRepos: AppSettings.list(settings.githubRepos), githubTeam: AppSettings.list(settings.githubTeam)
+      githubRepos: AppSettings.list(settings.githubRepos), githubTeam: AppSettings.list(settings.githubTeam),
+      localRepos: localRepos
     )
   }
 }
@@ -159,6 +170,72 @@ actor PrService {
       }
     }
     return contexts
+  }
+
+  // MARK: Details
+
+  /// One PR with everything the details page shows.
+  func detail(_ key: PrKey, config: PrConfig) async throws -> PrDetail {
+    guard let raw = try await GitHub.prDetail(key, token: config.githubToken) else {
+      throw IntegrationError("\(key.repo)#\(key.number) wasn't found, or the GitHub token can't see it")
+    }
+    let tickets = try? await Linear.tickets(Derive.ticketKeys(raw.base), apiKey: config.linearApiKey)
+    let reviews = raw.state == "OPEN" ? await reviewContexts([raw.base], token: config.githubToken) : [:]
+    let actions = await actions(raw, key: key, config: config)
+    return BuildDetail.detail(raw, pr: Derive.pr(raw.base, tickets: tickets, review: reviews[raw.base.url]), actions: actions)
+  }
+
+  /// What can be done about the branch: hand conflicts to Claude, or bring it up to date.
+  private func actions(_ raw: GithubPrDetail, key: PrKey, config: PrConfig) async -> PrActions {
+    guard raw.state == "OPEN" else { return PrActions() }
+    let conflicted = raw.mergeable == "CONFLICTING" || raw.base.mergeStateStatus == "DIRTY"
+    let pr = ClaudeHandoff.ConflictPr(
+      repo: key.repo, number: raw.base.number, title: raw.base.title, url: raw.base.url, head: raw.base.headRefName, base: raw.base.baseRefName
+    )
+    async let conflicts = conflicted ? ClaudeHandoff.conflictAction(pr, localRepos: config.localRepos) : nil
+    async let comparison = try? GitHub.branchComparison(
+      repo: key.repo, base: raw.base.baseRefName, head: raw.base.headRefName, token: config.githubToken
+    )
+    let behindBy = await comparison?.behindBy ?? 0
+    return PrActions(
+      conflicts: await conflicts,
+      updateBranch: behindBy > 0
+        ? PrActions.UpdateBranch(
+          behindBy: behindBy, base: raw.base.baseRefName, canUpdate: raw.viewerCanUpdateBranch && !conflicted,
+          reason: conflicted ? "Resolve the conflicts first; GitHub can only update a branch that merges cleanly"
+            : raw.viewerCanUpdateBranch ? nil : "GitHub won't update this branch with your token (no permission, or it's from a fork)",
+          headOid: raw.headRefOid
+        )
+        : nil
+    )
+  }
+
+  /// Straight from GitHub every time: this is what the page polls while CI runs.
+  func checks(_ key: PrKey, config: PrConfig) async throws -> PrChecks {
+    guard let raw = try await GitHub.prChecks(key, token: config.githubToken) else {
+      throw IntegrationError("\(key.repo)#\(key.number) wasn't found")
+    }
+    return PrChecks(
+      headOid: raw.headRefOid, checks: Derive.checks(commits: raw.commits, mergedAt: raw.mergedAt, baseRef: raw.baseRef), fetchedAt: Date()
+    )
+  }
+
+  private static let updateSettle: TimeInterval = 15
+
+  /// GitHub's "Update branch", refused if the branch moved since the page loaded. GitHub moves the
+  /// branch a moment after accepting the update; returns once it has (true) or after 15 seconds (false).
+  func updateBranch(_ key: PrKey, expectedHeadOid: String, config: PrConfig) async throws -> Bool {
+    guard let raw = try await GitHub.prDetail(key, token: config.githubToken) else { throw IntegrationError("\(key.repo)#\(key.number) wasn't found") }
+    guard raw.headRefOid == expectedHeadOid else {
+      throw IntegrationError("The branch has new commits since this page loaded; refresh and try again")
+    }
+    try await GitHub.updatePullRequestBranch(id: raw.base.id, expectedHeadOid: expectedHeadOid, token: config.githubToken)
+    let deadline = Date().addingTimeInterval(Self.updateSettle)
+    while Date() < deadline {
+      try await Task.sleep(for: .seconds(1))
+      if let head = try? await GitHub.prHeadOid(key, token: config.githubToken), head != expectedHeadOid { return true }
+    }
+    return false
   }
 
   private func codeownersFor(repo: String, branch: String, token: String) async -> Codeowners? {

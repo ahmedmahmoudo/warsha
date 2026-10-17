@@ -12,6 +12,7 @@ struct PullRequestsView: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @Environment(PullRequestsModel.self) private var model
+  @Environment(Navigation.self) private var navigation
   @AppStorage("prScope") private var scope: PrScope = .mine
   @State private var filter: Filter?
   @State private var search = ""
@@ -26,7 +27,13 @@ struct PullRequestsView: View {
       .contextMenu(forSelectionType: Pr.ID.self) { ids in
         menu(for: prs(ids, in: data))
       } primaryAction: { ids in
-        for pr in prs(ids, in: data) { NSWorkspace.shared.open(URL(string: pr.url)!) }
+        // One PR opens its details here; several open on GitHub.
+        let chosen = prs(ids, in: data)
+        if chosen.count == 1 {
+          navigation.pullRequestPath.append(PrKey(chosen[0]))
+        } else {
+          for pr in chosen { NSWorkspace.shared.open(URL(string: pr.url)!) }
+        }
       }
       .safeAreaInset(edge: .top, spacing: 0) {
         if let data { filterBar(data) }
@@ -218,13 +225,13 @@ struct PullRequestsView: View {
   @ViewBuilder
   private func menu(for prs: [Pr]) -> some View {
     if !prs.isEmpty {
+      if prs.count == 1, let pr = prs.first {
+        Button("Open Details") { navigation.pullRequestPath.append(PrKey(pr)) }
+      }
       Button(prs.count == 1 ? "Open on GitHub" : "Open \(prs.count) on GitHub") {
         for pr in prs { NSWorkspace.shared.open(URL(string: pr.url)!) }
       }
       if prs.count == 1, let pr = prs.first {
-        Button("Open Details in the Web Version") {
-          NSWorkspace.shared.open(URL(string: "http://localhost:5180/prs/\(pr.repo)/\(pr.number)")!)
-        }
         if let ticket = pr.tickets.first {
           Button("Open \(ticket.key) in Linear") { NSWorkspace.shared.open(URL(string: ticket.url)!) }
         }

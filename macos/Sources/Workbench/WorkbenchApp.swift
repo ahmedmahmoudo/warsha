@@ -75,6 +75,8 @@ enum Page: String, CaseIterable, Identifiable {
 @Observable
 final class Navigation {
   var page: Page = .today
+  /// The PR details pages opened from the Pull Requests list, as a back stack.
+  var pullRequestPath: [PrKey] = []
 }
 
 private struct PageCommands: Commands {

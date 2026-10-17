@@ -22,7 +22,11 @@ struct ContentView: View {
     } detail: {
       switch navigation.page {
       case .today: TodayView()
-      case .pullRequests: PullRequestsView()
+      case .pullRequests:
+        NavigationStack(path: $navigation.pullRequestPath) {
+          PullRequestsView()
+            .navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
+        }
       case .activity, .calendar: NotPortedView(page: navigation.page)
       }
     }

@@ -38,6 +38,8 @@ Sources/Workbench/
   Integrations.swift    GitHub and Linear GraphQL clients, Linear ticket lookup
   PullRequests/         the Pull Requests page: GitHub queries (GitHubPrs), status rules (Derive),
                         CODEOWNERS, the loader with its caches (PrService), and the views
+    Detail/             a PR's details page: queries, timeline and merge readiness (BuildDetail),
+                        the Claude hand-off, live checks, and a native Markdown renderer
 Tests/WorkbenchTests/   swift-testing tests; PrParityTests compares with the running web version
 build.sh                swift build, then bundle, icon and sign Workbench.app
 ```
@@ -55,12 +57,16 @@ describes them), and the TypeScript is the reference.
 2. **Signing**: a stable self-signed identity, so the Keychain and later Accessibility permissions
    survive rebuilds.
 3. **Pull Requests list** (done): GitHub search and details, status and merge blockers, CODEOWNERS,
-   Linear tickets, the token check, Mine / Reviewing / Team, the waiting-on cards, and parked PRs.
+   Linear tickets, the token check, Mine / Reviewing / Team, the waiting-on filters, and parked PRs.
    The page reloads every 30 seconds while it's open. Pin and unpin are in each row's context menu;
-   parking with a reason comes with Today. A PR's title opens it on GitHub until the details page
-   is ported.
-4. **PR details**: description (rendered Markdown), timeline, threads, checks with live polling,
-   Merge status, and the Actions (Update branch, open in Claude).
+   parking with a reason comes with Today.
+4. **PR details** (done): double-click a PR (or press Return). The description is rendered as
+   native Markdown, with screenshots in a gallery, including private release attachments. Also the
+   timeline, threads and change requests, Merge status, the Reviewers, and checks polled every 10s
+   while they run (a required check changing reloads the page). Actions are Update branch (after a
+   confirm) and Open in Claude for conflicts. Open in Claude finds the repo's clone under Settings →
+   General → Local repos, or in ~/everlab, ~/Developer, ~/code, ~/src, ~/Projects and similar
+   folders, if its origin matches.
 5. **Today**: Needs you now, Up next, New for you, Deadlines, Waiting on others, plus pins, notes,
    todos and parking (with posting the reason to Linear and GitHub).
 6. **Google Calendar**: sign-in via `ASWebAuthenticationSession`, meeting sync with reschedule and

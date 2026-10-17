@@ -35,7 +35,7 @@ struct PrRowView: View {
       }
 
       HStack(spacing: 6) {
-        // Double-click or Return opens the PR; the list owns that, so the title is plain text.
+        // Double-click or Return opens the details; the list owns that, so the title is plain text.
         Text(pr.title).font(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
         if store.pins.contains(where: { $0.ref == itemRef }) {
           Image(systemName: "pin.fill").font(.caption).foregroundStyle(.secondary).help("Pinned")
@@ -116,7 +116,7 @@ private struct CheckLink: View {
   }
 }
 
-private struct ReviewsColumn: View {
+struct ReviewsColumn: View {
   let pr: Pr
 
   var body: some View {
