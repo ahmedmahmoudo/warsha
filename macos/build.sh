@@ -28,7 +28,7 @@ xcodebuild -project "$MACOS/Workbench.xcodeproj" -scheme Workbench -configuratio
 
 rm -rf "$APP"
 cp -R "$MACOS/build/DerivedData/Build/Products/Release/Workbench.app" "$APP"
-SIGNER="$(codesign -dv "$APP" 2>&1 | awk -F= '/^Authority/ { print $2; exit }')"
+SIGNER="$(codesign -dv --verbose=2 "$APP" 2>&1 | awk -F= '/^Authority/ { print $2; exit }')"
 echo "Built $APP, signed ${SIGNER:+by $SIGNER}${SIGNER:-to run locally}"
 
 if [ "${1:-}" = "install" ]; then
