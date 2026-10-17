@@ -6,6 +6,7 @@ import SwiftUI
 ///   open Workbench.app --args -WorkbenchEnvFile /path/.env.local -WorkbenchOpen owner/repo#123 \
 ///     -WorkbenchAppearance dark -WorkbenchSnapshot /tmp/shot.png
 ///
+/// `-WorkbenchAppearance` overrides Settings → General → Appearance for this launch.
 /// `-WorkbenchEnvFile` reads settings from a file for this launch only, without the Keychain.
 /// `-WorkbenchOpen` opens a page ("prs", "today") or a PR's details. `-WorkbenchSnapshot` saves the
 /// window as a PNG once it has loaded (`-WorkbenchSnapshotDelay`, seconds, default 15). The app draws

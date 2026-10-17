@@ -32,7 +32,10 @@ struct ContentView: View {
     }
     .containerBackground(Palette.background, for: .window)
     .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
-    .task { await DevHooks.apply(to: navigation) }
+    .task {
+      settings.applyAppearance()
+      await DevHooks.apply(to: navigation)
+    }
     // Your own PRs stay fresh for the sidebar badge, whichever page is open.
     .task {
       while !Task.isCancelled {

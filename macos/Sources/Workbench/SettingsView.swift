@@ -90,13 +90,17 @@ private struct GeneralSettings: View {
   var body: some View {
     @Bindable var settings = settings
     Form {
+      Picker("Appearance", selection: $settings.appearance) {
+        ForEach(AppSettings.Appearance.allCases) { Text($0.label).tag($0) }
+      }
+      .pickerStyle(.segmented)
       Picker("Time zone", selection: $settings.timeZone) {
         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
       }
       Section {
         TextField("Local repos", text: $settings.localRepos, prompt: Text("owner/repo=/path/to/clone"))
       } footer: {
-        Text("Where repos are cloned, for opening a conflicted PR in Claude. A repo cloned next to Workbench is found without it.")
+        Text("Where repos are cloned, for opening a conflicted PR in Claude. Without it, Workbench looks in ~/everlab, ~/Developer, ~/code and similar folders.")
           .foregroundStyle(.secondary)
       }
     }

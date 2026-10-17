@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// What the web version read from .env.local: secrets in the Keychain, the rest in UserDefaults.
 /// A blank value means "not configured", so each integration can say what's missing.
@@ -19,6 +19,25 @@ final class AppSettings {
   var localRepos: String { didSet { save(localRepos, "localRepos") } }
   /// Where Activity's days and weeks start.
   var timeZone: String { didSet { save(timeZone, "timeZone") } }
+  /// Light, dark, or whatever macOS is set to, like the web version's theme switch.
+  var appearance: Appearance {
+    didSet {
+      save(appearance.rawValue, "appearance")
+      applyAppearance()
+    }
+  }
+
+  enum Appearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: Self { self }
+    var label: String {
+      switch self {
+      case .system: "System"
+      case .light: "Light"
+      case .dark: "Dark"
+      }
+    }
+  }
 
   @ObservationIgnored private let defaults = UserDefaults.standard
   /// False when the settings came from a file for this launch only (`-WorkbenchEnvFile`): nothing
@@ -34,6 +53,7 @@ final class AppSettings {
     googleClientId = ""
     localRepos = ""
     timeZone = "Australia/Sydney"
+    appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
     if let file = DevHooks.envFile {
       persists = false
       _ = try? importEnvFile(URL(fileURLWithPath: file))
@@ -47,6 +67,15 @@ final class AppSettings {
     googleClientId = defaults.string(forKey: "googleClientId") ?? ""
     localRepos = defaults.string(forKey: "localRepos") ?? ""
     timeZone = defaults.string(forKey: "timeZone") ?? "Australia/Sydney"
+  }
+
+  /// Sets every window's appearance; nil follows macOS, switching live when it changes.
+  func applyAppearance() {
+    NSApp.appearance = switch appearance {
+    case .system: nil
+    case .light: NSAppearance(named: .aqua)
+    case .dark: NSAppearance(named: .darkAqua)
+    }
   }
 
   private func saveSecret(_ key: String, _ value: String) {
