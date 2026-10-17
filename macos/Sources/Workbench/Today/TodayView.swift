@@ -383,7 +383,7 @@ private struct NeedsYouRow: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       HStack(spacing: 4) {
         if let ping, let pr = item.pr {
-          CopyLinkButton(url: pr.url) { store.ping(pr.url, ping) }
+          CopyLinkButton(url: pr.url)
           Button(ping == .sent ? "Sent" : "Nudged", systemImage: "checkmark") { store.ping(pr.url, ping) }
             .buttonStyle(.pill(item.tone)).clickable()
             .help(ping == .sent ? "Mark as sent to the team for review" : "Mark the reviewers as nudged")
@@ -397,17 +397,16 @@ private struct NeedsYouRow: View {
   }
 }
 
+/// Copies the PR's link, and only that: copying isn't sending, so Sent and Nudged stay their own
+/// buttons.
 private struct CopyLinkButton: View {
   let url: String
-  /// What copying also means: the link is about to be sent to someone.
-  var onCopy: () -> Void = {}
   @State private var copied = false
 
   var body: some View {
     Button(copied ? "Copied" : "Copy link", systemImage: copied ? "checkmark" : "link") {
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(url, forType: .string)
-      onCopy()
       copied = true
       Task {
         try? await Task.sleep(for: .seconds(2))
