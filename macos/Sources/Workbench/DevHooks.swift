@@ -8,7 +8,7 @@ import SwiftUI
 ///
 /// `-WorkbenchAppearance` overrides Settings → General → Appearance for this launch.
 /// `-WorkbenchEnvFile` reads settings from a file for this launch only, without the Keychain.
-/// `-WorkbenchOpen` opens a page ("prs", "today"), a PR's details, or "settings". `-WorkbenchSnapshot` saves the
+/// `-WorkbenchOpen` opens a page by the start of its name ("pull", "today"), a PR's details, "settings" or "getstarted". `-WorkbenchSnapshot` saves the
 /// window as a PNG once it has loaded (`-WorkbenchSnapshotDelay`, seconds, default 15). The app draws
 /// its own window, so no screen-recording permission is needed.
 enum DevHooks {
@@ -43,6 +43,8 @@ enum DevHooks {
     if let target = defaults.string(forKey: "WorkbenchOpen") {
       if target == "settings" {
         openSettings()
+      } else if target == "getstarted" {
+        navigation.gettingStarted = true
       } else if let page = Page.allCases.first(where: { $0.rawValue.lowercased().hasPrefix(target.lowercased()) }) {
         navigation.page = page
       } else if let match = target.wholeMatch(of: /([\w.-]+\/[\w.-]+)#(\d+)/), let number = Int(match.2) {

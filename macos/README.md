@@ -80,6 +80,32 @@ build-swiftpm.sh        the same app with SwiftPM alone, as a fallback
 The database is `~/Library/Application Support/Workbench/workbench.sqlite`. It uses the same schema
 and migrations as `server/store/db.ts`, so a file from either version opens in the other.
 
+## Sharing it
+
+Someone new opens Workbench to a Get started sheet (Help → Get Started brings it back): a GitHub
+token is all it needs, with Linear and Google Calendar when they like. Everything is theirs: tokens
+go in their Keychain and data in their own `~/Library/Application Support/Workbench`. The home time
+zone and the date formats come from their Mac.
+
+**Google Calendar.** `build.sh` bakes Workbench's own Google client into the app from git-ignored
+`Secrets.xcconfig` (written from `.env.local`'s `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` the
+first time), so nobody makes their own; Settings → Accounts still takes one. For people outside
+your Google account to sign in, the client's OAuth consent screen has to be published:
+`calendar.readonly` is a sensitive scope, so until Google verifies the app they see an "unverified
+app" warning and it's capped at 100 users. An Internal app (Google Workspace) skips both but only
+lets in your organisation. A desktop client's secret isn't really secret, which Google expects.
+
+**Handing over the app.** A build signed with an Apple Development certificate runs on your Mac;
+on another, Gatekeeper blocks it unless they right-click → Open (or allow it in System Settings →
+Privacy & Security). To hand it out without that, sign with a Developer ID Application certificate
+(paid Apple Developer Program) and notarize it:
+
+```bash
+xcrun notarytool submit Workbench.zip --keychain-profile notary --wait
+```
+
+then `xcrun stapler staple Workbench.app`. It needs macOS 26.
+
 ## Port plan
 
 Each step ships on its own. Each port keeps the web version's rules (the README at the repo root

@@ -26,7 +26,7 @@ private extension View {
   }
 }
 
-private struct AccountsSettings: View {
+struct AccountsSettings: View {
   @Environment(AppSettings.self) private var settings
 
   var body: some View {

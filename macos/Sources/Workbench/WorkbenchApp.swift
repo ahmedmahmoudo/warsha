@@ -103,6 +103,8 @@ final class Navigation {
   var page: Page = .today
   /// Each page's back stack of PR details, so Back returns to the page a PR was opened from.
   var paths: [Page: [PrKey]] = [:]
+  /// The Get started sheet, for someone new (or Help → Get Started).
+  var gettingStarted = false
 
   /// Opens a PR's details on the page you're on.
   func open(_ pr: PrKey) {
@@ -123,6 +125,9 @@ private struct PageCommands: Commands {
         Button(page.title) { navigation.page = page }
           .keyboardShortcut(page.shortcut)
       }
+    }
+    CommandGroup(replacing: .help) {
+      Button("Get Started…") { navigation.gettingStarted = true }
     }
   }
 }
