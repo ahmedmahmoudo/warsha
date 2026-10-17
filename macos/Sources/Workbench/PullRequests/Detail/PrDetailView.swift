@@ -9,6 +9,7 @@ struct PrDetailView: View {
   @State private var model: PrDetailModel
   /// The page's width, to put the side column beside the main one when there's room, as the web
   /// version does from its `lg` breakpoint.
+  @Environment(\.textScale) private var textScale
   @State private var width: CGFloat = 0
 
   init(key: PrKey) {
@@ -77,10 +78,10 @@ struct PrDetailView: View {
   private func content(_ detail: PrDetail) -> some View {
     VStack(alignment: .leading, spacing: 20) {
       header(detail)
-      if width >= 880 {
+      if width >= 880 * textScale {
         HStack(alignment: .top, spacing: 20) {
           main(detail).frame(maxWidth: .infinity, alignment: .leading)
-          side(detail).frame(width: 352)
+          side(detail).scaledFrame(width: 352)
         }
       } else {
         VStack(alignment: .leading, spacing: 20) {
@@ -89,7 +90,7 @@ struct PrDetailView: View {
         }
       }
     }
-    .frame(maxWidth: 1120, alignment: .leading)
+    .frame(maxWidth: 1120 * textScale, alignment: .leading)
     .frame(maxWidth: .infinity)
   }
 
@@ -104,8 +105,8 @@ struct PrDetailView: View {
         }
       }
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Text(pr.title).font(.title2.weight(.semibold)).textSelection(.enabled)
-        Text("#\(String(pr.number))").font(.title2).foregroundStyle(.tertiary)
+        Text(pr.title).scaledFont(.title2.weight(.semibold)).textSelection(.enabled)
+        Text("#\(String(pr.number))").scaledFont(.title2).foregroundStyle(.tertiary)
         ItemControls(
           ref: itemRef(pr), title: pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title,
           url: pr.tickets.first?.url ?? pr.url, prs: [PrKey(pr)]
@@ -117,7 +118,7 @@ struct PrDetailView: View {
           AvatarView(url: pr.authorAvatarUrl, size: 16)
           Text(pr.author)
         }
-        Text("\(pr.headRef) → \(pr.baseRef)").font(.caption.monospaced())
+        Text("\(pr.headRef) → \(pr.baseRef)").scaledFont(.caption.monospaced())
         HStack(spacing: 4) {
           Text("+\(pr.additions)").foregroundStyle(Tone.good.color)
           Text("−\(pr.deletions)").foregroundStyle(Tone.bad.color)
@@ -127,7 +128,7 @@ struct PrDetailView: View {
         }
         Text(pr.repo)
       }
-      .font(.caption)
+      .scaledFont(.caption)
       .foregroundStyle(.secondary)
     }
   }
@@ -184,10 +185,10 @@ struct Panel<Accessory: View, Content: View>: View {
         } label: {
           HStack(spacing: 6) {
             Image(systemName: "chevron.down")
-              .font(.caption.weight(.semibold))
+              .scaledFont(.caption.weight(.semibold))
               .foregroundStyle(.secondary)
               .rotationEffect(.degrees(expanded ? 0 : -90))
-            Text(title).font(.callout.weight(.semibold))
+            Text(title).scaledFont(.callout.weight(.semibold))
           }
           .contentShape(.rect)
         }
@@ -196,7 +197,7 @@ struct Panel<Accessory: View, Content: View>: View {
         .clickable()
         .accessibilityHint(expanded ? "Collapses the section" : "Expands the section")
         Spacer(minLength: 8)
-        accessory.font(.caption)
+        accessory.scaledFont(.caption)
       }
       .padding(.horizontal, 14).padding(.vertical, 10)
       if expanded {
@@ -236,7 +237,7 @@ private struct StateBadge: View {
     case .closed: ("Closed", "xmark.circle", .bad)
     }
     Label(label, systemImage: symbol)
-      .font(.caption.weight(.medium))
+      .scaledFont(.caption.weight(.medium))
       .foregroundStyle(tone == .neutral ? AnyShapeStyle(.secondary) : AnyShapeStyle(tone.color))
       .padding(.horizontal, 8).padding(.vertical, 3)
       .background(tone.soft, in: .capsule)

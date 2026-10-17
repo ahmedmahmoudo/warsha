@@ -83,11 +83,11 @@ struct MeetingChangeRow: View {
             Chip(text: deleted ? "Deleted" : "Rescheduled", tone: deleted ? .bad : .warn)
           }
           if case let .rescheduled(previousStart, previousEnd, at) = change {
-            Text("\(Text("Now ").foregroundStyle(.secondary))\(BothZonesText(meeting: meeting, homeZone: homeZone))").font(.caption)
+            Text("\(Text("Now ").foregroundStyle(.secondary))\(BothZonesText(meeting: meeting, homeZone: homeZone))").scaledFont(.caption)
             Text("Was \(Text(CalendarTime.timeRange(start: previousStart, end: previousEnd, allDay: meeting.allDay, zone: homeZone, withDay: true)).strikethrough()) · moved \(relative(at))")
-              .font(.caption).foregroundStyle(.secondary)
+              .scaledFont(.caption).foregroundStyle(.secondary)
           } else {
-            Text("Was \(BothZonesText(meeting: meeting, homeZone: homeZone)) · removed \(relative(change.at))").font(.caption).foregroundStyle(.secondary)
+            Text("Was \(BothZonesText(meeting: meeting, homeZone: homeZone)) · removed \(relative(change.at))").scaledFont(.caption).foregroundStyle(.secondary)
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -96,7 +96,7 @@ struct MeetingChangeRow: View {
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable()
           .help(deleted ? "Dismiss and forget this meeting" : "Dismiss: the new time is noted")
       }
-      .font(.callout)
+      .scaledFont(.callout)
       .padding(.vertical, 6)
     }
   }
@@ -144,12 +144,12 @@ struct MeetingsTodaySection: View {
           SettingsLink { Text("Connect Google Calendar") }.buttonStyle(.link).clickable(underline: true)
           Text("to see your meetings here.").foregroundStyle(.secondary)
         }
-        .font(.callout)
+        .scaledFont(.callout)
       }
     } else {
       let meetings = calendar.today(settings, store)
       Panel("Meetings today", aside: calendar.lastSync == nil ? "" : meetings.isEmpty ? "None" : "\(meetings.count)") {
-        if let error = calendar.lastSync?.error { Text("Google sync failed: \(error)").font(.caption).foregroundStyle(Tone.warn.color) }
+        if let error = calendar.lastSync?.error { Text("Google sync failed: \(error)").scaledFont(.caption).foregroundStyle(Tone.warn.color) }
         if calendar.lastSync == nil {
           Text("Checking your calendar…").foregroundStyle(.secondary)
         } else if meetings.isEmpty {
@@ -168,14 +168,14 @@ struct MeetingsTodaySection: View {
                     MeetingTitle(meeting: meeting).fontWeight(.medium)
                     if live { Chip(text: "Now", tone: .good) }
                     if case .rescheduled = meeting.change { Chip(text: "Moved", tone: .warn) }
-                    if meeting.declined { Text("Declined").font(.caption2).foregroundStyle(.tertiary) }
+                    if meeting.declined { Text("Declined").scaledFont(.caption2).foregroundStyle(.tertiary) }
                   }
-                  BothZones(meeting, homeZone: settings.timeZone).font(.caption).foregroundStyle(.secondary)
+                  BothZones(meeting, homeZone: settings.timeZone).scaledFont(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if !over { JoinButton(meeting: meeting) }
               }
-              .font(.callout)
+              .scaledFont(.callout)
               .opacity(over ? 0.55 : 1)
             }
           }
@@ -195,28 +195,28 @@ struct MeetingDetails: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(meeting.title).font(.headline).strikethrough(meeting.change?.isDeleted ?? false).fixedSize(horizontal: false, vertical: true)
-      BothZones(meeting, homeZone: homeZone, withDay: true).font(.caption).foregroundStyle(.secondary)
+      Text(meeting.title).scaledFont(.headline).strikethrough(meeting.change?.isDeleted ?? false).fixedSize(horizontal: false, vertical: true)
+      BothZones(meeting, homeZone: homeZone, withDay: true).scaledFont(.caption).foregroundStyle(.secondary)
       if let location = meeting.location, !location.hasPrefix("http") {
-        Label(location, systemImage: "mappin.and.ellipse").font(.caption).foregroundStyle(.secondary)
+        Label(location, systemImage: "mappin.and.ellipse").scaledFont(.caption).foregroundStyle(.secondary)
       }
       switch meeting.change {
       case let .rescheduled(previousStart, previousEnd, _):
         Label("Rescheduled from \(CalendarTime.timeRange(start: previousStart, end: previousEnd, allDay: meeting.allDay, zone: homeZone, withDay: true))", systemImage: "clock.arrow.circlepath")
-          .font(.caption).foregroundStyle(Tone.warn.color)
+          .scaledFont(.caption).foregroundStyle(Tone.warn.color)
           .padding(6).frame(maxWidth: .infinity, alignment: .leading).background(Tone.warn.soft, in: .rect(cornerRadius: 6))
       case .deleted:
         Label("Deleted from your calendar", systemImage: "calendar.badge.minus")
-          .font(.caption).foregroundStyle(Tone.bad.color)
+          .scaledFont(.caption).foregroundStyle(Tone.bad.color)
           .padding(6).frame(maxWidth: .infinity, alignment: .leading).background(Tone.bad.soft, in: .rect(cornerRadius: 6))
       case nil: EmptyView()
       }
-      if meeting.declined { Text("You declined this one.").font(.caption).foregroundStyle(.secondary) }
+      if meeting.declined { Text("You declined this one.").scaledFont(.caption).foregroundStyle(.secondary) }
       HStack(spacing: 10) {
         JoinButton(meeting: meeting)
         if let url = meeting.htmlUrl.flatMap(URL.init(string:)), !(meeting.change?.isDeleted ?? false) {
           Link(destination: url) { Label("Open in Google Calendar", systemImage: "arrow.up.right") }
-            .font(.caption).foregroundStyle(.secondary).clickable(underline: true)
+            .scaledFont(.caption).foregroundStyle(.secondary).clickable(underline: true)
         }
         Spacer()
         if meeting.change != nil {
@@ -229,6 +229,6 @@ struct MeetingDetails: View {
       }
     }
     .padding(12)
-    .frame(width: 320, alignment: .leading)
+    .scaledFrame(width: 320, alignment: .leading)
   }
 }

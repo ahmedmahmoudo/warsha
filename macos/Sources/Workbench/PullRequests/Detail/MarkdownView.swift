@@ -25,7 +25,7 @@ struct MarkdownView: View {
     switch block.kind {
     case let .heading(level):
       Text(block.text)
-        .font(level == 1 ? .title2.bold() : level == 2 ? .title3.bold() : .headline)
+        .scaledFont(level == 1 ? .title2.bold() : level == 2 ? .title3.bold() : .headline)
         .padding(.top, level <= 2 ? 6 : 2)
     case .paragraph:
       Text(block.text).fixedSize(horizontal: false, vertical: true)
@@ -37,7 +37,7 @@ struct MarkdownView: View {
       .padding(.leading, CGFloat(block.depth) * 18)
     case .code:
       ScrollView(.horizontal) {
-        Text(block.text).font(.system(.callout, design: .monospaced)).padding(10)
+        Text(block.text).scaledFont(.system(.callout, design: .monospaced)).padding(10)
       }
       .background(Palette.fill, in: .rect(cornerRadius: 8))
     case .quote:

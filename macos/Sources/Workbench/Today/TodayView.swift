@@ -6,6 +6,7 @@ struct TodayView: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @State private var model = TodayModel()
+  @Environment(\.textScale) private var textScale
   @State private var width: CGFloat = 0
   /// Before you've ever marked Today as seen, "new" means the last few days. Fixed per visit, so
   /// "New" doesn't shift under you between refreshes.
@@ -19,11 +20,11 @@ struct TodayView: View {
           Label(error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription, systemImage: "exclamationmark.triangle.fill")
             .foregroundStyle(Tone.bad.color)
         }
-        ForEach(model.data?.warnings ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Tone.warn.color) }
-        if width >= 880 {
+        ForEach(model.data?.warnings ?? [], id: \.self) { Text($0).scaledFont(.caption).foregroundStyle(Tone.warn.color) }
+        if width >= 880 * textScale {
           HStack(alignment: .top, spacing: 20) {
             main.frame(maxWidth: .infinity, alignment: .leading)
-            side.frame(width: 352)
+            side.scaledFrame(width: 352)
           }
         } else {
           VStack(alignment: .leading, spacing: 20) {
@@ -33,7 +34,7 @@ struct TodayView: View {
         }
       }
       .padding(.horizontal, 24).padding(.vertical, 20)
-      .frame(maxWidth: 1120, alignment: .leading)
+      .frame(maxWidth: 1120 * textScale, alignment: .leading)
       .frame(maxWidth: .infinity)
     }
     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
@@ -103,7 +104,7 @@ struct TodayView: View {
       line += " · " + (parts.isEmpty ? "nothing urgent" : parts.joined(separator: " · "))
     }
     return VStack(alignment: .leading, spacing: 2) {
-      Text(greeting).font(.title2.weight(.semibold))
+      Text(greeting).scaledFont(.title2.weight(.semibold))
       Text(line).foregroundStyle(.secondary)
     }
   }
@@ -172,7 +173,7 @@ struct LoadingPanel: View {
   var body: some View {
     VStack(spacing: 10) {
       ProgressView().controlSize(.regular).tint(Color.secondary)
-      Text(text).font(.callout).foregroundStyle(Color.secondary)
+      Text(text).scaledFont(.callout).foregroundStyle(Color.secondary)
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 40)
@@ -199,7 +200,7 @@ struct ActionButton: View {
     } label: {
       HStack(spacing: 3) {
         Text(label)
-        if case .web = action { Image(systemName: "arrow.up.right").font(.caption2) }
+        if case .web = action { Image(systemName: "arrow.up.right").scaledFont(.caption2) }
       }
     }
     .buttonStyle(.bordered)
@@ -218,7 +219,7 @@ private struct TicketOrPr: View {
     if let ticket {
       TicketChip(ticket: ticket)
     } else if let pr {
-      Text("#\(String(pr.number))").font(.caption.monospaced()).foregroundStyle(.secondary).chipBorder()
+      Text("#\(String(pr.number))").scaledFont(.caption.monospaced()).foregroundStyle(.secondary).chipBorder()
     }
   }
 }
@@ -243,7 +244,7 @@ private struct PrLine<Accessory: View>: View {
       accessory
       Chip(text: pr.status.label, tone: pr.status.tone)
     }
-    .font(.callout)
+    .scaledFont(.callout)
   }
 }
 
@@ -252,7 +253,7 @@ private struct SmallLink: View {
   let action: () -> Void
 
   var body: some View {
-    Button(title, action: action).buttonStyle(.link).font(.caption).clickable(underline: true)
+    Button(title, action: action).buttonStyle(.link).scaledFont(.caption).clickable(underline: true)
   }
 }
 
@@ -304,8 +305,8 @@ private struct NeedsYouSection: View {
           if active == "all" {
             HStack(spacing: 6) {
               RoundedRectangle(cornerRadius: 1).fill(group.tone.color).frame(width: 3, height: 12)
-              Text(group.title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-              Text("\(items.count)").font(.caption).foregroundStyle(.tertiary)
+              Text(group.title).scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary)
+              Text("\(items.count)").scaledFont(.caption).foregroundStyle(.tertiary)
               if group.id == "housekeeping" { SmallLink(title: hidden ? "Show" : "Hide") { showHousekeeping.toggle() } }
             }
             .padding(.top, 6)
@@ -336,7 +337,7 @@ private struct FilterChip: View {
         Text(title).fontWeight(isOn ? .medium : .regular)
         Text("\(count)").foregroundStyle(.tertiary)
       }
-      .font(.caption)
+      .scaledFont(.caption)
       .foregroundStyle(isOn ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
       .padding(.horizontal, 9).padding(.vertical, 3)
       .background(isOn ? Palette.fill : .clear, in: .capsule)
@@ -369,14 +370,14 @@ private struct NeedsYouRow: View {
         HStack(spacing: 8) {
           TicketOrPr(ticket: item.ticket, pr: item.pr)
           if let pr = item.pr {
-            Button { navigation.open(PrKey(pr)) } label: { Text(title).font(.callout.weight(.medium)).lineLimit(1) }
+            Button { navigation.open(PrKey(pr)) } label: { Text(title).scaledFont(.callout.weight(.medium)).lineLimit(1) }
               .buttonStyle(.plain).clickable(underline: true).help(title)
           } else {
-            Text(title).font(.callout.weight(.medium)).lineLimit(1).help(title)
+            Text(title).scaledFont(.callout.weight(.medium)).lineLimit(1).help(title)
           }
         }
         Text("\(Text(item.title).foregroundStyle(.primary).fontWeight(.medium))\(item.pr.map { Text(" · #\(String($0.number))").foregroundStyle(.tertiary) } ?? Text(""))\(item.detail.map { Text(" · \($0)") } ?? Text(""))")
-          .font(.caption).foregroundStyle(.secondary)
+          .scaledFont(.caption).foregroundStyle(.secondary)
         NoteLine(ref: item.ref)
         if let nudge = item.nudge, !nudge.isEmpty { NudgeList(groups: nudge) }
       }
@@ -428,7 +429,7 @@ private struct NudgeList: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text("WAITING ON").font(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+      Text("WAITING ON").scaledFont(.caption2.weight(.medium)).foregroundStyle(.tertiary)
       ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
         VStack(alignment: .leading, spacing: 6) {
           ForEach(Array(group.enumerated()), id: \.element.owner.id) { index, target in
@@ -465,7 +466,7 @@ private struct NudgeList: View {
         }
       }
     }
-    .font(.caption)
+    .scaledFont(.caption)
     .padding(.horizontal, 10).padding(.vertical, 8)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(Palette.fill.opacity(0.6), in: .rect(cornerRadius: 6))
@@ -509,7 +510,7 @@ private struct UpNextRow: View {
         default: Color.clear
         }
       }
-      .font(.caption)
+      .scaledFont(.caption)
       .frame(width: 14)
       VStack(alignment: .leading, spacing: 4) {
         HStack(spacing: 8) {
@@ -530,7 +531,7 @@ private struct UpNextRow: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       ItemControls(ref: ticketRef(ticket.key), title: "\(ticket.key) \(ticket.title)", url: ticket.url)
     }
-    .font(.callout)
+    .scaledFont(.callout)
     .padding(.vertical, 8)
   }
 }
@@ -572,11 +573,11 @@ private struct NewForYouSection: View {
     } content: {
       if nothing { Text("Nothing new since you last looked.").foregroundStyle(.tertiary) }
       if !fresh.isEmpty {
-        Text("In Linear").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+        Text("In Linear").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary)
         ForEach(fresh) { InboxRow(item: $0) }
       }
       if !data.reviewRequests.isEmpty {
-        Text("Asked to review").font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 4)
+        Text("Asked to review").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 4)
         ForEach(data.reviewRequests) { pr in
           PrLine(pr: pr) { AvatarView(url: pr.authorAvatarUrl, size: 16) }
         }
@@ -614,13 +615,13 @@ private struct InboxRow: View {
         Text("\(Text(item.actor?.name ?? "Linear").fontWeight(.medium)) \(Text(item.verb).foregroundStyle(.secondary)) \(Text(subject).fontWeight(.medium))")
           .tint(.primary)
           .fixedSize(horizontal: false, vertical: true)
-        if let title = item.ticket?.title { Text(title).font(.caption).foregroundStyle(.secondary).lineLimit(1).help(title) }
-        if let snippet = item.snippet { Text("“\(snippet)”").font(.caption).foregroundStyle(.tertiary).lineLimit(2) }
+        if let title = item.ticket?.title { Text(title).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(1).help(title) }
+        if let snippet = item.snippet { Text("“\(snippet)”").scaledFont(.caption).foregroundStyle(.tertiary).lineLimit(2) }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      Text(relative(item.at)).font(.caption).foregroundStyle(.tertiary)
+      Text(relative(item.at)).scaledFont(.caption).foregroundStyle(.tertiary)
     }
-    .font(.callout)
+    .scaledFont(.callout)
   }
 
   private var symbol: String {
@@ -669,7 +670,7 @@ private struct FocusSection: View {
               TicketChip(ticket: ticket.ticket)
             } else {
               Text(pin.ref.replacingOccurrences(of: #"^\w+:"#, with: "", options: .regularExpression))
-                .font(.caption.monospaced()).foregroundStyle(.secondary)
+                .scaledFont(.caption.monospaced()).foregroundStyle(.secondary)
             }
             Group {
               if let url = pin.url.flatMap(URL.init(string:)) {
@@ -681,12 +682,12 @@ private struct FocusSection: View {
             .lineLimit(1)
             .strikethrough(finished)
             .opacity(finished ? 0.6 : 1)
-            if finished { Text("done").font(.caption).foregroundStyle(Tone.good.color) }
+            if finished { Text("done").scaledFont(.caption).foregroundStyle(Tone.good.color) }
             Spacer(minLength: 4)
             ItemControls(ref: pin.ref, title: pin.title, url: pin.url)
             if finished { SmallLink(title: "Clear") { store.unpin(pin.ref) } }
           }
-          .font(.callout)
+          .scaledFont(.callout)
         }
       }
     }
@@ -720,13 +721,13 @@ private struct TodosSection: View {
               Button("Clear Due Date", systemImage: "xmark.circle.fill") { self.due = nil }
                 .labelStyle(.iconOnly).buttonStyle(.plain).foregroundStyle(.tertiary).clickable()
             }
-            .font(.caption)
+            .scaledFont(.caption)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(Palette.fill, in: .capsule)
           }
           DueDateButton(due: $due)
         }
-        .font(.callout)
+        .scaledFont(.callout)
         .padding(.horizontal, 8).padding(.vertical, 5)
         .background(Palette.background, in: .rect(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(editing ? Color.workbenchAccent : Palette.border, lineWidth: editing ? 1.5 : 1))
@@ -737,7 +738,7 @@ private struct TodosSection: View {
           .clickable()
           .help("Add todo")
       }
-      Text("Mention a ticket key, like MX-2481, to link the todo to it.").font(.caption).foregroundStyle(.tertiary)
+      Text("Mention a ticket key, like MX-2481, to link the todo to it.").scaledFont(.caption).foregroundStyle(.tertiary)
       if open.isEmpty { Text("Nothing on your list.").foregroundStyle(.tertiary) }
       ForEach(store.todos) { todo in
         TodoRow(todo: todo, today: today)
@@ -817,13 +818,13 @@ private struct TodoRow: View {
       Spacer(minLength: 4)
       if let date = todo.dueDate {
         Text(date == today ? "today" : TodayRules.parseInstant("\(date)T12:00:00Z").map { $0.formatted(.dateTime.day().month(.abbreviated)) } ?? date)
-          .font(.caption).foregroundStyle(overdue ? AnyShapeStyle(Tone.bad.color) : AnyShapeStyle(.tertiary))
+          .scaledFont(.caption).foregroundStyle(overdue ? AnyShapeStyle(Tone.bad.color) : AnyShapeStyle(.tertiary))
       }
       Button("Delete Todo", systemImage: "trash") { store.removeTodo(todo.id) }
         .labelStyle(.iconOnly).buttonStyle(.borderless).foregroundStyle(.tertiary)
         .opacity(hovering ? 1 : 0).clickable()
     }
-    .font(.callout)
+    .scaledFont(.callout)
     .onHover { hovering = $0 }
     .contextMenu { Button("Delete", role: .destructive) { store.removeTodo(todo.id) } }
   }
@@ -846,14 +847,14 @@ private struct ParkedSection: View {
         }
       } content: {
         if !open {
-          Text("Kept out of Needs you, Up next and the stuck flags.").font(.caption).foregroundStyle(.tertiary)
+          Text("Kept out of Needs you, Up next and the stuck flags.").scaledFont(.caption).foregroundStyle(.tertiary)
         } else {
           ForEach(items, id: \.ref) { item in
             HStack(alignment: .top, spacing: 8) {
               VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                   Text(item.ref.replacingOccurrences(of: #"^\w+:"#, with: "", options: .regularExpression))
-                    .font(.caption.monospaced()).foregroundStyle(.secondary)
+                    .scaledFont(.caption.monospaced()).foregroundStyle(.secondary)
                   let title = item.title.replacingOccurrences(of: #"^[A-Z][A-Z0-9]+-\d+\s+"#, with: "", options: .regularExpression)
                   if let url = item.url.flatMap(URL.init(string:)) {
                     Link(title, destination: url).foregroundStyle(.primary).lineLimit(1).clickable(underline: true)
@@ -863,12 +864,12 @@ private struct ParkedSection: View {
                 }
                 let back = item.until.flatMap { TodayRules.parseInstant("\($0)T12:00:00Z") }.map { "back \($0.formatted(.dateTime.day().month(.abbreviated)))" }
                 Text([item.reason, back, "parked \(relative(item.parkedAt))"].compactMap { $0 }.joined(separator: " · "))
-                  .font(.caption).foregroundStyle(.tertiary)
+                  .scaledFont(.caption).foregroundStyle(.tertiary)
               }
               Spacer(minLength: 4)
               SmallLink(title: "Unpark") { store.unpark(item.ref) }
             }
-            .font(.callout)
+            .scaledFont(.callout)
           }
         }
       }
@@ -894,14 +895,14 @@ private struct DeadlinesSection: View {
             } else {
               Text(deadline.name).lineLimit(1)
             }
-            Text("\(deadline.ticketCount) of your ticket\(deadline.ticketCount == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+            Text("\(deadline.ticketCount) of your ticket\(deadline.ticketCount == 1 ? "" : "s")").scaledFont(.caption).foregroundStyle(.secondary)
           }
           Spacer(minLength: 4)
           Text(overdue ? "\(-deadline.daysLeft)d overdue" : deadline.daysLeft == 0 ? "today" : "in \(deadline.daysLeft)d")
-            .font(.caption.weight(.medium))
+            .scaledFont(.caption.weight(.medium))
             .foregroundStyle(overdue || soon ? color : AnyShapeStyle(.secondary))
         }
-        .font(.callout)
+        .scaledFont(.callout)
       }
     }
   }
@@ -928,9 +929,9 @@ private struct PingLabel: View {
   var body: some View {
     if let ping, let last = ping.last {
       let nudged = ping.nudgedAt.flatMap(TodayRules.parseInstant).map { $0 >= last } ?? false
-      Text("\(nudged ? "nudged" : "sent") \(last, format: .relative(presentation: .named))").font(.caption).foregroundStyle(.tertiary)
+      Text("\(nudged ? "nudged" : "sent") \(last, format: .relative(presentation: .named))").scaledFont(.caption).foregroundStyle(.tertiary)
     } else {
-      Image(systemName: "clock").font(.caption).foregroundStyle(.tertiary)
+      Image(systemName: "clock").scaledFont(.caption).foregroundStyle(.tertiary)
     }
   }
 }

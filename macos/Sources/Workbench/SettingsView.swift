@@ -15,7 +15,7 @@ struct SettingsView: View {
       Tab("Notifications", systemImage: "bell.badge", value: "notifications") { NotificationSettings().palettedText() }
       Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings().palettedText() }
     }
-    .frame(width: 560)
+    .scaledFrame(width: 560)
     .scenePadding()
   }
 }
@@ -115,7 +115,7 @@ private struct GoogleConnection: View {
       }
     }
     if let error {
-      Text(error).font(.callout).foregroundStyle(Tone.bad.color)
+      Text(error).scaledFont(.callout).foregroundStyle(Tone.bad.color)
     }
   }
 }
@@ -144,7 +144,7 @@ private struct ConnectionCheck: View {
       .disabled(checking)
     }
     .lineLimit(2)
-    .font(.callout)
+    .scaledFont(.callout)
   }
 }
 
@@ -158,6 +158,10 @@ private struct GeneralSettings: View {
         ForEach(AppSettings.Appearance.allCases) { Text($0.label).tag($0) }
       }
       .pickerStyle(.segmented)
+      Picker("Text size", selection: $settings.textScale) {
+        ForEach(TextScale.steps, id: \.self) { Text($0 == 1 ? "Actual size" : TextScale.label($0)).tag($0) }
+      }
+      .help("Also View → Zoom In (⌘+), Zoom Out (⌘−) and Actual Size (⌘0)")
       OpenAtLogin()
       ShortcutSetting()
       Picker("Home time zone", selection: $settings.timeZone) {
@@ -212,9 +216,9 @@ private struct OpenAtLogin: View {
         Text("macOS needs you to allow it in Login Items.").foregroundStyle(Tone.warn.color)
         Button("Open Login Items") { LoginItem.openSystemSettings() }
       }
-      .font(.callout)
+      .scaledFont(.callout)
     }
-    if let error { Text(error).font(.callout).foregroundStyle(Tone.bad.color) }
+    if let error { Text(error).scaledFont(.callout).foregroundStyle(Tone.bad.color) }
   }
 }
 
@@ -311,7 +315,7 @@ private struct DataSettings: View {
         LabeledContent("Database") {
           Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([store.path]) }
         }
-        Text(store.path.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+        Text(store.path.path).scaledFont(.caption).foregroundStyle(.secondary).textSelection(.enabled)
       } footer: {
         Text("Pins, notes, todos and parked items.").foregroundStyle(.secondary)
       }

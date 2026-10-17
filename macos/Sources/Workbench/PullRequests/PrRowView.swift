@@ -7,6 +7,7 @@ struct PrRowView: View {
   let viewer: String
   let stackParent: Pr?
   @Environment(Store.self) private var store
+  @Environment(\.textScale) private var textScale
 
   private var itemRef: Ref { pr.tickets.first.map { ticketRef($0.key) } ?? prRef(pr.repo, pr.number) }
   private var controlTitle: String { pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title }
@@ -14,8 +15,8 @@ struct PrRowView: View {
   var body: some View {
     HStack(alignment: .top, spacing: 16) {
       main.frame(maxWidth: .infinity, alignment: .leading)
-      ChecksColumn(checks: pr.checks).frame(width: 190, alignment: .leading)
-      ReviewsColumn(pr: pr).frame(width: 210, alignment: .leading)
+      ChecksColumn(checks: pr.checks).scaledFrame(width: 190, alignment: .leading)
+      ReviewsColumn(pr: pr).scaledFrame(width: 210, alignment: .leading)
     }
     .padding(.vertical, 6)
   }
@@ -30,14 +31,14 @@ struct PrRowView: View {
         }
         ForEach(pr.tickets, id: \.key) { TicketChip(ticket: $0) }
         if pr.tickets.isEmpty {
-          ForEach(pr.ticketKeys, id: \.self) { Text($0).font(.caption.monospaced()).foregroundStyle(.secondary).chipBorder() }
+          ForEach(pr.ticketKeys, id: \.self) { Text($0).scaledFont(.caption.monospaced()).foregroundStyle(.secondary).chipBorder() }
         }
         ForEach(pr.mismatches, id: \.self) { Chip(text: $0.label, tone: .warn) }
       }
 
       HStack(spacing: 6) {
         // Double-click or Return opens the details; the list owns that, so the title is plain text.
-        Text(pr.title).font(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
+        Text(pr.title).scaledFont(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
         // Pin, note and park follow the ticket when there is one, as on Today.
         ItemControls(ref: itemRef, title: controlTitle, url: pr.tickets.first?.url ?? pr.url, prs: [PrKey(pr)])
       }
@@ -45,14 +46,14 @@ struct PrRowView: View {
       NoteLine(ref: itemRef)
 
       HStack(spacing: 12) {
-        Text("#\(String(pr.number))").font(.caption.monospaced())
+        Text("#\(String(pr.number))").scaledFont(.caption.monospaced())
         if pr.author != viewer {
           HStack(spacing: 4) {
             AvatarView(url: pr.authorAvatarUrl, size: 16)
             Text(pr.author)
           }
         }
-        Text("→ \(Text(pr.baseRef).font(.caption.monospaced()))")
+        Text("→ \(Text(pr.baseRef).font(Typeface.caption.monospaced().font(textScale)))")
         if let stackParent {
           Link("stacked on #\(String(stackParent.number))", destination: URL(string: stackParent.url)!).clickable(underline: true)
         }
@@ -64,7 +65,7 @@ struct PrRowView: View {
           Text("\(pr.mergedAt == nil ? "updated" : "merged") \(date, format: .relative(presentation: .named))")
         }
       }
-      .font(.caption)
+      .scaledFont(.caption)
       .foregroundStyle(.secondary)
     }
   }
@@ -96,7 +97,7 @@ private struct ChecksColumn: View {
         .help(checks.advisoryFailing.map(\.name).joined(separator: "\n"))
       }
     }
-    .font(.caption)
+    .scaledFont(.caption)
     .lineLimit(1)
   }
 }
@@ -150,7 +151,7 @@ struct ReviewsColumn: View {
       }
       Text(coderabbitLine).foregroundStyle(pr.coderabbit.review == .changesRequested ? AnyShapeStyle(Tone.warn.color) : AnyShapeStyle(.tertiary))
     }
-    .font(.caption)
+    .scaledFont(.caption)
     .lineLimit(1)
   }
 
@@ -191,8 +192,8 @@ struct TicketChip: View {
     Link(destination: URL(string: ticket.url)!) {
       HStack(spacing: 5) {
         Circle().fill(Color(hex: ticket.stateColor) ?? .gray).frame(width: 7, height: 7)
-        Text(ticket.key).font(.caption.monospaced()).foregroundStyle(.primary)
-        Text(ticket.state).font(.caption).foregroundStyle(.secondary)
+        Text(ticket.key).scaledFont(.caption.monospaced()).foregroundStyle(.primary)
+        Text(ticket.state).scaledFont(.caption).foregroundStyle(.secondary)
       }
       .chipBorder()
     }
@@ -208,7 +209,7 @@ struct Chip: View {
 
   var body: some View {
     Text(text)
-      .font(.caption.weight(strong ? .medium : .regular))
+      .scaledFont(.caption.weight(strong ? .medium : .regular))
       .foregroundStyle(tone == .neutral ? .secondary : tone.color)
       .padding(.horizontal, 7).padding(.vertical, 2)
       .background(tone.soft, in: .capsule)

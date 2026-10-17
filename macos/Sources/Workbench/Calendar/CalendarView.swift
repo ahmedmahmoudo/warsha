@@ -37,7 +37,7 @@ struct CalendarView: View {
           Text("to see your meetings here.").foregroundStyle(.secondary)
         }
       }
-      if let error { Text("Google: \(error)").font(.caption).foregroundStyle(Tone.warn.color) }
+      if let error { Text("Google: \(error)").scaledFont(.caption).foregroundStyle(Tone.warn.color) }
       Group {
         if span == .month {
           MonthGrid(first: range.first, last: range.last, meetings: meetings, zone: zone, homeZone: settings.timeZone, today: today) { day in
@@ -83,7 +83,7 @@ struct CalendarView: View {
       HStack(spacing: 4) {
         Button("Earlier", systemImage: "chevron.left") { date = Self.step(span, current, -1) }
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().keyboardShortcut(.leftArrow, modifiers: .command)
-        Text(Self.label(span, range.first, range.last)).font(.headline).monospacedDigit().frame(minWidth: 170)
+        Text(Self.label(span, range.first, range.last)).scaledFont(.headline).monospacedDigit().scaledFrame(minWidth: 170)
         Button("Later", systemImage: "chevron.right") { date = Self.step(span, current, 1) }
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().keyboardShortcut(.rightArrow, modifiers: .command)
         if current != today {
@@ -206,8 +206,9 @@ private struct TimeGrid: View {
   let zone: String
   let homeZone: String
   let today: String
-  private let hour: CGFloat = 48
-  private let gutter: CGFloat = 52
+  @Environment(\.textScale) private var textScale
+  private var hour: CGFloat { (48 * textScale).rounded() }
+  private var gutter: CGFloat { (52 * textScale).rounded() }
 
   /// A meeting's block on one day, or a dashed ghost where a rescheduled one used to be.
   struct Block: Identifiable {
@@ -228,11 +229,11 @@ private struct TimeGrid: View {
         Spacer().frame(width: gutter, height: 1)
         ForEach(days, id: \.self) { day in
           VStack(spacing: 2) {
-            Text(CalendarView.weekday(day)).font(.caption).foregroundStyle(.secondary)
+            Text(CalendarView.weekday(day)).scaledFont(.caption).foregroundStyle(.secondary)
             Text(CalendarView.dayOfMonth(day))
-              .font(.title3.weight(day == today ? .semibold : .regular))
+              .scaledFont(.title3.weight(day == today ? .semibold : .regular))
               .foregroundStyle(day == today ? AnyShapeStyle(Color.white) : AnyShapeStyle(.primary))
-              .frame(width: 30, height: 30)
+              .scaledFrame(width: 30, height: 30)
               .background(day == today ? Color.workbenchAccent : .clear, in: .circle)
           }
           .frame(maxWidth: .infinity)
@@ -243,13 +244,13 @@ private struct TimeGrid: View {
       Divider().overlay(Palette.border)
       if !allDay.isEmpty {
         HStack(alignment: .top, spacing: 0) {
-          Text("all day").font(.caption2).foregroundStyle(.tertiary).frame(width: gutter - 6, alignment: .trailing).padding(.trailing, 6).padding(.top, 4)
+          Text("all day").scaledFont(.caption2).foregroundStyle(.tertiary).frame(width: gutter - 6, alignment: .trailing).padding(.trailing, 6).padding(.top, 4)
           ForEach(days, id: \.self) { day in
             VStack(spacing: 2) {
               ForEach(allDay.filter { CalendarTime.onDay($0, day, zone: zone) }) { meeting in
                 let style = blockStyle(meeting, ghost: false)
                 MeetingButton(meeting: meeting, homeZone: homeZone) {
-                  Text(meeting.title).font(.caption).lineLimit(1).foregroundStyle(style.text)
+                  Text(meeting.title).scaledFont(.caption).lineLimit(1).foregroundStyle(style.text)
                     .padding(.horizontal, 5).padding(.vertical, 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(style.fill, in: .rect(cornerRadius: 4))
@@ -269,7 +270,7 @@ private struct TimeGrid: View {
             // Real rows, one an hour, so scrolling to an hour finds it (offsets don't move a view's frame).
             VStack(spacing: 0) {
               ForEach(0 ..< 24, id: \.self) { hour in
-                Text(hour == 0 ? "" : hourLabel(hour)).font(.caption2).foregroundStyle(.tertiary)
+                Text(hour == 0 ? "" : hourLabel(hour)).scaledFont(.caption2).foregroundStyle(.tertiary)
                   .padding(.trailing, 6)
                   .offset(y: -7)
                   .frame(width: gutter, height: self.hour, alignment: .topTrailing)
@@ -313,9 +314,9 @@ private struct TimeGrid: View {
           let style = blockStyle(block.meeting, ghost: block.ghost)
           MeetingButton(meeting: block.meeting, homeZone: homeZone) {
             VStack(alignment: .leading, spacing: 1) {
-              Text((block.ghost ? "Moved: " : "") + block.meeting.title).font(.caption.weight(.medium)).lineLimit(height < 36 ? 1 : 3)
+              Text((block.ghost ? "Moved: " : "") + block.meeting.title).scaledFont(.caption.weight(.medium)).lineLimit(height < 36 ? 1 : 3)
               if height >= 36 {
-                Text(block.ghost ? "was here" : CalendarTime.clock(block.meeting.start, zone)).font(.caption2).opacity(0.8)
+                Text(block.ghost ? "was here" : CalendarTime.clock(block.meeting.start, zone)).scaledFont(.caption2).opacity(0.8)
               }
             }
             .strikethrough(block.meeting.change?.isDeleted ?? false)
@@ -410,7 +411,7 @@ private struct MonthGrid: View {
     VStack(spacing: 0) {
       HStack(spacing: 0) {
         ForEach(weeks[0], id: \.self) { day in
-          Text(CalendarView.weekday(day)).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
+          Text(CalendarView.weekday(day)).scaledFont(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
         }
       }
       .background(Palette.fill.opacity(0.5))
@@ -434,9 +435,9 @@ private struct MonthGrid: View {
     return VStack(alignment: .leading, spacing: 2) {
       Button { openDay(day) } label: {
         Text(CalendarView.dayOfMonth(day))
-          .font(.caption.weight(day == today ? .semibold : .regular))
+          .scaledFont(.caption.weight(day == today ? .semibold : .regular))
           .foregroundStyle(day == today ? AnyShapeStyle(Color.white) : inMonth ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
-          .frame(width: 22, height: 22)
+          .scaledFrame(width: 22, height: 22)
           .background(day == today ? Color.workbenchAccent : .clear, in: .circle)
       }
       .buttonStyle(.plain)
@@ -449,7 +450,7 @@ private struct MonthGrid: View {
             if !meeting.allDay { Text(CalendarTime.clock(meeting.start, zone)).opacity(0.7) }
             Text(meeting.title).lineLimit(1)
           }
-          .font(.caption2)
+          .scaledFont(.caption2)
           .strikethrough(meeting.change?.isDeleted ?? false)
           .foregroundStyle(style.text)
           .padding(.horizontal, 4).padding(.vertical, 2)
@@ -458,7 +459,7 @@ private struct MonthGrid: View {
         }
       }
       if onDay.count > chips {
-        Button("\(onDay.count - chips) more") { openDay(day) }.buttonStyle(.plain).font(.caption2).foregroundStyle(.secondary).clickable(underline: true)
+        Button("\(onDay.count - chips) more") { openDay(day) }.buttonStyle(.plain).scaledFont(.caption2).foregroundStyle(.secondary).clickable(underline: true)
       }
       Spacer(minLength: 0)
     }

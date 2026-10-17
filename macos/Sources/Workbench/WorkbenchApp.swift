@@ -17,10 +17,14 @@ struct WorkbenchApp: App {
         .environment(state.pullRequests)
         .environment(state.calendar)
         .tint(.workbenchAccent)
+        .textScale(state.settings.textScale)
         .frame(minWidth: 760, minHeight: 480)
     }
     .defaultSize(width: 1280, height: 860)
-    .commands { PageCommands(navigation: state.navigation) }
+    .commands {
+      PageCommands(navigation: state.navigation)
+      TextSizeCommands(settings: state.settings)
+    }
 
     Settings {
       SettingsView()
@@ -28,6 +32,7 @@ struct WorkbenchApp: App {
         .environment(state.store)
         .environment(state.calendar)
         .tint(.workbenchAccent)
+        .textScale(state.settings.textScale)
     }
 
     MenuBarExtra {
@@ -49,6 +54,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       state.notifier.activate()
       GlobalShortcut.apply()
       state.startBackground()
+      // ⌘= zooms in too, as in browsers, without Shift for the +.
+      NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+        guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+              event.charactersIgnoringModifiers == "="
+        else { return event }
+        state.settings.textScale = TextScale.larger(than: state.settings.textScale)
+        return nil
+      }
     }
   }
 
@@ -109,6 +122,27 @@ private struct PageCommands: Commands {
       ForEach(Page.allCases) { page in
         Button(page.title) { navigation.page = page }
           .keyboardShortcut(page.shortcut)
+      }
+    }
+  }
+}
+
+/// View → Zoom In, Zoom Out and Actual Size, for the text size (also in Settings → General).
+private struct TextSizeCommands: Commands {
+  let settings: AppSettings
+
+  var body: some Commands {
+    CommandGroup(after: .toolbar) {
+      Section {
+        Button("Actual Size") { settings.textScale = 1 }
+          .keyboardShortcut("0")
+          .disabled(settings.textScale == 1)
+        Button("Zoom In") { settings.textScale = TextScale.larger(than: settings.textScale) }
+          .keyboardShortcut("+")
+          .disabled(settings.textScale >= TextScale.steps.last!)
+        Button("Zoom Out") { settings.textScale = TextScale.smaller(than: settings.textScale) }
+          .keyboardShortcut("-")
+          .disabled(settings.textScale <= TextScale.steps.first!)
       }
     }
   }

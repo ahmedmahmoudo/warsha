@@ -110,9 +110,9 @@ private struct ControlIcon: View {
 
   var body: some View {
     Image(systemName: symbol)
-      .font(.caption)
+      .scaledFont(.caption)
       .foregroundStyle(active ? AnyShapeStyle(activeColor) : AnyShapeStyle(.tertiary))
-      .frame(width: 22, height: 22)
+      .scaledFrame(width: 22, height: 22)
       .contentShape(.rect)
   }
 }
@@ -157,15 +157,15 @@ struct NoteButton: View {
     .popover(isPresented: $open, arrowEdge: .bottom) {
       VStack(alignment: .leading, spacing: 8) {
         Text("Note on \(Text(label).fontWeight(.medium))\(note.map { " · edited \(relative($0.updatedAt))" } ?? "")")
-          .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+          .scaledFont(.caption).foregroundStyle(.secondary).lineLimit(2)
         TextEditor(text: $draft)
-          .font(.callout)
-          .frame(width: 300, height: 90)
+          .scaledFont(.callout)
+          .scaledFrame(width: 300, height: 90)
           .scrollContentBackground(.hidden)
           .padding(4)
           .background(Palette.fill, in: .rect(cornerRadius: 6))
         HStack {
-          Text("⌘↵ to save").font(.caption2).foregroundStyle(.tertiary)
+          Text("⌘↵ to save").scaledFont(.caption2).foregroundStyle(.tertiary)
           Spacer()
           if note != nil {
             Button("Delete", role: .destructive) {
@@ -229,24 +229,24 @@ struct ParkButton: View {
     let postTo = hasReason ? targets.filter(chosen.contains) : []
     return VStack(alignment: .leading, spacing: 10) {
       Text("\(parked == nil ? "Park" : "Parked") \(Text(title).fontWeight(.medium))\(parked.map { " · \(relative($0.parkedAt))" } ?? "")")
-        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+        .scaledFont(.caption).foregroundStyle(.secondary).lineLimit(2)
       if let results {
-        Text("Parked.").font(.caption).foregroundStyle(Tone.good.color)
+        Text("Parked.").scaledFont(.caption).foregroundStyle(Tone.good.color)
         ForEach(results) { result in
           if let error = result.error {
-            Text("Couldn't post to \(result.label): \(error)").font(.caption).foregroundStyle(Tone.bad.color)
+            Text("Couldn't post to \(result.label): \(error)").scaledFont(.caption).foregroundStyle(Tone.bad.color)
           } else if let link = result.url.flatMap(URL.init(string:)) {
             HStack(spacing: 4) {
               Text("Posted to").foregroundStyle(.secondary)
               Link(result.label, destination: link).clickable(underline: true)
             }
-            .font(.caption)
+            .scaledFont(.caption)
           }
         }
         HStack { Spacer(); Button("Done") { open = false }.buttonStyle(.borderedProminent) }
       } else {
         Text("Parked items leave Today, the attention counts and the stuck flags until you unpark them.")
-          .font(.caption).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+          .scaledFont(.caption).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
         TextField("Why? (optional)", text: $reason).textFieldStyle(.roundedBorder)
         HStack {
           Toggle("Bring back on", isOn: Binding(get: { until != nil }, set: { until = $0 ? (until ?? Date().addingTimeInterval(7 * 86_400)) : nil }))
@@ -256,7 +256,7 @@ struct ParkButton: View {
               .labelsHidden()
           }
         }
-        .font(.caption)
+        .scaledFont(.caption)
         if !targets.isEmpty {
           GroupBox("Post the reason as a comment on") {
             VStack(alignment: .leading, spacing: 6) {
@@ -273,17 +273,17 @@ struct ParkButton: View {
               if hasReason {
                 if !postTo.isEmpty {
                   Text(parkComment(reason, until: untilText))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .scaledFont(.caption).foregroundStyle(.secondary)
                     .padding(6).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Palette.fill, in: .rect(cornerRadius: 4))
                 }
               } else {
-                Text("Add a reason to post it.").font(.caption).foregroundStyle(.tertiary)
+                Text("Add a reason to post it.").scaledFont(.caption).foregroundStyle(.tertiary)
               }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
           }
-          .font(.caption)
+          .scaledFont(.caption)
           .opacity(hasReason ? 1 : 0.6)
         }
         HStack {
@@ -304,7 +304,7 @@ struct ParkButton: View {
       }
     }
     .padding(12)
-    .frame(width: 340)
+    .scaledFrame(width: 340)
   }
 
   private func save(postTo: [PostTarget]) async {
@@ -326,7 +326,7 @@ struct NoteLine: View {
   var body: some View {
     if let note = store.notes.first(where: { $0.ref == ref }) {
       Label(note.body, systemImage: "note.text")
-        .font(.caption)
+        .scaledFont(.caption)
         .foregroundStyle(.secondary)
         .lineLimit(2)
     }

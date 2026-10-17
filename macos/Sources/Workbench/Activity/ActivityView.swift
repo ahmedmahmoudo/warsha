@@ -66,7 +66,7 @@ struct ActivityView: View {
       HStack(spacing: 4) {
         Button("Earlier", systemImage: "chevron.left") { date = ActivityDates.step(span, current, -1) }
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().keyboardShortcut(.leftArrow, modifiers: .command)
-        Text(ActivityDates.label(span, range.start, range.end)).font(.headline).monospacedDigit().frame(minWidth: 180)
+        Text(ActivityDates.label(span, range.start, range.end)).scaledFont(.headline).monospacedDigit().scaledFrame(minWidth: 180)
         Button("Later", systemImage: "chevron.right") { date = next }
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().disabled(!canGoForward).keyboardShortcut(.rightArrow, modifiers: .command)
         if !range.isCurrent {
@@ -90,12 +90,12 @@ struct ActivityView: View {
       Spacer()
       if data.dayByDay != .complete {
         Label("Pushes and replies only reach back a few weeks", systemImage: "info.circle")
-          .font(.caption).foregroundStyle(.tertiary)
+          .scaledFont(.caption).foregroundStyle(.tertiary)
           .help(data.warnings.joined(separator: "\n"))
       }
     }
     ForEach(data.warnings.filter { !$0.hasPrefix("Pushes and replies") && !$0.hasPrefix("No pushes or replies") }, id: \.self) {
-      Label($0, systemImage: "info.circle").font(.caption).foregroundStyle(Tone.warn.color)
+      Label($0, systemImage: "info.circle").scaledFont(.caption).foregroundStyle(Tone.warn.color)
     }
     switch data.range.span {
     case .month: MonthActivity(data: data) { openDay($0) }
@@ -179,7 +179,7 @@ private struct TotalsLine: View {
   var body: some View {
     let parts = ["\(totals.prsMerged) merged", "\(totals.prsOpened) opened", "\(totals.prsReviewed) reviewed", "\(totals.ticketsCompleted) tickets done"]
       + (totals.pushes.map { ["\($0) pushes"] } ?? [])
-    Text(parts.joined(separator: " · ")).font(.callout).foregroundStyle(.secondary)
+    Text(parts.joined(separator: " · ")).scaledFont(.callout).foregroundStyle(.secondary)
   }
 }
 
@@ -194,12 +194,12 @@ private struct AttentionSummary: View {
     let slow = ages.filter { $0.value.level == .warn }
     HStack(spacing: 6) {
       if !stuck.isEmpty {
-        Label("\(stuck.count) stuck", systemImage: "exclamationmark.triangle").font(.caption.weight(.medium)).foregroundStyle(Tone.bad.color)
+        Label("\(stuck.count) stuck", systemImage: "exclamationmark.triangle").scaledFont(.caption.weight(.medium)).foregroundStyle(Tone.bad.color)
           .padding(.horizontal, 6).padding(.vertical, 2).background(Tone.bad.soft, in: .rect(cornerRadius: 5))
           .help(stuck.map { "\($0.key): \($0.value.message ?? "")" }.joined(separator: "\n"))
       }
       if !slow.isEmpty {
-        Label("\(slow.count) getting slow", systemImage: "clock").font(.caption.weight(.medium)).foregroundStyle(Tone.warn.color)
+        Label("\(slow.count) getting slow", systemImage: "clock").scaledFont(.caption.weight(.medium)).foregroundStyle(Tone.warn.color)
           .padding(.horizontal, 6).padding(.vertical, 2).background(Tone.warn.soft, in: .rect(cornerRadius: 5))
           .help(slow.map { "\($0.key): \($0.value.message ?? "")" }.joined(separator: "\n"))
       }
@@ -285,7 +285,7 @@ private struct KindIcons: View {
   var body: some View {
     HStack(spacing: 3) {
       ForEach(Self.order.filter(kinds.contains), id: \.self) { kind in
-        Image(systemName: kind.symbol).font(.system(size: 9)).foregroundStyle(kind.color).help(kind.label)
+        Image(systemName: kind.symbol).scaledFont(.system(size: 9)).foregroundStyle(kind.color).help(kind.label)
       }
     }
   }
@@ -297,7 +297,7 @@ private struct EntryView: View {
 
   var body: some View {
     let label = HStack(spacing: 4) {
-      Image(systemName: entry.kind.symbol).font(.caption2).foregroundStyle(entry.kind.color)
+      Image(systemName: entry.kind.symbol).scaledFont(.caption2).foregroundStyle(entry.kind.color)
       Text(entry.text)
     }
     if let url = entry.url.flatMap(URL.init(string:)) {
@@ -332,7 +332,7 @@ private struct MonthActivity: View {
     VStack(spacing: 0) {
       HStack(spacing: 0) {
         ForEach(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], id: \.self) {
-          Text($0).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
+          Text($0).scaledFont(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
         }
       }
       .background(Palette.fill.opacity(0.5))
@@ -361,9 +361,9 @@ private struct MonthActivity: View {
     let content = VStack(alignment: .leading, spacing: 2) {
       HStack {
         Text(ActivityDates.format(date, "d"))
-          .font(.caption.weight(date == today ? .semibold : .regular))
+          .scaledFont(.caption.weight(date == today ? .semibold : .regular))
           .foregroundStyle(date == today ? AnyShapeStyle(Palette.primaryText) : inMonth ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
-          .frame(width: 22, height: 22)
+          .scaledFrame(width: 22, height: 22)
           .background(date == today ? Palette.primary : .clear, in: .circle)
         Spacer()
         HStack(spacing: 6) {
@@ -372,13 +372,13 @@ private struct MonthActivity: View {
           if reviews > 0 { Label("\(reviews)", systemImage: "bubble.left").foregroundStyle(.secondary).help("\(reviews) reviewed") }
         }
         .labelStyle(CompactLabel())
-        .font(.system(size: 10))
+        .scaledFont(.system(size: 10))
       }
       if let day {
         ForEach(flaggedFirst(day.groups, flags).prefix(shown)) { group in
           GroupPill(group: group, flag: group.ticket.flatMap { flags?[$0.key] })
         }
-        if day.groups.count > shown { Text("+\(day.groups.count - shown) more").font(.caption2).foregroundStyle(.tertiary).padding(.leading, 4) }
+        if day.groups.count > shown { Text("+\(day.groups.count - shown) more").scaledFont(.caption2).foregroundStyle(.tertiary).padding(.leading, 4) }
       }
       Spacer(minLength: 0)
     }
@@ -413,11 +413,11 @@ private struct GroupPill: View {
     let label = group.ticket?.key ?? (group.key.contains("#") ? "#\(group.key.components(separatedBy: "#").last ?? "")" : "branch")
     HStack(spacing: 4) {
       if let flag {
-        Image(systemName: flag.level == .alert ? "exclamationmark.triangle" : "clock").font(.system(size: 9))
+        Image(systemName: flag.level == .alert ? "exclamationmark.triangle" : "clock").scaledFont(.system(size: 9))
       } else {
         StateDot(ticket: group.ticket)
       }
-      Text(label).font(.caption2.monospaced()).lineLimit(1)
+      Text(label).scaledFont(.caption2.monospaced()).lineLimit(1)
       Spacer(minLength: 2)
       KindIcons(kinds: group.entries.map(\.kind))
     }
@@ -461,7 +461,7 @@ private struct WeekActivity: View {
           Spacer()
           if let day { Text("\(day.groups.count)").foregroundStyle(.tertiary) }
         }
-        .font(.caption)
+        .scaledFont(.caption)
         .foregroundStyle(future ? AnyShapeStyle(.tertiary) : date == today ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
         .padding(.horizontal, 8).padding(.vertical, 6)
         .background(date == today ? Palette.fill : .clear)
@@ -477,12 +477,12 @@ private struct WeekActivity: View {
             WeekCard(group: group, flag: group.ticket.flatMap { flags?[$0.key] }, age: group.ticket.flatMap { data.ticketAges[$0.key] }) { openDay(date) }
           }
           if day.groups.count > shown {
-            Button("+\(day.groups.count - shown) more") { openDay(date) }.buttonStyle(.link).font(.caption2).clickable(underline: true)
+            Button("+\(day.groups.count - shown) more") { openDay(date) }.buttonStyle(.link).scaledFont(.caption2).clickable(underline: true)
           }
           if !day.reviews.isEmpty {
             Button { openDay(date) } label: {
               Label("\(day.reviews.count) review\(day.reviews.count == 1 ? "" : "s")", systemImage: "bubble.left")
-                .font(.caption2).foregroundStyle(.secondary)
+                .scaledFont(.caption2).foregroundStyle(.secondary)
                 .padding(.horizontal, 6).padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Palette.fill.opacity(0.6), in: .rect(cornerRadius: 6))
@@ -510,14 +510,14 @@ private struct WeekCard: View {
       VStack(alignment: .leading, spacing: 3) {
         HStack(spacing: 4) {
           StateDot(ticket: group.ticket)
-          Text(group.ticket?.key ?? "PR").font(.caption2.monospaced()).lineLimit(1)
+          Text(group.ticket?.key ?? "PR").scaledFont(.caption2.monospaced()).lineLimit(1)
           Spacer(minLength: 2)
           KindIcons(kinds: group.entries.map(\.kind))
         }
-        Text(group.title).font(.caption).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading)
+        Text(group.title).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading)
         if let flag, let age {
           Label("\(age.state) · \(age.workingDays)d", systemImage: flag.level == .alert ? "exclamationmark.triangle" : "clock")
-            .font(.caption2.weight(.medium))
+            .scaledFont(.caption2.weight(.medium))
             .foregroundStyle(flag.level == .alert ? Tone.bad.color : Tone.warn.color)
             .lineLimit(1)
             .help(flag.message)
@@ -540,6 +540,7 @@ private struct WeekCard: View {
 private struct DayActivity: View {
   let data: ActivityData
   @Environment(Store.self) private var store
+  @Environment(\.textScale) private var textScale
   @State private var width: CGFloat = 0
 
   var body: some View {
@@ -552,11 +553,11 @@ private struct DayActivity: View {
     let groups = day.map { TodayRules.stableSorted($0.groups) { rank($0) < rank($1) } } ?? []
     VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .firstTextBaseline) {
-        Text(ActivityDates.format(data.range.start, "EEEEdMMMM")).font(.headline)
+        Text(ActivityDates.format(data.range.start, "EEEEdMMMM")).scaledFont(.headline)
         Spacer()
         if let day, !day.detailed {
           Label("This far back GitHub no longer has pushes and replies; PRs, reviews and ticket moves are shown.", systemImage: "info.circle")
-            .font(.caption).foregroundStyle(.tertiary)
+            .scaledFont(.caption).foregroundStyle(.tertiary)
         }
       }
       if day == nil {
@@ -565,7 +566,7 @@ private struct DayActivity: View {
           .background(Palette.card, in: .rect(cornerRadius: 10))
           .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.border))
       }
-      let columns = width >= 760 ? 2 : 1
+      let columns = width >= 760 * textScale ? 2 : 1
       LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: columns), alignment: .leading, spacing: 12) {
         ForEach(groups) { group in
           TicketCardView(group: group, prs: group.ticket.flatMap { data.ticketCards[$0.key] }, age: group.ticket.flatMap { data.ticketAges[$0.key] })
@@ -573,14 +574,14 @@ private struct DayActivity: View {
       }
       if let day, !day.reviews.isEmpty {
         VStack(alignment: .leading, spacing: 6) {
-          Text("Reviewed").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+          Text("Reviewed").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary)
           ForEach(day.reviews, id: \.pr.url) { review in
             HStack(spacing: 8) {
               EntryView(entry: review.entry)
               Text(review.pr.title).foregroundStyle(.secondary).lineLimit(1).help(review.pr.title)
               if let author = review.pr.author { AvatarView(url: author.avatarUrl, size: 16) }
             }
-            .font(.caption)
+            .scaledFont(.caption)
           }
         }
         .padding(12)
@@ -608,7 +609,7 @@ private struct TicketCardView: View {
     VStack(alignment: .leading, spacing: 0) {
       if let flagged, let message = flagged.message, let flagColor {
         Label(message, systemImage: flagged.level == .alert ? "exclamationmark.triangle" : "clock")
-          .font(.caption.weight(.medium)).foregroundStyle(flagColor.color)
+          .scaledFont(.caption.weight(.medium)).foregroundStyle(flagColor.color)
           .padding(.horizontal, 12).padding(.vertical, 6)
           .frame(maxWidth: .infinity, alignment: .leading)
           .background(flagColor.soft)
@@ -619,11 +620,11 @@ private struct TicketCardView: View {
             if let ticket = group.ticket {
               TicketChip(ticket: ticket)
             } else {
-              Text(group.key.contains("#") ? "PR" : "branch").font(.caption.monospaced()).foregroundStyle(.secondary).chipBorder()
+              Text(group.key.contains("#") ? "PR" : "branch").scaledFont(.caption.monospaced()).foregroundStyle(.secondary).chipBorder()
             }
             if let parked { Chip(text: "Parked", tone: .info).help(parked.reason ?? "") }
             if let age, age.level == .ok || parked != nil {
-              Text("\(age.state) for \(age.workingDays) working day\(age.workingDays == 1 ? "" : "s")").font(.caption2).foregroundStyle(.tertiary)
+              Text("\(age.state) for \(age.workingDays) working day\(age.workingDays == 1 ? "" : "s")").scaledFont(.caption2).foregroundStyle(.tertiary)
             }
           }
           HStack(alignment: .top, spacing: 4) {
@@ -634,7 +635,7 @@ private struct TicketCardView: View {
                 Text(group.title)
               }
             }
-            .font(.callout.weight(.medium)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading).help(group.title)
+            .scaledFont(.callout.weight(.medium)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading).help(group.title)
             if let ticket = group.ticket {
               ItemControls(
                 ref: ticketRef(ticket.key), title: "\(ticket.key) \(group.title)", url: ticket.url,
@@ -646,18 +647,18 @@ private struct TicketCardView: View {
         }
         if group.ticket != nil {
           VStack(alignment: .leading, spacing: 4) {
-            Text("PULL REQUESTS").font(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+            Text("PULL REQUESTS").scaledFont(.caption2.weight(.medium)).foregroundStyle(.tertiary)
             if let prs, !prs.isEmpty {
               ForEach(prs, id: \.pr.url) { linked in linkedRow(linked) }
             } else {
-              Text("No PR yet").font(.caption).foregroundStyle(.tertiary)
+              Text("No PR yet").scaledFont(.caption).foregroundStyle(.tertiary)
             }
           }
         }
         VStack(alignment: .leading, spacing: 4) {
-          Text("ACTIVITY").font(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+          Text("ACTIVITY").scaledFont(.caption2.weight(.medium)).foregroundStyle(.tertiary)
           FlowLayout(spacing: 10) {
-            ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in EntryView(entry: entry).font(.caption) }
+            ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in EntryView(entry: entry).scaledFont(.caption) }
           }
         }
       }
@@ -676,7 +677,7 @@ private struct TicketCardView: View {
         : pr.isDraft ? ("circle.dashed", AnyShapeStyle(.secondary), "draft")
         : ("arrow.triangle.pull", AnyShapeStyle(Tone.info.color), "open")
     return HStack(spacing: 6) {
-      Image(systemName: symbol).font(.caption).foregroundStyle(color).help(label)
+      Image(systemName: symbol).scaledFont(.caption).foregroundStyle(color).help(label)
       Button {
         navigation.open(PrKey(repo: pr.repo, number: pr.number))
       } label: {
@@ -684,9 +685,9 @@ private struct TicketCardView: View {
       }
       .buttonStyle(.plain).clickable(underline: true).help(pr.title)
       Spacer(minLength: 4)
-      if let status = linked.status { Chip(text: status.label, tone: status.tone) } else { Text(label).font(.caption2).foregroundStyle(.tertiary) }
+      if let status = linked.status { Chip(text: status.label, tone: status.tone) } else { Text(label).scaledFont(.caption2).foregroundStyle(.tertiary) }
       Link(destination: URL(string: pr.url)!) { Image(systemName: "arrow.up.right.square") }.foregroundStyle(.tertiary).help("Open on GitHub").clickable()
     }
-    .font(.caption)
+    .scaledFont(.caption)
   }
 }

@@ -27,6 +27,8 @@ final class AppSettings {
   var newPrHours: Int { didSet { defaults.set(newPrHours, forKey: "newPrHours") } }
   /// How long after sending or nudging before Today suggests a nudge again (hours).
   var nudgeAgainHours: Int { didSet { defaults.set(nudgeAgainHours, forKey: "nudgeAgainHours") } }
+  /// Text size across the app, 1 being macOS's own (View → Zoom In, Zoom Out, Actual Size).
+  var textScale: Double { didSet { defaults.set(textScale, forKey: "textScale") } }
   /// Light, dark, or whatever macOS is set to, like the web version's theme switch.
   var appearance: Appearance {
     didSet {
@@ -64,6 +66,7 @@ final class AppSettings {
     afterMergeStates = "Merged"
     newPrHours = 24
     nudgeAgainHours = 24
+    textScale = defaults.object(forKey: "textScale") == nil ? 1 : defaults.double(forKey: "textScale")
     appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
     if let file = DevHooks.envFile {
       persists = false

@@ -36,7 +36,7 @@ private struct OutcomeLine: View {
 
   var body: some View {
     if let outcome {
-      Text(outcome.text).font(.caption).foregroundStyle(outcome.good ? Tone.good.color : Tone.bad.color)
+      Text(outcome.text).scaledFont(.caption).foregroundStyle(outcome.good ? Tone.good.color : Tone.bad.color)
     }
   }
 }
@@ -44,27 +44,28 @@ private struct OutcomeLine: View {
 private struct ConflictAction: View {
   let pr: Pr
   let conflicts: PrActions.Conflicts
+  @Environment(\.textScale) private var textScale
   @State private var outcome: Outcome?
   @State private var showPrompt = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       Label("Merge conflicts with \(pr.baseRef)", systemImage: "exclamationmark.triangle.fill")
-        .font(.callout.weight(.medium))
+        .scaledFont(.callout.weight(.medium))
         .symbolRenderingMode(.multicolor)
         .foregroundStyle(Tone.bad.color)
       Text(
         "Opens a new Claude Code session in the Claude app with the prompt ready: it merges \(pr.baseRef) into the branch, resolves the conflicts, runs the checks and pushes. You confirm the folder and press send."
       )
-      .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+      .scaledFont(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
       if let checkout = conflicts.checkout {
         Text(
-          "Runs in \(Text(checkout.path).font(.caption.monospaced()).foregroundStyle(.primary))\(checkout.kind == .worktree ? ", the branch's worktree." : "; the branch has no worktree yet, so Claude makes one beside it and leaves this checkout alone.")"
+          "Runs in \(Text(checkout.path).font(Typeface.caption.monospaced().font(textScale)).foregroundStyle(.primary))\(checkout.kind == .worktree ? ", the branch's worktree." : "; the branch has no worktree yet, so Claude makes one beside it and leaves this checkout alone.")"
         )
-        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        .scaledFont(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
       } else {
         Text("No local clone of \(pr.repo) found. Add it under Settings → General → Local repos to run it from here, or copy the prompt.")
-          .font(.caption).foregroundStyle(Tone.warn.color).fixedSize(horizontal: false, vertical: true)
+          .scaledFont(.caption).foregroundStyle(Tone.warn.color).fixedSize(horizontal: false, vertical: true)
       }
       HStack {
         if conflicts.checkout != nil {
@@ -86,13 +87,13 @@ private struct ConflictAction: View {
       OutcomeLine(outcome: outcome)
       DisclosureGroup("Prompt", isExpanded: $showPrompt) {
         Text(conflicts.prompt)
-          .font(.caption.monospaced())
+          .scaledFont(.caption.monospaced())
           .textSelection(.enabled)
           .padding(8)
           .frame(maxWidth: .infinity, alignment: .leading)
           .background(Palette.fill, in: .rect(cornerRadius: 6))
       }
-      .font(.caption)
+      .scaledFont(.caption)
     }
   }
 }
@@ -102,6 +103,7 @@ private struct UpdateBranchAction: View {
   let update: PrActions.UpdateBranch
   let model: PrDetailModel
   @Environment(AppSettings.self) private var settings
+  @Environment(\.textScale) private var textScale
   @Environment(PullRequestsModel.self) private var list
   @State private var confirming = false
   @State private var running = false
@@ -112,12 +114,12 @@ private struct UpdateBranchAction: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       Label("\(update.behindBy) commit\(update.behindBy == 1 ? "" : "s") behind \(update.base)", systemImage: "arrow.triangle.merge")
-        .font(.callout.weight(.medium))
+        .scaledFont(.callout.weight(.medium))
         .foregroundStyle(Tone.warn.color)
-      Text("Updating merges \(update.base) into \(Text(pr.headRef).font(.caption.monospaced())) on GitHub")
-        .font(.caption).foregroundStyle(.secondary)
+      Text("Updating merges \(update.base) into \(Text(pr.headRef).font(Typeface.caption.monospaced().font(textScale))) on GitHub")
+        .scaledFont(.caption).foregroundStyle(.secondary)
       if let reason = update.reason {
-        Text(reason).font(.caption).foregroundStyle(Tone.warn.color).fixedSize(horizontal: false, vertical: true)
+        Text(reason).scaledFont(.caption).foregroundStyle(Tone.warn.color).fixedSize(horizontal: false, vertical: true)
       }
       if updatedFrom != update.headOid {
         Button("Update with \(update.base)", systemImage: "arrow.clockwise") { confirming = true }
@@ -186,7 +188,7 @@ struct MergePanel: View {
   var body: some View {
     let merge = detail.merge
     Panel("Merge status") {
-      headline.font(.callout.weight(.medium))
+      headline.scaledFont(.callout.weight(.medium))
       if !merge.blockers.isEmpty {
         VStack(alignment: .leading, spacing: 8) {
           ForEach(merge.blockers, id: \.kind) { blocker in
@@ -194,8 +196,8 @@ struct MergePanel: View {
               Image(systemName: symbol(blocker.kind))
                 .foregroundStyle(blocker.kind == .ciPending || blocker.kind == .draft ? AnyShapeStyle(.secondary) : AnyShapeStyle(Tone.bad.color))
               VStack(alignment: .leading, spacing: 2) {
-                Text(blocker.label).font(.callout)
-                ForEach(blocker.items, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                Text(blocker.label).scaledFont(.callout)
+                ForEach(blocker.items, id: \.self) { Text($0).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(1) }
               }
             }
           }
@@ -204,7 +206,7 @@ struct MergePanel: View {
       if !merge.notes.isEmpty {
         Divider()
         ForEach(merge.notes, id: \.self) { note in
-          Label(note, systemImage: "info.circle").font(.caption).foregroundStyle(.secondary)
+          Label(note, systemImage: "info.circle").scaledFont(.caption).foregroundStyle(.secondary)
         }
       }
     }
@@ -286,13 +288,13 @@ struct ChecksPanel: View {
           Text("Checked \(fetchedAt, format: .relative(presentation: .named)) · \(running ? "every 10s while checks run" : "every minute")")
           if let error = model.checksError { Text(" · last check failed: \(error.localizedDescription)").foregroundStyle(Tone.bad.color) }
         }
-        .font(.caption).foregroundStyle(.tertiary)
+        .scaledFont(.caption).foregroundStyle(.tertiary)
       }
       if checks.isEmpty { Text("No checks on the latest commit.").foregroundStyle(.tertiary) }
       if !required.isEmpty && required.count < checks.count {
-        Text("Required to merge").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+        Text("Required to merge").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary)
         ForEach(required, id: \.name) { CheckRow(check: $0) }
-        Text("Advisory").font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 4)
+        Text("Advisory").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 4)
       }
       ForEach(visible, id: \.name) { CheckRow(check: $0) }
       HStack(spacing: 12) {
@@ -302,7 +304,7 @@ struct ChecksPanel: View {
         if hidden > 0 { Button("Include \(hidden) Passed or Skipped") { includeAll = true } }
         if includeAll && !advisory.isEmpty { Button("Hide Passed and Skipped") { includeAll = false } }
       }
-      .buttonStyle(.link).font(.caption).clickable(underline: true)
+      .buttonStyle(.link).scaledFont(.caption).clickable(underline: true)
     }
   }
 
@@ -341,7 +343,7 @@ private struct CheckRow: View {
 
   var body: some View {
     HStack(spacing: 6) {
-      Image(systemName: symbol).foregroundStyle(color).font(.caption)
+      Image(systemName: symbol).foregroundStyle(color).scaledFont(.caption)
       if let url = check.url.flatMap(URL.init(string:)) {
         Link(check.name, destination: url).foregroundStyle(.primary).clickable(underline: true)
       } else {
@@ -351,7 +353,7 @@ private struct CheckRow: View {
       if check.expected { Text("waiting to report").foregroundStyle(.tertiary) }
       if check.state == .failed { Chip(text: check.required ? "blocks merge" : "advisory", tone: check.required ? .bad : .neutral) }
     }
-    .font(.caption)
+    .scaledFont(.caption)
     .lineLimit(1)
     .help(check.name)
   }
@@ -394,10 +396,10 @@ struct ActivityPanel: View {
       + (detail.openThreads.isEmpty ? [] : [plural(detail.openThreads.count, "open thread")])
 
     Panel("Activity", aside: "last activity \(relative(summary.lastActivityAt))") {
-      Text(facts.joined(separator: " · ")).font(.callout).foregroundStyle(.secondary)
+      Text(facts.joined(separator: " · ")).scaledFont(.callout).foregroundStyle(.secondary)
 
       if !detail.changeRequests.isEmpty || !otherThreads.isEmpty {
-        Text("Needs a response").font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 6)
+        Text("Needs a response").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 6)
         ForEach(detail.changeRequests, id: \.reviewer.id) { request in
           ChangeRequestCard(request: request, threads: detail.openThreads.filter { request.threadIds.contains($0.id) })
         }
@@ -405,11 +407,11 @@ struct ActivityPanel: View {
       }
 
       HStack {
-        Text("Timeline").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+        Text("Timeline").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary)
         Spacer()
         if botCount > 0 {
           Button("\(showBots ? "Hide" : "Show") \(botCount) bot event\(botCount == 1 ? "" : "s")") { showBots.toggle() }
-            .buttonStyle(.link).font(.caption).clickable(underline: true)
+            .buttonStyle(.link).scaledFont(.caption).clickable(underline: true)
         }
       }
       .padding(.top, 6)
@@ -431,9 +433,9 @@ private struct ActivityRow: View {
     HStack(alignment: .top, spacing: 10) {
       VStack(spacing: 0) {
         Image(systemName: symbol)
-          .font(.caption)
+          .scaledFont(.caption)
           .foregroundStyle(color)
-          .frame(width: 24, height: 24)
+          .scaledFrame(width: 24, height: 24)
           .background(.background, in: .circle)
           .overlay(Circle().strokeBorder(Palette.border))
         if !isLast { Rectangle().fill(Palette.border).frame(width: 1).frame(maxHeight: .infinity) }
@@ -444,21 +446,21 @@ private struct ActivityRow: View {
           Text(item.actor?.name ?? "Someone").fontWeight(.medium)
           Text(item.title).foregroundStyle(.secondary)
           if let url = item.url.flatMap(URL.init(string:)) {
-            Link(relative(item.at), destination: url).font(.caption).foregroundStyle(.tertiary).clickable(underline: true)
+            Link(relative(item.at), destination: url).scaledFont(.caption).foregroundStyle(.tertiary).clickable(underline: true)
           } else {
-            Text(relative(item.at)).font(.caption).foregroundStyle(.tertiary)
+            Text(relative(item.at)).scaledFont(.caption).foregroundStyle(.tertiary)
           }
         }
-        .font(.callout)
+        .scaledFont(.callout)
         .lineLimit(1)
         if let body = item.body {
           if item.kind == .commits {
             ForEach(Array(body.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
-              Text(line).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
+              Text(line).scaledFont(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
             }
           } else {
             Text(body)
-              .font(.caption)
+              .scaledFont(.caption)
               .foregroundStyle(.secondary)
               .lineLimit(expanded ? nil : 3)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -504,19 +506,19 @@ private struct ThreadCard: View {
     VStack(alignment: .leading, spacing: 4) {
       HStack(spacing: 6) {
         Link("\(thread.path)\(thread.line.map { ":\($0)" } ?? "")", destination: URL(string: thread.url)!)
-          .font(.caption.monospaced()).foregroundStyle(Tone.info.color).lineLimit(1).truncationMode(.head)
+          .scaledFont(.caption.monospaced()).foregroundStyle(Tone.info.color).lineLimit(1).truncationMode(.head)
           .clickable(underline: true)
         if thread.isOutdated { Chip(text: "outdated", tone: .neutral) }
         if thread.isBot { Chip(text: "bot", tone: .neutral) }
       }
-      Text(thread.body).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+      Text(thread.body).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(3)
       HStack(spacing: 5) {
         if let author = thread.author { AvatarView(url: author.avatarUrl, size: 14) }
         Text(
           "\(thread.author?.name ?? "Someone") · \(relative(thread.createdAt))\(thread.replies > 0 ? " · \(thread.replies) repl\(thread.replies == 1 ? "y" : "ies")" : "")"
         )
       }
-      .font(.caption).foregroundStyle(.tertiary)
+      .scaledFont(.caption).foregroundStyle(.tertiary)
     }
     .padding(10)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -534,14 +536,14 @@ private struct ChangeRequestCard: View {
         AvatarView(url: request.reviewer.avatarUrl, size: 18)
         Text(request.reviewer.name).fontWeight(.medium)
         Text("requested changes").foregroundStyle(Tone.bad.color)
-        Link(relative(request.at), destination: URL(string: request.url)!).font(.caption).foregroundStyle(.tertiary)
+        Link(relative(request.at), destination: URL(string: request.url)!).scaledFont(.caption).foregroundStyle(.tertiary)
           .clickable(underline: true)
       }
-      .font(.callout)
-      if !request.body.isEmpty { Text(request.body).font(.caption).textSelection(.enabled) }
+      .scaledFont(.callout)
+      if !request.body.isEmpty { Text(request.body).scaledFont(.caption).textSelection(.enabled) }
       ForEach(threads) { ThreadCard(thread: $0) }
       if request.body.isEmpty && threads.isEmpty {
-        Text("No message or open threads; see the review on GitHub.").font(.caption).foregroundStyle(.secondary)
+        Text("No message or open threads; see the review on GitHub.").scaledFont(.caption).foregroundStyle(.secondary)
       }
     }
     .padding(10)
@@ -567,7 +569,7 @@ struct GalleryView: View {
               .frame(maxWidth: .infinity)
               .clipShape(.rect(cornerRadius: 6))
               .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Palette.border))
-            Text(image.caption).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(image.caption).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(1)
           }
         }
         .buttonStyle(.plain)
@@ -626,7 +628,7 @@ private struct GitHubImage: View {
         Image(nsImage: loaded).resizable().aspectRatio(contentMode: fit ? .fit : .fill)
       } else if failed {
         Link(destination: URL(string: image.original)!) {
-          Label("Open on GitHub", systemImage: "photo.badge.exclamationmark").font(.caption)
+          Label("Open on GitHub", systemImage: "photo.badge.exclamationmark").scaledFont(.caption)
         }
       } else {
         ProgressView().controlSize(.small)
