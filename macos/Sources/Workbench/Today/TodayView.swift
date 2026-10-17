@@ -19,9 +19,6 @@ struct TodayView: View {
           Label(error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription, systemImage: "exclamationmark.triangle.fill")
             .foregroundStyle(Tone.bad.color)
         }
-        if model.data == nil && model.error == nil {
-          ProgressView("Gathering your day… the first load takes a few seconds.").padding(.top, 40).frame(maxWidth: .infinity)
-        }
         ForEach(model.data?.warnings ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Tone.warn.color) }
         if width >= 880 {
           HStack(alignment: .top, spacing: 20) {
@@ -104,6 +101,9 @@ struct TodayView: View {
       if let data {
         NeedsYouSection(data: data)
         UpNextSection(data: data, since: since)
+      } else if model.error == nil {
+        // Where Needs you and Up next will be, so nothing moves when they arrive.
+        LoadingPanel(text: "Gathering your day… the first load takes a few seconds.")
       }
     }
   }
@@ -147,6 +147,23 @@ final class TodayModel {
 }
 
 // MARK: Shared bits
+
+/// Shown in place of what's loading. The spinner gets a system colour: it can't draw the
+/// palette's text style, and vanished in light mode.
+struct LoadingPanel: View {
+  let text: String
+
+  var body: some View {
+    VStack(spacing: 10) {
+      ProgressView().controlSize(.regular).tint(Color.secondary)
+      Text(text).font(.callout).foregroundStyle(Color.secondary)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 40)
+    .background(Palette.card, in: .rect(cornerRadius: 10))
+    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.border))
+  }
+}
 
 /// Opens an item's action: a PR's details here, anything else in the browser.
 struct ActionButton: View {
@@ -651,23 +668,36 @@ private struct TodosSection: View {
     let today = TodayRules.localDate(Date(), timeZone)
     Panel("Todos", aside: "\(open.count) open") {
       HStack(spacing: 6) {
-        TextField("Add a todo… (mention a ticket key to link it)", text: $text)
-          .textFieldStyle(.roundedBorder)
-          .focused($editing)
-          .onSubmit(add)
-          .task { editing = false }
-        if let due {
-          DatePicker("Due", selection: Binding(get: { due }, set: { self.due = $0 }), displayedComponents: .date)
-            .labelsHidden()
-            .controlSize(.small)
-          Button("Clear Due Date", systemImage: "xmark") { self.due = nil }.labelStyle(.iconOnly).buttonStyle(.borderless).clickable()
-        } else {
-          Button("Due Date", systemImage: "calendar") { due = Date() }.labelStyle(.iconOnly).buttonStyle(.borderless).clickable()
-            .help("Add a due date")
+        HStack(spacing: 6) {
+          TextField("Add a todo…", text: $text)
+            .textFieldStyle(.plain)
+            .focused($editing)
+            .onSubmit(add)
+            .task { editing = false }
+          if let due {
+            HStack(spacing: 3) {
+              Text(due.formatted(.dateTime.day().month(.abbreviated)))
+              Button("Clear Due Date", systemImage: "xmark.circle.fill") { self.due = nil }
+                .labelStyle(.iconOnly).buttonStyle(.plain).foregroundStyle(.tertiary).clickable()
+            }
+            .font(.caption)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Palette.fill, in: .capsule)
+          }
+          DueDateButton(due: $due)
         }
+        .font(.callout)
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .background(Palette.background, in: .rect(cornerRadius: 7))
+        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(editing ? Color.workbenchAccent : Palette.border, lineWidth: editing ? 1.5 : 1))
         Button("Add Todo", systemImage: "plus", action: add)
-          .labelStyle(.iconOnly).disabled(text.trimmingCharacters(in: .whitespaces).isEmpty).clickable()
+          .labelStyle(.iconOnly)
+          .buttonStyle(.bordered)
+          .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+          .clickable()
+          .help("Add todo")
       }
+      Text("Mention a ticket key, like MX-2481, to link the todo to it.").font(.caption).foregroundStyle(.tertiary)
       if open.isEmpty { Text("Nothing on your list.").foregroundStyle(.tertiary) }
       ForEach(store.todos) { todo in
         TodoRow(todo: todo, today: today)
@@ -683,6 +713,50 @@ private struct TodosSection: View {
     store.addTodo(trimmed, ref: key.map(ticketRef), dueDate: due.map { TodayRules.localDate($0, TimeZone.current.identifier) })
     text = ""
     due = nil
+  }
+}
+
+/// Opens a calendar to pick the day a todo is due. Todos keep a day, not a time, the same as in the
+/// web version, which reads the same database.
+private struct DueDateButton: View {
+  @Binding var due: Date?
+  @State private var open = false
+  @State private var picked = Date()
+
+  var body: some View {
+    Button("Due Date", systemImage: "calendar") {
+      picked = due ?? Date()
+      open = true
+    }
+    .labelStyle(.iconOnly)
+    .buttonStyle(.plain)
+    .foregroundStyle(due == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.workbenchAccent))
+    .clickable()
+    .help("Pick a due date")
+    .popover(isPresented: $open, arrowEdge: .bottom) {
+      VStack(alignment: .trailing, spacing: 8) {
+        DatePicker("Due", selection: $picked, displayedComponents: .date)
+          .datePickerStyle(.graphical)
+          .labelsHidden()
+        HStack {
+          if due != nil {
+            Button("No Due Date") {
+              due = nil
+              open = false
+            }
+          }
+          Spacer()
+          Button("Set") {
+            due = picked
+            open = false
+          }
+          .keyboardShortcut(.defaultAction)
+          .buttonStyle(.borderedProminent)
+        }
+        .controlSize(.small)
+      }
+      .padding(12)
+    }
   }
 }
 
