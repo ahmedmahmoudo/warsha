@@ -272,6 +272,9 @@ extension WaitingOn {
   }
 }
 
+/// A waiting-on filter as a native glass capsule. The glass is set directly rather than through
+/// a glass button style, which tints with the app's accent: unselected ones are tinted with the
+/// card colour, and only the selected one takes the accent, with white text.
 private struct FilterButton: View {
   let count: Int
   let label: String
@@ -280,23 +283,27 @@ private struct FilterButton: View {
   let action: () -> Void
 
   var body: some View {
-    let button = Button(action: action) {
+    Button(action: action) {
       HStack(spacing: 6) {
         Text("\(count)")
           .monospacedDigit()
           .fontWeight(.semibold)
-          .foregroundStyle(isOn ? AnyShapeStyle(.primary) : count == 0 ? AnyShapeStyle(.tertiary) : warn ? AnyShapeStyle(Tone.warn.color) : AnyShapeStyle(.primary))
-        Text(label).foregroundStyle(isOn ? .primary : .secondary)
+          .foregroundStyle(countStyle)
+        Text(label).foregroundStyle(isOn ? AnyShapeStyle(Color.white) : AnyShapeStyle(.secondary))
       }
-      .padding(.horizontal, 4)
+      .padding(.horizontal, 14)
+      .padding(.vertical, 6)
+      .contentShape(.capsule)
     }
-    .controlSize(.large)
+    .buttonStyle(.plain)
+    .glassEffect(isOn ? .regular.tint(.workbenchAccent).interactive() : .regular.tint(Palette.card.opacity(0.7)).interactive(), in: .capsule)
     .accessibilityAddTraits(isOn ? .isSelected : [])
-    if isOn {
-      button.buttonStyle(.glassProminent)
-    } else {
-      button.buttonStyle(.glass(.regular.tint(Palette.card)))
-    }
+  }
+
+  private var countStyle: AnyShapeStyle {
+    if isOn { return AnyShapeStyle(Color.white) }
+    if count == 0 { return AnyShapeStyle(.tertiary) }
+    return warn ? AnyShapeStyle(Tone.warn.color) : AnyShapeStyle(.primary)
   }
 }
 
