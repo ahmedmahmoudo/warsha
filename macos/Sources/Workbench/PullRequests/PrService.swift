@@ -55,12 +55,21 @@ actor PrService {
   private var codeowners: [String: (at: Date, value: Codeowners?)] = [:]
   private var teams: [String: (at: Date, value: [String: Person])] = [:]
 
-  func load(_ scope: PrScope, config: PrConfig) async throws -> PrsResponse {
+  /// The last answer per scope, for callers happy with a recent one.
+  private var recent: [PrScope: (config: PrConfig, response: PrsResponse)] = [:]
+
+  /// `maxAge` takes a recent answer when there is one, as Today does with the lists it's built from.
+  func load(_ scope: PrScope, config: PrConfig, maxAge: TimeInterval? = nil) async throws -> PrsResponse {
+    if let maxAge, let last = recent[scope], last.config == config, -last.response.fetchedAt.timeIntervalSinceNow < maxAge {
+      return last.response
+    }
     if let running = inflight[scope], running.config == config { return try await running.task.value }
     let task = Task { try await build(scope, config: config) }
     inflight[scope] = (config, task)
     defer { if inflight[scope]?.task == task { inflight[scope] = nil } }
-    return try await task.value
+    let response = try await task.value
+    recent[scope] = (config, response)
+    return response
   }
 
   private func build(_ scope: PrScope, config: PrConfig) async throws -> PrsResponse {

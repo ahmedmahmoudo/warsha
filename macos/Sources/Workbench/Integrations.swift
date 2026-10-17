@@ -120,7 +120,8 @@ enum Linear {
     return data
   }
 
-  private static func post<T: Decodable & Sendable>(
+  /// Data and errors as they came, for queries where some fields failing is expected.
+  static func post<T: Decodable & Sendable>(
     _ query: String, variables: [String: any Sendable], apiKey: String, as: T.Type
   ) async throws -> (T?, [GraphqlError], Int) {
     guard !apiKey.isEmpty else { throw NotConfigured("Add a Linear API key in Settings.") }

@@ -11,7 +11,7 @@ npm run app:build      # build macos/build/Workbench.app with Xcode
 npm run app:install    # build, copy to ~/Applications and open it
 npm run app:xcode      # generate Workbench.xcodeproj and open it (⌘R runs, ⌘U tests)
 swift test --package-path macos
-WORKBENCH_PARITY=1 swift test --package-path macos --filter PrParity   # vs the web version on :5180
+WORKBENCH_PARITY=1 swift test --package-path macos --filter Parity     # vs the web version on :5180
 ```
 
 **First run:** open Settings (⌘,) → Data and import the web version's `.env.local`, which fills in
@@ -61,6 +61,8 @@ Sources/Workbench/
                         CODEOWNERS, the loader with its caches (PrService), and the views
     Detail/             a PR's details page: queries, timeline and merge readiness (BuildDetail),
                         the Claude hand-off, live checks, and a native Markdown renderer
+  Today/                the Today page: Linear queries, the rules (BuildToday), pin, note and park
+                        controls with posting the park reason, and the sections
 Tests/WorkbenchTests/   swift-testing tests; PrParityTests compares with the running web version
 Resources/              the asset catalog: app icon and AccentColor
 project.yml             XcodeGen spec for the app and test targets; Signing.xcconfig for signing
@@ -91,8 +93,10 @@ describes them), and the TypeScript is the reference.
    confirm) and Open in Claude for conflicts. Open in Claude finds the repo's clone under Settings →
    General → Local repos, or in ~/everlab, ~/Developer, ~/code, ~/src, ~/Projects and similar
    folders, if its origin matches.
-5. **Today**: Needs you now, Up next, New for you, Deadlines, Waiting on others, plus pins, notes,
-   todos and parking (with posting the reason to Linear and GitHub).
+5. **Today** (done): Needs you now (grouped, with nudge targets and team members), Up next, New for
+   you with Mark seen (shared with the web version), Focus, Todos, Parked, Deadlines and Waiting on
+   others. Every item has pin, note and park; parking can post its reason to Linear and the PRs.
+   Meetings arrive with the Calendar port.
 6. **Google Calendar**: sign-in via `ASWebAuthenticationSession`, meeting sync with reschedule and
    deletion tracking, the Calendar page, and meetings on Today.
 7. **Activity**: Day, Week and Month views, stuck-ticket flags, Copy summary.
