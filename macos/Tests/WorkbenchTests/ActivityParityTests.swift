@@ -93,11 +93,12 @@ struct ActivityParityTests {
 }
 
 struct ActivityDatesTests {
-  @Test func labelsMatchTheWebVersion() {
-    // From src/components/activity/calendar.ts rangeLabel.
+  @Test func labelsFollowTheRegion() {
+    Formats.locale = Locale(identifier: "en_AU")
+    // As Foundation writes them for Australia.
     #expect(ActivityDates.label(.day, "2026-10-17", "2026-10-17") == "Sat, 17 Oct 2026")
     #expect(ActivityDates.label(.week, "2026-10-12", "2026-10-18") == "12 Oct – 18 Oct 2026")
-    #expect(ActivityDates.label(.week, "2026-09-28", "2026-10-04") == "28 Sept – 4 Oct 2026")
+    #expect(ActivityDates.label(.week, "2026-09-28", "2026-10-04") == "28 Sep – 4 Oct 2026")
     #expect(ActivityDates.label(.month, "2026-10-01", "2026-10-31") == "October 2026")
   }
 

@@ -160,19 +160,13 @@ struct CalendarView: View {
     }
   }
 
-  private static func format(_ date: String, _ pattern: String) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_AU")
-    formatter.timeZone = TimeZone(identifier: "UTC")
-    formatter.dateFormat = pattern
-    return formatter.string(from: TodayRules.parseInstant("\(date)T12:00:00Z")!)
-  }
+  private static func format(_ date: String, _ template: String) -> String { Formats.day(date, template) }
 
   private static func label(_ span: Span, _ first: String, _ last: String) -> String {
     switch span {
-    case .day: format(first, "EEE d MMM yyyy")
-    case .week: first.prefix(7) == last.prefix(7) ? "\(format(first, "d")) – \(format(last, "d MMM yyyy"))" : "\(format(first, "d MMM")) – \(format(last, "d MMM yyyy"))"
-    case .month: format(first, "MMMM yyyy")
+    case .day: format(first, "EEEdMMMyyyy")
+    case .week: "\(format(first, "dMMM")) – \(format(last, "dMMMyyyy"))"
+    case .month: format(first, "MMMMyyyy")
     }
   }
 
@@ -295,8 +289,9 @@ private struct TimeGrid: View {
     .clipShape(.rect(cornerRadius: 10))
   }
 
+  /// "1 am" / "1 AM" / "13", as the user's region writes an hour.
   private func hourLabel(_ hour: Int) -> String {
-    hour == 12 ? "12 pm" : hour < 12 ? "\(hour) am" : "\(hour - 12) pm"
+    Formats.instant(Date(timeIntervalSince1970: Double(hour) * 3600), "j", zone: "UTC")
   }
 
   private func dayColumn(_ day: String) -> some View {

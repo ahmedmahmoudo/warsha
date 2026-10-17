@@ -376,35 +376,18 @@ enum CalendarTime {
     (zone.split(separator: "/").last.map(String.init) ?? zone).replacingOccurrences(of: "_", with: " ")
   }
 
-  private static func formatter(_ zone: String, _ format: String) -> DateFormatter {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_AU")
-    formatter.timeZone = TimeZone(identifier: zone)
-    formatter.dateFormat = format
-    formatter.amSymbol = "am"
-    formatter.pmSymbol = "pm"
-    return formatter
-  }
-
-  /// "9:30 am".
+  /// "9:30 am" in Australia.
   static func clock(_ iso: String, _ zone: String) -> String {
-    formatter(zone, "h:mm a").string(from: TodayRules.parseInstant(iso) ?? Date())
+    Formats.time(TodayRules.parseInstant(iso) ?? Date(), zone: zone)
   }
 
   /// "10:00 – 10:30 am", "Tue 20 Oct, 10:00 – 10:30 am" with `withDay`, or "All day".
   static func timeRange(start: String, end: String, allDay: Bool, zone: String, withDay: Bool) -> String {
     if allDay {
-      let day = formatter("UTC", "EEE d MMM").string(from: TodayRules.parseInstant("\(start)T12:00:00Z") ?? Date())
-      return withDay ? "\(day), all day" : "All day"
+      return withDay ? "\(Formats.day(start, "EEEdMMM")), all day" : "All day"
     }
     let from = TodayRules.parseInstant(start) ?? Date()
-    let to = TodayRules.parseInstant(end) ?? Date()
-    let interval = DateIntervalFormatter()
-    interval.locale = Locale(identifier: "en_AU")
-    interval.timeZone = TimeZone(identifier: zone)
-    interval.dateStyle = .none
-    interval.timeStyle = .short
-    let range = interval.string(from: from, to: to)
-    return withDay ? "\(formatter(zone, "EEE d MMM").string(from: from)), \(range)" : range
+    let range = Formats.timeRange(from, TodayRules.parseInstant(end) ?? Date(), zone: zone)
+    return withDay ? "\(Formats.instant(from, "EEEdMMM", zone: zone)), \(range)" : range
   }
 }

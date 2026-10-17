@@ -552,7 +552,7 @@ private struct DayActivity: View {
     let groups = day.map { TodayRules.stableSorted($0.groups) { rank($0) < rank($1) } } ?? []
     VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .firstTextBaseline) {
-        Text(ActivityDates.format(data.range.start, "EEEE d MMMM")).font(.headline)
+        Text(ActivityDates.format(data.range.start, "EEEEdMMMM")).font(.headline)
         Spacer()
         if let day, !day.detailed {
           Label("This far back GitHub no longer has pushes and replies; PRs, reviews and ticket moves are shown.", systemImage: "info.circle")

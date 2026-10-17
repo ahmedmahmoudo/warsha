@@ -199,24 +199,15 @@ enum ActivityDates {
     return weeks
   }
 
-  static func format(_ date: String, _ pattern: String) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_AU")
-    formatter.timeZone = TimeZone(identifier: "UTC")
-    formatter.dateFormat = pattern
-    // The browser's ICU says "Sept" for September in en-AU; Foundation's says "Sep".
-    var short = formatter.shortMonthSymbols ?? []
-    if short.count == 12 { short[8] = "Sept" }
-    formatter.shortMonthSymbols = short
-    return formatter.string(from: noon(date))
-  }
+  /// A date with a template, in the user's region.
+  static func format(_ date: String, _ template: String) -> String { Formats.day(date, template) }
 
-  /// "Sat, 17 Oct 2026", "12 Oct – 18 Oct 2026", "October 2026", as the web version labels a range.
+  /// "Sat 17 Oct 2026", "12 Oct – 18 Oct 2026", "October 2026" (in Australia), in the user's region.
   static func label(_ span: ActivitySpan, _ start: String, _ end: String) -> String {
     switch span {
-    case .day: format(start, "EEE, d MMM yyyy")
-    case .month: format(start, "MMMM yyyy")
-    case .week: "\(format(start, "d MMM")) – \(format(end, "d MMM")) \(format(end, "yyyy"))"
+    case .day: format(start, "EEEdMMMyyyy")
+    case .month: format(start, "MMMMyyyy")
+    case .week: "\(format(start, "dMMM")) – \(format(end, "dMMMyyyy"))"
     }
   }
 }

@@ -14,8 +14,19 @@ enum ClaudeHandoff {
     let base: String
   }
 
-  /// Where a repo is looked for when Settings doesn't name its clone.
-  private static let searchFolders = ["everlab", "Developer", "code", "src", "Projects", "dev", "repos", "git", ""]
+  /// Folders in your home that never hold clones, skipped when looking for one.
+  private static let notProjectFolders: Set = ["Library", "Applications", "Movies", "Music", "Pictures", "Public", "Downloads"]
+
+  /// Where a repo named `name` might be cloned: ~/name, then ~/<any folder>/name.
+  private static func candidates(_ name: String) -> [String] {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let folders = (try? FileManager.default.contentsOfDirectory(at: home, includingPropertiesForKeys: [.isDirectoryKey], options: .skipsHiddenFiles)) ?? []
+    let inside = folders
+      .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true && !notProjectFolders.contains($0.lastPathComponent) }
+      .sorted { $0.lastPathComponent < $1.lastPathComponent }
+      .map { $0.appendingPathComponent(name).path }
+    return [home.appendingPathComponent(name).path] + inside
+  }
 
   static func git(_ cwd: String, _ args: String...) async throws -> String {
     try await Task.detached {
@@ -40,13 +51,11 @@ enum ClaudeHandoff {
   }
 
   /// The main clone of a repo: Settings → General → Local repos when it names one, otherwise a
-  /// folder named after the repo in one of the usual places, if its origin is that repo.
+  /// folder named after the repo in your home or one level in, if its origin is that repo.
   static func localClone(_ repo: String, localRepos: [String: String]) async -> String? {
     let name = String(repo.split(separator: "/").last ?? "")
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    let candidates = localRepos[repo.lowercased()].map { [$0] }
-      ?? searchFolders.map { ($0.isEmpty ? home : "\(home)/\($0)") + "/\(name)" }
-    for candidate in candidates where FileManager.default.fileExists(atPath: candidate) {
+    let paths = localRepos[repo.lowercased()].map { [$0] } ?? candidates(name)
+    for candidate in paths where FileManager.default.fileExists(atPath: candidate) {
       if let origin = try? await git(candidate, "remote", "get-url", "origin"), originMatches(origin, repo: repo) { return candidate }
     }
     return nil

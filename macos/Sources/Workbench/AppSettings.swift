@@ -17,7 +17,8 @@ final class AppSettings {
   var googleClientId: String { didSet { save(googleClientId, "googleClientId") } }
   /// Comma-separated owner/repo=/path pairs for where repos are cloned on this Mac.
   var localRepos: String { didSet { save(localRepos, "localRepos") } }
-  /// Where Activity's days and weeks start.
+  /// Your home zone: where Today's and Activity's days start, and the Calendar's first zone.
+  /// This Mac's zone unless changed in Settings.
   var timeZone: String { didSet { save(timeZone, "timeZone") } }
   /// Light, dark, or whatever macOS is set to, like the web version's theme switch.
   var appearance: Appearance {
@@ -52,7 +53,7 @@ final class AppSettings {
     githubTeam = ""
     googleClientId = ""
     localRepos = ""
-    timeZone = "Australia/Sydney"
+    timeZone = TimeZone.current.identifier
     appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
     if let file = DevHooks.envFile {
       persists = false
@@ -70,7 +71,7 @@ final class AppSettings {
     githubTeam = defaults.string(forKey: "githubTeam") ?? ""
     googleClientId = defaults.string(forKey: "googleClientId") ?? ""
     localRepos = defaults.string(forKey: "localRepos") ?? ""
-    timeZone = defaults.string(forKey: "timeZone") ?? "Australia/Sydney"
+    timeZone = defaults.string(forKey: "timeZone") ?? TimeZone.current.identifier
   }
 
   /// Sets every window's appearance; nil follows macOS, switching live when it changes.

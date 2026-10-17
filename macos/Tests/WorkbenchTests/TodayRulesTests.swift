@@ -3,7 +3,8 @@ import Testing
 @testable import Workbench
 
 struct TodayRulesTests {
-  @Test func parkCommentMatchesTheWebVersion() {
+  @Test func parkCommentReadsWell() {
+    Formats.locale = Locale(identifier: "en_AU")
     // From shared/store.ts parkComment("  waiting on design ", "2026-10-20").
     #expect(parkComment("  waiting on design ", until: "2026-10-20") == "Parked: waiting on design\n\nPicking this back up on Tue, 20 Oct.")
     #expect(parkComment("blocked", until: nil) == "Parked: blocked")

@@ -46,9 +46,11 @@ struct CalendarParityTests {
 }
 
 struct CalendarTimeTests {
-  @Test func timeRangesReadLikeTheWebVersion() {
+  @Test func timesFollowTheRegion() {
+    Formats.locale = Locale(identifier: "en_AU")
     #expect(CalendarTime.city("Australia/Sydney") == "Sydney")
-    #expect(CalendarTime.clock("2026-10-19T23:30:00.000Z", "Australia/Sydney") == "10:30 am")
-    #expect(CalendarTime.timeRange(start: "2026-10-20", end: "2026-10-21", allDay: true, zone: "Australia/Sydney", withDay: true) == "Tue 20 Oct, all day")
+    // Foundation puts a narrow no-break space before "am".
+    #expect(CalendarTime.clock("2026-10-19T23:30:00.000Z", "Australia/Sydney").replacingOccurrences(of: "\u{202F}", with: " ") == "10:30 am")
+    #expect(CalendarTime.timeRange(start: "2026-10-20", end: "2026-10-21", allDay: true, zone: "Australia/Sydney", withDay: true) == "Tue, 20 Oct, all day")
   }
 }

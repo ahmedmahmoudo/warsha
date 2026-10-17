@@ -5,12 +5,8 @@ import SwiftUI
 /// The comment a park reason becomes on Linear and GitHub; the popover previews exactly this.
 func parkComment(_ reason: String, until: String?) -> String {
   var text = "Parked: \(reason.trimmingCharacters(in: .whitespacesAndNewlines))"
-  if let until, let date = TodayRules.parseInstant("\(until)T12:00:00Z") {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_AU")
-    formatter.timeZone = TimeZone(identifier: "UTC")
-    formatter.dateFormat = "EEE, d MMM"
-    text += "\n\nPicking this back up on \(formatter.string(from: date))."
+  if let until {
+    text += "\n\nPicking this back up on \(Formats.day(until, "EEEdMMM"))."
   }
   return text
 }

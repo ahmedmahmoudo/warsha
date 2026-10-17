@@ -42,7 +42,7 @@ private struct AccountsSettings: View {
           ConnectionCheck { try await "Signed in as \(GitHub.viewer(token: settings.githubToken))" }
             .id(settings.githubToken)
         }
-        TextField("Repos", text: $settings.githubRepos, prompt: Text("everlab-au/ev-admin"))
+        TextField("Repos", text: $settings.githubRepos, prompt: Text("owner/repo, owner/other-repo"))
         TextField("Team", text: $settings.githubTeam, prompt: Text("Comma-separated logins"))
       }
       Section("Linear") {
@@ -151,13 +151,13 @@ private struct GeneralSettings: View {
       .pickerStyle(.segmented)
       OpenAtLogin()
       ShortcutSetting()
-      Picker("Time zone", selection: $settings.timeZone) {
+      Picker("Home time zone", selection: $settings.timeZone) {
         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
       }
       Section {
         TextField("Local repos", text: $settings.localRepos, prompt: Text("owner/repo=/path/to/clone"))
       } footer: {
-        Text("Where repos are cloned, for opening a conflicted PR in Claude. Without it, Workbench looks in ~/everlab, ~/Developer, ~/code and similar folders.")
+        Text("Where repos are cloned, for opening a conflicted PR in Claude. Without it, Workbench looks in your home folder and the folders directly inside it.")
           .foregroundStyle(.secondary)
       }
     }
