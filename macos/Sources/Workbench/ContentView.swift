@@ -42,23 +42,21 @@ struct ContentView: View {
       .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
   }
 
-  /// Each page has its own navigation stack, so the PR list keeps its back stack while you look
-  /// at another page.
+  /// Each page has its own navigation stack: a PR opened from a page goes back to that page, and
+  /// each page keeps its back stack while you look at another.
   @ViewBuilder
   private var page: some View {
-    @Bindable var navigation = navigation
     switch navigation.page {
-    case .today:
-      NavigationStack { TodayView() }
-    case .pullRequests:
-      NavigationStack(path: $navigation.pullRequestPath) {
-        PullRequestsView()
-          .navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
-      }
-    case .calendar:
-      NavigationStack { CalendarView() }
-    case .activity:
-      NavigationStack { ActivityView() }
+    case .today: stack(.today) { TodayView() }
+    case .pullRequests: stack(.pullRequests) { PullRequestsView() }
+    case .calendar: stack(.calendar) { CalendarView() }
+    case .activity: stack(.activity) { ActivityView() }
+    }
+  }
+
+  private func stack<Root: View>(_ page: Page, @ViewBuilder root: () -> Root) -> some View {
+    NavigationStack(path: navigation.path(page)) {
+      root().navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
     }
   }
 }

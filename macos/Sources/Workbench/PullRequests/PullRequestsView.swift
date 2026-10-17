@@ -30,7 +30,7 @@ struct PullRequestsView: View {
         // One PR opens its details here; several open on GitHub.
         let chosen = prs(ids, in: data)
         if chosen.count == 1 {
-          navigation.pullRequestPath.append(PrKey(chosen[0]))
+          navigation.open(PrKey(chosen[0]))
         } else {
           for pr in chosen { NSWorkspace.shared.open(URL(string: pr.url)!) }
         }
@@ -228,7 +228,7 @@ struct PullRequestsView: View {
   private func menu(for prs: [Pr]) -> some View {
     if !prs.isEmpty {
       if prs.count == 1, let pr = prs.first {
-        Button("Open Details") { navigation.pullRequestPath.append(PrKey(pr)) }
+        Button("Open Details") { navigation.open(PrKey(pr)) }
       }
       Button(prs.count == 1 ? "Open on GitHub" : "Open \(prs.count) on GitHub") {
         for pr in prs { NSWorkspace.shared.open(URL(string: pr.url)!) }

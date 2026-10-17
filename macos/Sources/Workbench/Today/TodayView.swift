@@ -178,8 +178,7 @@ struct ActionButton: View {
     Button {
       switch action {
       case let .details(key):
-        navigation.page = .pullRequests
-        navigation.pullRequestPath = [key]
+        navigation.open(key)
       case let .web(url):
         NSWorkspace.shared.open(url)
       }
@@ -219,8 +218,7 @@ private struct PrLine<Accessory: View>: View {
   var body: some View {
     HStack(spacing: 8) {
       Button {
-        navigation.page = .pullRequests
-        navigation.pullRequestPath = [PrKey(pr)]
+        navigation.open(PrKey(pr))
       } label: {
         Text("\(Text("#\(String(pr.number))").foregroundStyle(.tertiary)) \(pr.title)").lineLimit(1).truncationMode(.tail)
       }

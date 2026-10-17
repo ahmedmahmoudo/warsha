@@ -678,8 +678,7 @@ private struct TicketCardView: View {
     return HStack(spacing: 6) {
       Image(systemName: symbol).font(.caption).foregroundStyle(color).help(label)
       Button {
-        navigation.page = .pullRequests
-        navigation.pullRequestPath = [PrKey(repo: pr.repo, number: pr.number)]
+        navigation.open(PrKey(repo: pr.repo, number: pr.number))
       } label: {
         Text("\(Text("#\(String(pr.number))").foregroundStyle(.tertiary)) \(pr.title)").lineLimit(1)
       }

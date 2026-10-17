@@ -88,8 +88,17 @@ enum Page: String, CaseIterable, Identifiable {
 @Observable
 final class Navigation {
   var page: Page = .today
-  /// The PR details pages opened from the Pull Requests list, as a back stack.
-  var pullRequestPath: [PrKey] = []
+  /// Each page's back stack of PR details, so Back returns to the page a PR was opened from.
+  var paths: [Page: [PrKey]] = [:]
+
+  /// Opens a PR's details on the page you're on.
+  func open(_ pr: PrKey) {
+    paths[page, default: []].append(pr)
+  }
+
+  func path(_ page: Page) -> Binding<[PrKey]> {
+    Binding(get: { self.paths[page] ?? [] }, set: { self.paths[page] = $0 })
+  }
 }
 
 private struct PageCommands: Commands {

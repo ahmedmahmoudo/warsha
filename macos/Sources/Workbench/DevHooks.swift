@@ -47,7 +47,7 @@ enum DevHooks {
         navigation.page = page
       } else if let match = target.wholeMatch(of: /([\w.-]+\/[\w.-]+)#(\d+)/), let number = Int(match.2) {
         navigation.page = .pullRequests
-        navigation.pullRequestPath = [PrKey(repo: String(match.1), number: number)]
+        navigation.open(PrKey(repo: String(match.1), number: number))
       }
     }
     guard let path = defaults.string(forKey: "WorkbenchSnapshot") else { return }
