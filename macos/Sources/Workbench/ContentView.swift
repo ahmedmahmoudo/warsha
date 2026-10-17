@@ -71,7 +71,7 @@ struct TodayView: View {
   var body: some View {
     List {
       if let error = store.error {
-        Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+        Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Tone.bad.color)
       }
       Section("Todos") {
         ForEach(store.todos) { todo in

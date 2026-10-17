@@ -18,6 +18,7 @@ struct WorkbenchApp: App {
         .environment(store)
         .environment(navigation)
         .environment(pullRequests)
+        .tint(.workbenchAccent)
         .frame(minWidth: 760, minHeight: 480)
     }
     .defaultSize(width: 1280, height: 860)
@@ -27,6 +28,7 @@ struct WorkbenchApp: App {
       SettingsView()
         .environment(settings)
         .environment(store)
+        .tint(.workbenchAccent)
     }
 
     MenuBarExtra("Workbench", systemImage: "wrench.and.screwdriver") {

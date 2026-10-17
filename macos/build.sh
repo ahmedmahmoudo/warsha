@@ -30,6 +30,18 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
+# The asset catalog. AccentColor is the web version's primary; Resources/README.md explains dark mode.
+# actool needs Xcode's first-launch setup; without it the app still applies the accent in code.
+ACCENT_KEY=""
+xcrun actool "$MACOS/Resources/Assets.xcassets" --compile "$APP/Contents/Resources" --platform macosx \
+  --minimum-deployment-target 26.0 --accent-color AccentColor \
+  --output-partial-info-plist "$(mktemp -d)/assets.plist" >/dev/null 2>&1 || true
+if [ -f "$APP/Contents/Resources/Assets.car" ]; then
+  ACCENT_KEY="<key>NSAccentColorName</key><string>AccentColor</string>"
+else
+  echo "warning: couldn't compile the asset catalog (run 'xcodebuild -runFirstLaunch' once); list selection keeps the system accent" >&2
+fi
+
 cat >"$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -43,6 +55,7 @@ cat >"$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$(date +%Y%m%d%H%M)</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  $ACCENT_KEY
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key><true/>

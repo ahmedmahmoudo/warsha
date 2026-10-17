@@ -212,7 +212,7 @@ struct Chip: View {
       .font(.caption.weight(strong ? .medium : .regular))
       .foregroundStyle(tone == .neutral ? .secondary : tone.color)
       .padding(.horizontal, 7).padding(.vertical, 2)
-      .background(tone == .neutral ? AnyShapeStyle(.quaternary) : AnyShapeStyle(tone.color.opacity(0.14)), in: .capsule)
+      .background(tone.soft, in: .capsule)
   }
 }
 
@@ -238,26 +238,6 @@ extension View {
   func chipBorder() -> some View {
     padding(.horizontal, 7).padding(.vertical, 2)
       .overlay(Capsule().strokeBorder(.quaternary))
-  }
-}
-
-extension Tone {
-  var color: Color {
-    switch self {
-    case .good: .green
-    case .bad: .red
-    case .warn: .orange
-    case .info: .blue
-    case .neutral: .secondary
-    }
-  }
-}
-
-extension Color {
-  /// "#5e6ad2", as Linear sends state colors.
-  init?(hex: String) {
-    guard let value = UInt32(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) else { return nil }
-    self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
   }
 }
 

@@ -54,13 +54,13 @@ struct PullRequestsView: View {
         Section {
           Label(error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription,
                 systemImage: "exclamationmark.triangle.fill")
-            .foregroundStyle(.red)
+            .foregroundStyle(Tone.bad.color)
             .textSelection(.enabled)
         }
       }
       if let warnings = data?.warnings, !warnings.isEmpty {
         Section {
-          ForEach(warnings, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+          ForEach(warnings, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").foregroundStyle(Tone.warn.color) }
         }
       }
       if let data {
@@ -274,7 +274,7 @@ private struct FilterButton: View {
         Text("\(count)")
           .monospacedDigit()
           .fontWeight(.semibold)
-          .foregroundStyle(isOn ? AnyShapeStyle(.primary) : count == 0 ? AnyShapeStyle(.tertiary) : warn ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
+          .foregroundStyle(isOn ? AnyShapeStyle(.primary) : count == 0 ? AnyShapeStyle(.tertiary) : warn ? AnyShapeStyle(Tone.warn.color) : AnyShapeStyle(.primary))
         Text(label).foregroundStyle(isOn ? .primary : .secondary)
       }
       .padding(.horizontal, 4)

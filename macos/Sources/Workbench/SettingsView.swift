@@ -64,8 +64,8 @@ private struct ConnectionCheck: View {
   var body: some View {
     HStack {
       switch result {
-      case let .success(message): Text(message).foregroundStyle(.green)
-      case let .failure(error): Text(error.localizedDescription).foregroundStyle(.red)
+      case let .success(message): Text(message).foregroundStyle(Tone.good.color)
+      case let .failure(error): Text(error.localizedDescription).foregroundStyle(Tone.bad.color)
       case nil: EmptyView()
       }
       if checking { ProgressView().controlSize(.small) }
