@@ -36,7 +36,7 @@ struct ContentView: View {
       .sheet(isPresented: $navigation.gettingStarted) { GetStartedSheet() }
       .task {
         settings.applyAppearance()
-        if settings.githubToken.isEmpty { navigation.gettingStarted = true }
+        if !settings.hasGitHub { navigation.gettingStarted = true }
         DevHooks.borrowGoogleSignIn()
         await DevHooks.apply(to: navigation, openSettings: openSettings)
       }

@@ -8,6 +8,16 @@ final class AppSettings {
   var githubToken: String { didSet { saveSecret("githubToken", githubToken) } }
   var linearApiKey: String { didSet { saveSecret("linearApiKey", linearApiKey) } }
   var googleClientSecret: String { didSet { saveSecret("googleClientSecret", googleClientSecret) } }
+  /// Signed in with Workbench's GitHub or Linear app: used instead of the token above while set.
+  var githubSignIn: OAuthGrant? { didSet { saveGrant("githubSignIn", githubSignIn) } }
+  var linearSignIn: OAuthGrant? { didSet { saveGrant("linearSignIn", linearSignIn) } }
+
+  /// The GitHub token every request uses: the sign-in's, else the one pasted in.
+  var githubCredential: String { githubSignIn?.accessToken ?? githubToken }
+  /// Linear's authorization header: a signed-in token is a bearer token, a personal API key goes
+  /// in as it is.
+  var linearAuthorization: String { linearSignIn.map { "Bearer \($0.accessToken)" } ?? linearApiKey }
+  var hasGitHub: Bool { !githubCredential.isEmpty }
 
   /// Comma-separated repos to search; empty searches every repo you can see.
   var githubRepos: String { didSet { save(githubRepos, "githubRepos") } }
@@ -58,6 +68,8 @@ final class AppSettings {
     githubToken = ""
     linearApiKey = ""
     googleClientSecret = ""
+    githubSignIn = nil
+    linearSignIn = nil
     githubRepos = ""
     githubTeam = ""
     googleClientId = ""
@@ -80,6 +92,8 @@ final class AppSettings {
     githubToken = Keychain.get("githubToken") ?? ""
     linearApiKey = Keychain.get("linearApiKey") ?? ""
     googleClientSecret = Keychain.get("googleClientSecret") ?? ""
+    githubSignIn = Self.grant(Keychain.get("githubSignIn"))
+    linearSignIn = Self.grant(Keychain.get("linearSignIn"))
     githubRepos = defaults.string(forKey: "githubRepos") ?? ""
     githubTeam = defaults.string(forKey: "githubTeam") ?? ""
     googleClientId = defaults.string(forKey: "googleClientId") ?? ""
@@ -101,6 +115,15 @@ final class AppSettings {
 
   private func saveSecret(_ key: String, _ value: String) {
     if persists { Keychain.set(key, value) }
+  }
+
+  private func saveGrant(_ key: String, _ grant: OAuthGrant?) {
+    guard persists else { return }
+    Keychain.set(key, grant.flatMap { try? JSONEncoder().encode($0) }.map { String(decoding: $0, as: UTF8.self) })
+  }
+
+  private static func grant(_ json: String?) -> OAuthGrant? {
+    json.flatMap { try? JSONDecoder().decode(OAuthGrant.self, from: Data($0.utf8)) }
   }
 
   private func save(_ value: String, _ key: String) {

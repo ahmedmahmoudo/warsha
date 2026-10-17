@@ -35,7 +35,7 @@ struct PrConfig: Sendable, Hashable {
       if parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty { localRepos[parts[0].lowercased()] = parts[1] }
     }
     self.init(
-      githubToken: settings.githubToken, linearApiKey: settings.linearApiKey,
+      githubToken: settings.githubCredential, linearApiKey: settings.linearAuthorization,
       githubRepos: AppSettings.list(settings.githubRepos), githubTeam: AppSettings.list(settings.githubTeam),
       localRepos: localRepos, afterMerge: Set(AppSettings.list(settings.afterMergeStates).map { $0.lowercased() })
     )

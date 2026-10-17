@@ -13,6 +13,7 @@ final class AppState {
   let pullRequests = PullRequestsModel()
   let calendar = CalendarModel()
   let notifier = Notifier()
+  let signIns = SignIns()
 
   /// Opens (or brings back) the main window; set by a view that can, since only views get
   /// SwiftUI's openWindow.
@@ -36,6 +37,10 @@ final class AppState {
   /// Dock and menu bar counts and for notifications.
   func startBackground() {
     guard background.isEmpty else { return }
+    // A sign-in can expire while the Mac sleeps: renew it on waking, before anything loads.
+    NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in
+      MainActor.assumeIsolated { Task { await AppState.shared.signIns.refreshIfNeeded(AppState.shared.settings) } }
+    }
     background = [
       loop(every: .seconds(30)) { state in
         await state.pullRequests.load(.mine, settings: state.settings, maxAge: .seconds(15))
@@ -54,6 +59,7 @@ final class AppState {
   private func loop(every interval: Duration, _ work: @escaping @MainActor (AppState) async -> Void) -> Task<Void, Never> {
     Task { [weak self] in
       while !Task.isCancelled, let self {
+        await signIns.refreshIfNeeded(settings)
         await work(self)
         updateBadge()
         await notifier.check(self)

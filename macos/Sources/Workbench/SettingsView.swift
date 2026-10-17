@@ -28,29 +28,31 @@ private extension View {
 
 struct AccountsSettings: View {
   @Environment(AppSettings.self) private var settings
+  private let signIns = AppState.shared.signIns
 
   var body: some View {
     @Bindable var settings = settings
     Form {
-      Section("GitHub") {
-        SecureField("Token", text: $settings.githubToken, prompt: Text("repo + read:org"))
-        HStack {
-          Button("Use gh CLI token") {
-            Task { if let token = await AppSettings.ghToken() { settings.githubToken = token } }
-          }
-          Spacer()
-          ConnectionCheck { try await "Signed in as \(GitHub.viewer(token: settings.githubToken))" }
-            .id(settings.githubToken)
-        }
+      Section {
+        GitHubAccount()
         TextField("Repos", text: $settings.githubRepos, prompt: Text("owner/repo, owner/other-repo"))
         TextField("Team", text: $settings.githubTeam, prompt: Text("Comma-separated logins"))
+      } header: {
+        Text("GitHub")
+      } footer: {
+        if settings.githubSignIn != nil {
+          GitHubAccess(token: settings.githubCredential, repos: AppSettings.list(settings.githubRepos))
+            .id("\(settings.githubCredential)|\(settings.githubRepos)")
+        }
       }
-      Section("Linear") {
-        SecureField("API key", text: $settings.linearApiKey, prompt: Text("Settings → Security & access → Personal API keys"))
-        HStack {
-          Spacer()
-          ConnectionCheck { try await "Signed in as \(Linear.viewer(apiKey: settings.linearApiKey))" }
-            .id(settings.linearApiKey)
+      Section {
+        LinearAccount()
+      } header: {
+        Text("Linear")
+      } footer: {
+        if signIns.linearClientId != nil, settings.linearSignIn == nil {
+          Text("Signs in to the workspace open in your browser; switch workspace in Linear first to pick another.")
+            .foregroundStyle(.secondary)
         }
       }
       Section {
@@ -121,7 +123,7 @@ private struct GoogleConnection: View {
 }
 
 /// A Test button that shows who the credentials belong to, or why they don't work.
-private struct ConnectionCheck: View {
+struct ConnectionCheck: View {
   let check: () async throws -> String
   @State private var result: Result<String, any Error>?
   @State private var checking = false

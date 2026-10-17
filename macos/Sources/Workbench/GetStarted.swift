@@ -27,7 +27,7 @@ struct GetStartedSheet: View {
         Button("Later") { dismiss() }
         Button("Done") { dismiss() }
           .keyboardShortcut(.defaultAction)
-          .disabled(settings.githubToken.isEmpty)
+          .disabled(!settings.hasGitHub)
       }
       .padding(20)
     }

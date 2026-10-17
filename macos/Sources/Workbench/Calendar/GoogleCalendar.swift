@@ -53,7 +53,7 @@ actor GoogleCalendar {
     let state = Self.randomURLSafe(16)
     let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URLEncoded
 
-    let callback = LoopbackCallback()
+    let callback = LoopbackCallback(service: "Google Calendar")
     let port = try await callback.start()
     let redirectUri = "http://127.0.0.1:\(port)/callback"
     var components = URLComponents(string: Self.authURL)!
@@ -233,102 +233,6 @@ actor GoogleCalendar {
 
   // MARK: Helpers
 
-  private static func randomURLSafe(_ bytes: Int) -> String {
-    Data((0 ..< bytes).map { _ in UInt8.random(in: 0 ... 255) }).base64URLEncoded
-  }
-
-  private static func form(_ fields: [String: String]) -> Data {
-    var allowed = CharacterSet.alphanumerics
-    allowed.insert(charactersIn: "-._~")
-    return Data(fields.map { "\($0)=\($1.addingPercentEncoding(withAllowedCharacters: allowed) ?? $1)" }.joined(separator: "&").utf8)
-  }
-}
-
-/// A one-shot HTTP listener on 127.0.0.1 for Google's redirect: it answers the browser with a short
-/// page and hands back the query string. Gives up after five minutes.
-private final class LoopbackCallback: @unchecked Sendable {
-  private let queue = DispatchQueue(label: "com.workbench.oauth-callback")
-  private var listener: NWListener?
-  private var continuation: CheckedContinuation<[String: String], any Error>?
-  private var finished = false
-  /// Whether start() has heard back yet; touched only on `queue`.
-  private var started = false
-
-  func start() async throws -> UInt16 {
-    let parameters = NWParameters.tcp
-    parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: .any)
-    let listener = try NWListener(using: parameters)
-    self.listener = listener
-    return try await withCheckedThrowingContinuation { (ready: CheckedContinuation<UInt16, any Error>) in
-      listener.stateUpdateHandler = { [self] state in
-        guard !started else { return }
-        switch state {
-        case .ready:
-          started = true
-          ready.resume(returning: listener.port?.rawValue ?? 0)
-        case let .failed(error):
-          started = true
-          ready.resume(throwing: error)
-        default: break
-        }
-      }
-      listener.newConnectionHandler = { [weak self] connection in self?.handle(connection) }
-      listener.start(queue: queue)
-    }
-  }
-
-  func wait() async throws -> [String: String] {
-    try await withCheckedThrowingContinuation { continuation in
-      queue.async {
-        self.continuation = continuation
-        self.queue.asyncAfter(deadline: .now() + 300) { self.finish(.failure(IntegrationError("The Google sign-in timed out. Try again."))) }
-      }
-    }
-  }
-
-  private func handle(_ connection: NWConnection) {
-    connection.start(queue: queue)
-    connection.receive(minimumIncompleteLength: 1, maximumLength: 16_384) { [weak self] data, _, _, _ in
-      guard let self else { return }
-      let request = String(decoding: data ?? Data(), as: UTF8.self)
-      // "GET /callback?code=…&state=… HTTP/1.1"
-      let target = request.split(separator: " ").dropFirst().first.map(String.init) ?? ""
-      guard target.hasPrefix("/callback") else {
-        connection.send(content: Data("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".utf8), completion: .contentProcessed { _ in connection.cancel() })
-        return
-      }
-      var query: [String: String] = [:]
-      for item in URLComponents(string: "http://127.0.0.1\(target)")?.queryItems ?? [] { query[item.name] = item.value ?? "" }
-      let ok = query["code"] != nil
-      let page = """
-        <!doctype html><meta charset="utf-8"><title>Workbench</title>
-        <body style="font: 15px -apple-system, sans-serif; padding: 40px; color: #1c1c1a">
-        <p>\(ok ? "Workbench is connected to Google Calendar. You can close this tab." : "The Google sign-in didn't finish. You can close this tab and try again from Workbench.")</p>
-        </body>
-        """
-      let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(page.utf8.count)\r\nConnection: close\r\n\r\n\(page)"
-      connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
-      self.finish(.success(query))
-    }
-  }
-
-  private func finish(_ result: Result<[String: String], any Error>) {
-    guard !finished, let continuation else { return }
-    finished = true
-    self.continuation = nil
-    listener?.cancel()
-    continuation.resume(with: result)
-  }
-}
-
-extension Data {
-  var base64URLEncoded: String {
-    base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
-  }
-
-  init?(base64URLEncoded text: String) {
-    var base64 = text.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
-    base64 += String(repeating: "=", count: (4 - base64.count % 4) % 4)
-    self.init(base64Encoded: base64)
-  }
+  private static func randomURLSafe(_ bytes: Int) -> String { OAuth.randomURLSafe(bytes) }
+  private static func form(_ fields: [String: String]) -> Data { OAuth.form(fields) }
 }

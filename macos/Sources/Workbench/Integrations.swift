@@ -94,6 +94,7 @@ enum GitHub {
        let reset = Double(response.value(forHTTPHeaderField: "x-ratelimit-reset") ?? "") {
       return "GitHub rate limit used up; it resets at \(Date(timeIntervalSince1970: reset).formatted(date: .omitted, time: .shortened))"
     }
+    if response.statusCode == 403, let restricted = oauthRestriction(String(decoding: body, as: UTF8.self)) { return restricted }
     if response.statusCode == 403, text.range(of: "SAML|SSO", options: .regularExpression) != nil {
       return "The GitHub token needs SSO authorization for the organization (403)"
     }

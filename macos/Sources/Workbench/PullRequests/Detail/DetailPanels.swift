@@ -638,7 +638,7 @@ private struct GitHubImage: View {
       do {
         let data: Data
         if ReleaseImages.needsToken(image.src) {
-          data = try await ReleaseImages.shared.data(for: image.src, token: settings.githubToken)
+          data = try await ReleaseImages.shared.data(for: image.src, token: settings.githubCredential)
         } else {
           data = try await URLSession.shared.data(from: URL(string: image.src)!).0
         }

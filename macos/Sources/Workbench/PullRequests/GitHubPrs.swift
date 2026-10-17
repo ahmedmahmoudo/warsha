@@ -399,13 +399,19 @@ extension GitHub {
         problems.append("GitHub token is missing the \"read:org\" scope")
       }
     }
-    if let expiry = result.headers["github-authentication-token-expiration"], let date = parseExpiry(expiry) {
+    // Signed-in tokens (gho_, ghu_) are renewed by Workbench, so their expiry isn't news.
+    let signedIn = token.hasPrefix("gho_") || token.hasPrefix("ghu_")
+    if !signedIn, let expiry = result.headers["github-authentication-token-expiration"], let date = parseExpiry(expiry) {
       let daysLeft = Int(floor(date.timeIntervalSinceNow / 86_400))
       if daysLeft < expiryWarningDays { problems.append("GitHub token expires in \(max(daysLeft, 0)) days (\(expiry))") }
     }
     for (index, repo) in repos.enumerated() {
       guard let error = result.errors.first(where: { $0.path?.first == "r\(index)" }) else { continue }
       let path = error.path?.joined(separator: ".") ?? ""
+      if let restricted = oauthRestriction(error.message) {
+        if !problems.contains(restricted) { problems.append(restricted) }
+        continue
+      }
       problems.append(
         path.contains("statusCheckRollup") ? "GitHub token can't read CI checks on \(repo): add Commit statuses (read) and Actions (read)"
           : path.contains("pullRequests") ? "GitHub token can't read pull requests on \(repo): add Pull requests (read)"
@@ -418,6 +424,14 @@ extension GitHub {
       problems.append("GitHub token check failed: \(error.formatted)")
     }
     return problems
+  }
+
+  /// An organization that hasn't approved Workbench's GitHub app yet blocks everything in it for
+  /// signed-in tokens, which a pasted token isn't subject to.
+  static func oauthRestriction(_ message: String) -> String? {
+    guard message.contains("OAuth App access restrictions") else { return nil }
+    let org = message.firstMatch(of: /`([^`]+)` organization/).map { String($0.1) } ?? "The organization"
+    return "\(org) hasn't approved Workbench's GitHub sign-in yet, so its repos are hidden. Ask an org owner to approve it, or use a token instead."
   }
 
   /// "2026-11-01 00:00:00 UTC", as GitHub sends it.
