@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d2738"/>
+      <stop offset="1" stop-color="#0e1420"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#tile)"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" fill="none" stroke="#e4e9f1" stroke-opacity="0.14"/>
+  <!-- Work on the bench: review (blue), shipped (green), meetings (amber) -->
+  <rect x="14" y="25" width="10" height="11" rx="2" fill="#8fb0f5"/>
+  <rect x="27" y="15" width="10" height="21" rx="2" fill="#5cc79a"/>
+  <rect x="40" y="28" width="10" height="8" rx="2" fill="#e8b45a"/>
+  <!-- The bench -->
+  <rect x="9" y="38" width="46" height="6" rx="2" fill="#e4e9f1"/>
+  <rect x="14" y="44" width="5" height="10" rx="1.5" fill="#e4e9f1"/>
+  <rect x="45" y="44" width="5" height="10" rx="1.5" fill="#e4e9f1"/>
+</svg>
