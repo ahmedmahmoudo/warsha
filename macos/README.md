@@ -2,9 +2,9 @@
 
 Workbench as a native macOS app: SwiftUI pages, a menu bar item, credentials in the Keychain and
 Workbench's own data in SQLite. No Node server and no web view. It needs macOS 26 or later and uses
-the Liquid Glass design. It's being ported from the web
-version one page at a time. Until a page is ported, it links to the web version (the launchd
-service on http://localhost:5180), so keep that running for now.
+the Liquid Glass design. Every page is ported from the web version, which it can now replace. The
+parity tests compare it with the web version (the launchd service on http://localhost:5180) while
+that's still around.
 
 ```bash
 npm run app:build      # build macos/build/Workbench.app with Xcode
@@ -49,7 +49,7 @@ blank.
 ```
 Sources/Workbench/
   WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu (⌘1–⌘4)
-  ContentView.swift     the pages as toolbar tabs, the Dock badge; pages not ported yet link to the web version
+  ContentView.swift     the pages as toolbar tabs, the Dock badge
   Theme.swift           the web version's palette: background, text, borders and status tones
   DevHooks.swift        launch arguments for opening a page and saving a snapshot of the window
   SettingsView.swift    accounts, general preferences, data import
@@ -64,6 +64,8 @@ Sources/Workbench/
                         the Claude hand-off, live checks, and a native Markdown renderer
   Calendar/             Google sign-in and events (GoogleCalendar), meeting sync and the meetings
                         table (Meetings), the Calendar page's grids, and the meeting panels
+  Activity/             the Activity page: GitHub events and searches, Linear history, the day
+                        builder (BuildActivity), and the Day, Week and Month views
   Today/                the Today page: Linear queries, the rules (BuildToday), pin, note and park
                         controls with posting the park reason, and the sections
 Tests/WorkbenchTests/   swift-testing tests; PrParityTests compares with the running web version
@@ -106,8 +108,11 @@ describes them), and the TypeScript is the reference.
    is moved there. Meetings sync every minute for the next 30 days, marking rescheduled and
    deleted ones. Calendar shows Day, Week and Month in your home zone or this Mac's; Today shows
    Meetings today and Meeting changes.
-7. **Activity**: Day, Week and Month views, stuck-ticket flags, Copy summary.
+7. **Activity** (done): Day, Week and Month in your home zone or this Mac's, from GitHub's events
+   feed and searches and Linear's ticket history; stuck and slow flags, linked PRs on the Day
+   view's ticket cards, the totals line and Copy summary.
 8. **Native extras**: Dock and menu bar badge, notifications, open at login, global shortcut.
 9. **Productivity**: app usage tracking (`NSWorkspace`, idle and lock), breaks, focus stats.
 
-When step 7 is done, the web version (`server/`, `src/`, `shared/`) and the launchd service can go.
+With step 7 done, the web version (`server/`, `src/`, `shared/`) and the launchd service can go
+once you're happy with the app; the parity tests need the web version running, so they'd go too.

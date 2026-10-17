@@ -16,6 +16,9 @@ enum DevHooks {
 
   static var envFile: String? { defaults.string(forKey: "WorkbenchEnvFile") }
 
+  /// `-WorkbenchDate YYYY-MM-DD` opens Activity on that date instead of today.
+  static var startDate: String? { defaults.string(forKey: "WorkbenchDate") }
+
   /// `-WorkbenchGoogleFrom /path/workbench.sqlite` borrows the web version's Google sign-in for this
   /// launch, so the calendar can be checked with real meetings.
   @MainActor

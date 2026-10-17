@@ -11,6 +11,9 @@ enum Palette {
   static let border = Color.dynamic(light: 0xE4E4DF, dark: 0x253045)
   /// `--muted` as a fill: neutral chips and placeholders.
   static let fill = Color.dynamic(light: 0xF1F1EE, dark: 0x1D2738)
+  /// `--primary` and `--primary-foreground`: today's date marker, as the web draws it.
+  static let primary = Color.dynamic(light: 0x1C1C1A, dark: 0xDBE4F3)
+  static let primaryText = Color.dynamic(light: 0xFFFFFF, dark: 0x0E1420)
 
   static let foreground = PaletteText(light: 0x1C1C1A, dark: 0xE4E9F1, onAccent: 1)
   static let muted = PaletteText(light: 0x6B6B66, dark: 0x9AA7BB, onAccent: 0.85)

@@ -72,36 +72,7 @@ struct ContentView: View {
     case .calendar:
       NavigationStack { CalendarView() }
     case .activity:
-      NavigationStack { NotPortedView(page: navigation.page) }
-    }
-  }
-}
-
-/// Stands in for a page until it's ported from the web version.
-struct NotPortedView: View {
-  let page: Page
-
-  var body: some View {
-    ContentUnavailableView {
-      Label(page.title, systemImage: page.symbol)
-    } description: {
-      Text("Not ported yet. Use the web version until it is.")
-    } actions: {
-      Link("Open the web version", destination: URL(string: "http://localhost:5180\(page.webPath)")!)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .workbenchPage()
-    .navigationTitle(page.title)
-  }
-}
-
-private extension Page {
-  var webPath: String {
-    switch self {
-    case .today: "/"
-    case .pullRequests: "/prs"
-    case .activity: "/activity"
-    case .calendar: "/calendar"
+      NavigationStack { ActivityView() }
     }
   }
 }
