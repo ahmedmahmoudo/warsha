@@ -9,6 +9,7 @@ struct WorkbenchApp: App {
   @State private var settings = AppSettings()
   @State private var store = Store.open()
   @State private var navigation = Navigation()
+  @State private var pullRequests = PullRequestsModel()
 
   var body: some Scene {
     Window("Workbench", id: "main") {
@@ -16,7 +17,8 @@ struct WorkbenchApp: App {
         .environment(settings)
         .environment(store)
         .environment(navigation)
-        .frame(minWidth: 720, minHeight: 480)
+        .environment(pullRequests)
+        .frame(minWidth: 760, minHeight: 480)
     }
     .defaultSize(width: 1280, height: 860)
     .commands { PageCommands(navigation: navigation) }

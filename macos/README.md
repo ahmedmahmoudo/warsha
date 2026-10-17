@@ -1,7 +1,8 @@
 # Workbench for macOS
 
 Workbench as a native macOS app: SwiftUI pages, a menu bar item, credentials in the Keychain and
-Workbench's own data in SQLite. No Node server and no web view. It's being ported from the web
+Workbench's own data in SQLite. No Node server and no web view. It needs macOS 26 or later and uses
+the Liquid Glass design. It's being ported from the web
 version one page at a time. Until a page is ported, it links to the web version (the launchd
 service on http://localhost:5180), so keep that running for now.
 

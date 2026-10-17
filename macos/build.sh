@@ -15,6 +15,10 @@ swift build -c release --package-path "$MACOS"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$MACOS/.build/release/Workbench" "$APP/Contents/MacOS/Workbench"
+# SwiftPM records the deployment target as the SDK version, and AppKit picks the design from that:
+# an app that says it was built against an older SDK keeps the old look. Record the real SDK.
+xcrun vtool -set-build-version macos 26.0 "$(xcrun --show-sdk-version)" -replace \
+  -output "$APP/Contents/MacOS/Workbench" "$APP/Contents/MacOS/Workbench"
 
 # The Dock icon, from the web app's 512px icon.
 ICONSET="$(mktemp -d)/AppIcon.iconset"
@@ -39,7 +43,7 @@ cat >"$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$(date +%Y%m%d%H%M)</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
-  <key>LSMinimumSystemVersion</key><string>15.0</string>
+  <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict>

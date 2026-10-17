@@ -1,7 +1,8 @@
 import Foundation
 
 /// What the Pull Requests page has loaded, per scope. Switching scope shows the last answer at
-/// once while a new one loads, like the web version's query cache.
+/// once while a new one loads, like the web version's query cache. Shared by the window, so the
+/// sidebar badge and the page read the same answer.
 @MainActor
 @Observable
 final class PullRequestsModel {
@@ -12,7 +13,12 @@ final class PullRequestsModel {
   private(set) var errors: [PrScope: any Error] = [:]
   private(set) var loading: Set<PrScope> = []
 
-  func load(_ scope: PrScope, settings: AppSettings) async {
+  /// `maxAge` skips the load when the last answer is at least that recent.
+  func load(_ scope: PrScope, settings: AppSettings, maxAge: Duration? = nil) async {
+    if let maxAge, let fetchedAt = responses[scope]?.fetchedAt,
+       Date().timeIntervalSince(fetchedAt) < Double(maxAge.components.seconds) {
+      return
+    }
     loading.insert(scope)
     defer { loading.remove(scope) }
     do {
@@ -22,6 +28,11 @@ final class PullRequestsModel {
     } catch {
       errors[scope] = error
     }
+  }
+
+  /// Your open PRs waiting on you and not parked, for the sidebar badge.
+  func needsYou(store: Store) -> Int {
+    responses[.mine]?.open.filter { $0.waitingOn == .you && store.parked(for: $0) == nil }.count ?? 0
   }
 }
 

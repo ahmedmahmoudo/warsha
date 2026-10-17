@@ -16,9 +16,7 @@ struct PrRowView: View {
       ChecksColumn(checks: pr.checks).frame(width: 190, alignment: .leading)
       ReviewsColumn(pr: pr).frame(width: 210, alignment: .leading)
     }
-    .padding(.horizontal, 14).padding(.vertical, 10)
-    .contentShape(.rect)
-    .contextMenu { menu }
+    .padding(.vertical, 6)
   }
 
   private var main: some View {
@@ -37,11 +35,8 @@ struct PrRowView: View {
       }
 
       HStack(spacing: 6) {
-        Link(destination: URL(string: pr.url)!) {
-          Text(pr.title).font(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
-        }
-        .foregroundStyle(.primary)
-        .help("Open on GitHub")
+        // Double-click or Return opens the PR; the list owns that, so the title is plain text.
+        Text(pr.title).font(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
         if store.pins.contains(where: { $0.ref == itemRef }) {
           Image(systemName: "pin.fill").font(.caption).foregroundStyle(.secondary).help("Pinned")
         }
@@ -74,36 +69,6 @@ struct PrRowView: View {
       .font(.caption)
       .foregroundStyle(.secondary)
     }
-  }
-
-  @ViewBuilder
-  private var menu: some View {
-    Button("Open on GitHub") { NSWorkspace.shared.open(URL(string: pr.url)!) }
-    if let (owner, repo) = repoParts {
-      Button("Open Details in the Web Version") {
-        NSWorkspace.shared.open(URL(string: "http://localhost:5180/prs/\(owner)/\(repo)/\(pr.number)")!)
-      }
-    }
-    Button("Copy Link") {
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(pr.url, forType: .string)
-    }
-    Divider()
-    let title = pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title
-    let url = pr.tickets.first?.url ?? pr.url
-    if store.pins.contains(where: { $0.ref == itemRef }) {
-      Button("Unpin") { store.unpin(itemRef) }
-    } else {
-      Button("Pin to Focus") { store.pin(itemRef, title: title, url: url) }
-    }
-    if let parked = store.parked(for: pr) {
-      Button("Unpark") { store.unpark(parked.ref) }
-    }
-  }
-
-  private var repoParts: (String, String)? {
-    let parts = pr.repo.split(separator: "/").map(String.init)
-    return parts.count == 2 ? (parts[0], parts[1]) : nil
   }
 }
 
@@ -246,8 +211,8 @@ struct Chip: View {
     Text(text)
       .font(.caption.weight(strong ? .medium : .regular))
       .foregroundStyle(tone == .neutral ? .secondary : tone.color)
-      .padding(.horizontal, 6).padding(.vertical, 2)
-      .background(tone == .neutral ? AnyShapeStyle(.quaternary) : AnyShapeStyle(tone.color.opacity(0.12)), in: .rect(cornerRadius: 5))
+      .padding(.horizontal, 7).padding(.vertical, 2)
+      .background(tone == .neutral ? AnyShapeStyle(.quaternary) : AnyShapeStyle(tone.color.opacity(0.14)), in: .capsule)
   }
 }
 
@@ -271,8 +236,8 @@ struct AvatarView: View {
 
 extension View {
   func chipBorder() -> some View {
-    padding(.horizontal, 6).padding(.vertical, 2)
-      .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.quaternary))
+    padding(.horizontal, 7).padding(.vertical, 2)
+      .overlay(Capsule().strokeBorder(.quaternary))
   }
 }
 

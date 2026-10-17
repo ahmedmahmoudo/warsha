@@ -3,7 +3,7 @@ import SwiftUI
 /// The Pull Requests page: your open PRs grouped by who they're waiting on, with each one's real
 /// gate state, plus the last week's merged ones. src/routes/PullRequestsPage.tsx in SwiftUI.
 struct PullRequestsView: View {
-  /// A summary card's filter: one waiting-on group, or ticket mismatches.
+  /// A filter bar choice: one waiting-on group, or ticket mismatches.
   enum Filter: Hashable {
     case waitingOn(WaitingOn)
     case mismatches
@@ -11,28 +11,178 @@ struct PullRequestsView: View {
 
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
-  @State private var model = PullRequestsModel()
+  @Environment(PullRequestsModel.self) private var model
   @AppStorage("prScope") private var scope: PrScope = .mine
   @State private var filter: Filter?
+  @State private var search = ""
+  @State private var selection = Set<Pr.ID>()
+  @State private var showParked = false
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        content
+    let data = model.responses[scope]
+    list(data)
+      .listStyle(.inset)
+      .contextMenu(forSelectionType: Pr.ID.self) { ids in
+        menu(for: prs(ids, in: data))
+      } primaryAction: { ids in
+        for pr in prs(ids, in: data) { NSWorkspace.shared.open(URL(string: pr.url)!) }
       }
-      .padding(20)
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    .navigationTitle("Pull Requests")
-    .toolbar { toolbar }
-    .task(id: scope) {
-      filter = nil
-      while !Task.isCancelled {
-        await model.load(scope, settings: settings)
-        try? await Task.sleep(for: PullRequestsModel.refreshInterval)
+      .safeAreaInset(edge: .top, spacing: 0) {
+        if let data { filterBar(data) }
+      }
+      .overlay { placeholder(data) }
+      .searchable(text: $search, placement: .toolbar, prompt: "Title, number, ticket or author")
+      .navigationTitle("Pull Requests")
+      .navigationSubtitle(subtitle(data))
+      .toolbar { toolbar }
+      .task(id: scope) {
+        filter = nil
+        selection = []
+        while !Task.isCancelled {
+          await model.load(scope, settings: settings, maxAge: .seconds(15))
+          try? await Task.sleep(for: PullRequestsModel.refreshInterval)
+        }
+      }
+  }
+
+  // MARK: The list
+
+  private func list(_ data: PrsResponse?) -> some View {
+    let groups = data.map(grouped) ?? Groups()
+    return List(selection: $selection) {
+      if let error = model.errors[scope] {
+        Section {
+          Label(error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription,
+                systemImage: "exclamationmark.triangle.fill")
+            .foregroundStyle(.red)
+            .textSelection(.enabled)
+        }
+      }
+      if let warnings = data?.warnings, !warnings.isEmpty {
+        Section {
+          ForEach(warnings, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+        }
+      }
+      if let data {
+        ForEach(groups.sections, id: \.waitingOn) { section in
+          Section {
+            rows(section.prs, all: data.open, viewer: data.viewer)
+          } header: {
+            SectionHeader(title: section.waitingOn.title(scope), count: section.prs.count)
+          }
+        }
+        if !groups.parked.isEmpty {
+          Section(isExpanded: $showParked) {
+            rows(groups.parked, all: data.open, viewer: data.viewer)
+          } header: {
+            SectionHeader(title: "Parked", count: groups.parked.count)
+          }
+        }
+        if !groups.merged.isEmpty {
+          Section {
+            rows(groups.merged, all: data.recentlyMerged, viewer: data.viewer)
+          } header: {
+            SectionHeader(title: "Merged in the last 7 days", count: groups.merged.count)
+          }
+        }
       }
     }
   }
+
+  private func rows(_ prs: [Pr], all: [Pr], viewer: String) -> some View {
+    ForEach(prs) { pr in
+      PrRowView(pr: pr, viewer: viewer, stackParent: all.first { $0.number == pr.stackedOn && $0.repo == pr.repo })
+    }
+  }
+
+  private struct Groups {
+    var sections: [(waitingOn: WaitingOn, prs: [Pr])] = []
+    var parked: [Pr] = []
+    var merged: [Pr] = []
+    var isEmpty: Bool { sections.isEmpty && merged.isEmpty }
+  }
+
+  /// Parked PRs (or PRs of parked tickets) leave the groups and the filter counts; they're listed
+  /// at the bottom. A waiting-on filter is about open PRs only, so merged ones show with no filter
+  /// or with mismatches.
+  private func grouped(_ data: PrsResponse) -> Groups {
+    let mismatchesOnly = filter == .mismatches
+    let visible = { (prs: [Pr]) in prs.filter { (!mismatchesOnly || !$0.mismatches.isEmpty) && matches($0) } }
+    let open = visible(data.open.filter { store.parked(for: $0) == nil })
+    var groups = Groups()
+    groups.sections = WaitingOn.allCases
+      .filter { filter == nil || mismatchesOnly || filter == .waitingOn($0) }
+      .map { waitingOn in (waitingOn, open.filter { $0.waitingOn == waitingOn }) }
+      .filter { !$0.prs.isEmpty }
+    groups.parked = filter == nil ? data.open.filter { store.parked(for: $0) != nil && matches($0) } : []
+    groups.merged = filter == nil || mismatchesOnly ? visible(data.recentlyMerged) : []
+    return groups
+  }
+
+  private func matches(_ pr: Pr) -> Bool {
+    let query = search.trimmingCharacters(in: .whitespaces)
+    guard !query.isEmpty else { return true }
+    let number = query.hasPrefix("#") ? String(query.dropFirst()) : query
+    return [pr.title, pr.author, pr.repo, pr.headRef].contains { $0.localizedCaseInsensitiveContains(query) }
+      || pr.ticketKeys.contains { $0.localizedCaseInsensitiveContains(query) }
+      || String(pr.number) == number
+  }
+
+  @ViewBuilder
+  private func placeholder(_ data: PrsResponse?) -> some View {
+    if data == nil, model.errors[scope] == nil {
+      ProgressView("Loading pull requests…")
+    } else if let data, grouped(data).isEmpty, model.errors[scope] == nil {
+      if !search.isEmpty {
+        ContentUnavailableView.search(text: search)
+      } else {
+        ContentUnavailableView(
+          filter == .mismatches ? "No Mismatches" : filter == nil ? "No Open Pull Requests" : "Nothing Here",
+          systemImage: "arrow.triangle.pull",
+          description: Text(filter.map { "Nothing in \(title($0).lowercased())." } ?? "Your open pull requests show up here.")
+        )
+      }
+    }
+  }
+
+  // MARK: Filter bar
+
+  /// The web version's summary cards, as a row of glass filter buttons. Clicking the active one
+  /// clears the filter.
+  private func filterBar(_ data: PrsResponse) -> some View {
+    let active = data.open.filter { store.parked(for: $0) == nil }
+    let mismatches = (active + data.recentlyMerged).filter { !$0.mismatches.isEmpty }.count
+    return ScrollView(.horizontal, showsIndicators: false) {
+      GlassEffectContainer(spacing: 6) {
+        HStack(spacing: 6) {
+          ForEach(WaitingOn.allCases, id: \.self) { waitingOn in
+            FilterButton(
+              count: active.filter { $0.waitingOn == waitingOn }.count, label: waitingOn.title(scope),
+              isOn: filter == .waitingOn(waitingOn)
+            ) { toggle(.waitingOn(waitingOn)) }
+          }
+          FilterButton(count: mismatches, label: "Ticket mismatches", isOn: filter == .mismatches, warn: true) {
+            toggle(.mismatches)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+      }
+    }
+  }
+
+  private func toggle(_ next: Filter) {
+    withAnimation(.snappy) { filter = filter == next ? nil : next }
+  }
+
+  private func title(_ filter: Filter) -> String {
+    switch filter {
+    case let .waitingOn(waitingOn): waitingOn.title(scope)
+    case .mismatches: "Ticket mismatches"
+    }
+  }
+
+  // MARK: Toolbar and menus
 
   @ToolbarContentBuilder
   private var toolbar: some ToolbarContent {
@@ -41,14 +191,9 @@ struct PullRequestsView: View {
         ForEach(PrScope.allCases) { Text($0.label).tag($0) }
       }
       .pickerStyle(.segmented)
+      .fixedSize()
     }
-    ToolbarItemGroup {
-      if model.loading.contains(scope) {
-        ProgressView().controlSize(.small)
-      } else if let fetchedAt = model.responses[scope]?.fetchedAt {
-        Text("Updated \(fetchedAt, format: .relative(presentation: .named))")
-          .font(.caption).foregroundStyle(.secondary)
-      }
+    ToolbarItem {
       Button("Refresh", systemImage: "arrow.clockwise") {
         Task { await model.load(scope, settings: settings) }
       }
@@ -57,91 +202,50 @@ struct PullRequestsView: View {
     }
   }
 
-  @ViewBuilder
-  private var content: some View {
-    if let error = model.errors[scope] {
-      Banner(text: error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription, tone: .bad)
-    }
-    if let data = model.responses[scope] {
-      loaded(data)
-    } else if model.errors[scope] == nil {
-      Text("Loading pull requests…").foregroundStyle(.secondary)
-    }
+  private func subtitle(_ data: PrsResponse?) -> String {
+    if model.loading.contains(scope) { return "Updating…" }
+    guard let fetchedAt = data?.fetchedAt else { return "" }
+    return "Updated at \(fetchedAt.formatted(date: .omitted, time: .shortened))"
+  }
+
+  private func prs(_ ids: Set<Pr.ID>, in data: PrsResponse?) -> [Pr] {
+    guard let data else { return [] }
+    return (data.open + data.recentlyMerged).filter { ids.contains($0.id) }
   }
 
   @ViewBuilder
-  private func loaded(_ data: PrsResponse) -> some View {
-    // Parked PRs (or PRs of parked tickets) don't count in the cards; they're listed at the bottom.
-    let parkedOpen = data.open.filter { store.parked(for: $0) != nil }
-    let activeOpen = data.open.filter { store.parked(for: $0) == nil }
-    let mismatchesOnly = filter == .mismatches
-    let visible = { (prs: [Pr]) in mismatchesOnly ? prs.filter { !$0.mismatches.isEmpty } : prs }
-    let open = visible(activeOpen)
-    // A waiting-on card is about open PRs only, so merged ones show with no filter or with mismatches.
-    let merged = filter == nil || mismatchesOnly ? visible(data.recentlyMerged) : []
-    let sections = WaitingOn.allCases.filter { filter == nil || mismatchesOnly || filter == .waitingOn($0) }
-
-    ForEach(data.warnings, id: \.self) { Banner(text: $0, tone: .warn) }
-
-    HStack(spacing: 8) {
-      ForEach(WaitingOn.allCases, id: \.self) { waitingOn in
-        SummaryCard(
-          count: activeOpen.filter { $0.waitingOn == waitingOn }.count,
-          label: waitingOn.title(scope), active: filter == .waitingOn(waitingOn)
-        ) { toggle(.waitingOn(waitingOn)) }
+  private func menu(for prs: [Pr]) -> some View {
+    if !prs.isEmpty {
+      Button(prs.count == 1 ? "Open on GitHub" : "Open \(prs.count) on GitHub") {
+        for pr in prs { NSWorkspace.shared.open(URL(string: pr.url)!) }
       }
-      SummaryCard(
-        count: (activeOpen + data.recentlyMerged).filter { !$0.mismatches.isEmpty }.count,
-        label: "Ticket mismatches", active: mismatchesOnly, tone: .warn
-      ) { toggle(.mismatches) }
-    }
-
-    if let filter {
-      HStack(spacing: 4) {
-        Text("Showing \(filter == .mismatches ? "ticket mismatches" : sectionTitle(filter).lowercased()) only ·")
-        Button("Show all") { self.filter = nil }.buttonStyle(.link)
+      if prs.count == 1, let pr = prs.first {
+        Button("Open Details in the Web Version") {
+          NSWorkspace.shared.open(URL(string: "http://localhost:5180/prs/\(pr.repo)/\(pr.number)")!)
+        }
+        if let ticket = pr.tickets.first {
+          Button("Open \(ticket.key) in Linear") { NSWorkspace.shared.open(URL(string: ticket.url)!) }
+        }
       }
-      .font(.caption).foregroundStyle(.secondary)
-    }
-
-    ForEach(sections, id: \.self) { waitingOn in
-      let prs = open.filter { $0.waitingOn == waitingOn }
-      if !prs.isEmpty {
-        PrSection(title: waitingOn.title(scope), prs: prs, all: data.open, viewer: data.viewer)
+      Button(prs.count == 1 ? "Copy Link" : "Copy Links") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(prs.map(\.url).joined(separator: "\n"), forType: .string)
+      }
+      if prs.count == 1, let pr = prs.first {
+        Divider()
+        let ref = pr.tickets.first.map { ticketRef($0.key) } ?? prRef(pr.repo, pr.number)
+        if store.pins.contains(where: { $0.ref == ref }) {
+          Button("Unpin") { store.unpin(ref) }
+        } else {
+          Button("Pin to Focus") {
+            store.pin(ref, title: pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title, url: pr.tickets.first?.url ?? pr.url)
+          }
+        }
+        if let parked = store.parked(for: pr) {
+          Button("Unpark") { store.unpark(parked.ref) }
+        }
       }
     }
-
-    if !open.contains(where: { sections.contains($0.waitingOn) }) {
-      Text(
-        mismatchesOnly ? "No open PRs with mismatches."
-          : filter.map { "Nothing in \(sectionTitle($0).lowercased())." } ?? "No open pull requests."
-      )
-      .foregroundStyle(.secondary)
-    }
-
-    if !parkedOpen.isEmpty && filter == nil {
-      DisclosureGroup {
-        PrList(prs: parkedOpen, all: data.open, viewer: data.viewer)
-      } label: {
-        SectionTitle(title: "Parked", count: parkedOpen.count).foregroundStyle(.secondary)
-      }
-    }
-
-    if !merged.isEmpty {
-      PrSection(title: "Merged in the last 7 days", prs: merged, all: data.recentlyMerged, viewer: data.viewer)
-    }
-  }
-
-  private func sectionTitle(_ filter: Filter) -> String {
-    switch filter {
-    case let .waitingOn(waitingOn): waitingOn.title(scope)
-    case .mismatches: "Ticket mismatches"
-    }
-  }
-
-  /// Clicking the active card clears the filter.
-  private func toggle(_ next: Filter) {
-    filter = filter == next ? nil : next
   }
 }
 
@@ -157,86 +261,42 @@ extension WaitingOn {
   }
 }
 
-private struct SummaryCard: View {
+private struct FilterButton: View {
   let count: Int
   let label: String
-  let active: Bool
-  var tone: Tone = .neutral
+  let isOn: Bool
+  var warn = false
   let action: () -> Void
 
   var body: some View {
-    Button(action: action) {
-      VStack(alignment: .leading, spacing: 2) {
+    let button = Button(action: action) {
+      HStack(spacing: 6) {
         Text("\(count)")
-          .font(.title2.weight(.semibold)).monospacedDigit()
-          .foregroundStyle(count == 0 ? AnyShapeStyle(.tertiary) : tone == .warn ? AnyShapeStyle(Tone.warn.color) : AnyShapeStyle(.primary))
-        Text(label).font(.caption).foregroundStyle(.secondary)
+          .monospacedDigit()
+          .fontWeight(.semibold)
+          .foregroundStyle(isOn ? AnyShapeStyle(.primary) : count == 0 ? AnyShapeStyle(.tertiary) : warn ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
+        Text(label).foregroundStyle(isOn ? .primary : .secondary)
       }
-      .frame(minWidth: 110, alignment: .leading)
-      .padding(.horizontal, 12).padding(.vertical, 8)
-      .background(active ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.background), in: .rect(cornerRadius: 8))
-      .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(active ? .secondary : .quaternary))
-      .contentShape(.rect)
+      .padding(.horizontal, 4)
     }
-    .buttonStyle(.plain)
-    .accessibilityAddTraits(active ? .isSelected : [])
+    .controlSize(.large)
+    .accessibilityAddTraits(isOn ? .isSelected : [])
+    if isOn {
+      button.buttonStyle(.glassProminent)
+    } else {
+      button.buttonStyle(.glass)
+    }
   }
 }
 
-private struct SectionTitle: View {
+private struct SectionHeader: View {
   let title: String
   let count: Int
 
   var body: some View {
     HStack(spacing: 6) {
-      Text(title).font(.headline)
-      Text("\(count)").foregroundStyle(.tertiary)
+      Text(title)
+      Text("\(count)").foregroundStyle(.tertiary).monospacedDigit()
     }
-  }
-}
-
-private struct PrSection: View {
-  let title: String
-  let prs: [Pr]
-  let all: [Pr]
-  let viewer: String
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      SectionTitle(title: title, count: prs.count)
-      PrList(prs: prs, all: all, viewer: viewer)
-    }
-  }
-}
-
-private struct PrList: View {
-  let prs: [Pr]
-  let all: [Pr]
-  let viewer: String
-
-  var body: some View {
-    VStack(spacing: 0) {
-      ForEach(Array(prs.enumerated()), id: \.element.id) { index, pr in
-        if index > 0 { Divider() }
-        PrRowView(pr: pr, viewer: viewer, stackParent: all.first { $0.number == pr.stackedOn && $0.repo == pr.repo })
-      }
-    }
-    .background(.background, in: .rect(cornerRadius: 8))
-    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))
-  }
-}
-
-struct Banner: View {
-  let text: String
-  let tone: Tone
-
-  var body: some View {
-    Text(text)
-      .font(.callout)
-      .foregroundStyle(tone.color)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, 12).padding(.vertical, 8)
-      .background(tone.color.opacity(0.1), in: .rect(cornerRadius: 8))
-      .textSelection(.enabled)
   }
 }
