@@ -229,10 +229,15 @@ enum Derive {
     return (PrStatus(label: "Needs reviewer", tone: .neutral), .reviewer)
   }
 
-  private static func mismatches(_ raw: GithubPr, tickets: [Ticket], ticketKeys: [String]) -> [Mismatch] {
+  /// A merged PR's ticket is behind when it's neither done nor in a state the team uses after merging.
+  static func lagging(_ ticket: Ticket, afterMerge: Set<String>) -> Bool {
+    !closedTicketTypes.contains(ticket.stateType) && !afterMerge.contains(ticket.state.lowercased())
+  }
+
+  private static func mismatches(_ raw: GithubPr, tickets: [Ticket], ticketKeys: [String], afterMerge: Set<String>) -> [Mismatch] {
     if ticketKeys.isEmpty { return [.noTicket] }
     if raw.mergedAt != nil {
-      return tickets.contains { !closedTicketTypes.contains($0.stateType) } ? [.prMergedTicketOpen] : []
+      return tickets.contains { lagging($0, afterMerge: afterMerge) } ? [.prMergedTicketOpen] : []
     }
     var mismatches: [Mismatch] = []
     if !tickets.isEmpty && tickets.allSatisfy({ closedTicketTypes.contains($0.stateType) }) { mismatches.append(.ticketClosedPrOpen) }
@@ -242,7 +247,8 @@ enum Derive {
 
   /// `ticketsByKey` is nil when Linear isn't configured: keys are then kept as they are instead of
   /// being filtered down to tickets that exist.
-  static func pr(_ raw: GithubPr, tickets ticketsByKey: [String: Ticket]?, review: ReviewContext? = nil) -> Pr {
+  /// `afterMerge` lists (lower-case) ticket states that are fine once the PR has merged.
+  static func pr(_ raw: GithubPr, tickets ticketsByKey: [String: Ticket]?, review: ReviewContext? = nil, afterMerge: Set<String> = ["merged"]) -> Pr {
     let extracted = ticketKeys(raw)
     let keys = ticketsByKey.map { found in extracted.filter { found[$0] != nil } } ?? extracted
     let tickets = keys.compactMap { ticketsByKey?[$0] }
@@ -268,7 +274,7 @@ enum Derive {
       mergedAt: raw.mergedAt, additions: raw.additions, deletions: raw.deletions, status: status, waitingOn: waitingOn,
       checks: checks, coderabbit: coderabbit, reviewDecision: raw.reviewDecision, approvals: approvals,
       changesRequestedBy: changesRequestedBy, reviewGate: gate, unresolvedThreads: unresolved, ticketKeys: keys,
-      tickets: tickets, mismatches: mismatches(raw, tickets: tickets, ticketKeys: keys), stackedOn: nil
+      tickets: tickets, mismatches: mismatches(raw, tickets: tickets, ticketKeys: keys, afterMerge: afterMerge), stackedOn: nil
     )
   }
 

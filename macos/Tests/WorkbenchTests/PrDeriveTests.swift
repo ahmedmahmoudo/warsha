@@ -99,6 +99,17 @@ struct DeriveTests {
     #expect(derived.mismatches == [.ticketNotStarted])
   }
 
+  @Test func mergedPrsAcceptTheTeamsAfterMergeStates() throws {
+    let ticket = { (state: String, type: String) in
+      Ticket(key: "MX-1", title: "T", url: "u", state: state, stateType: type, stateColor: "#999", assignee: nil, project: nil)
+    }
+    let merged = try pr(["mergedAt": "2026-10-10T00:00:00Z"])
+    #expect(Derive.pr(merged, tickets: ["MX-1": ticket("Merged", "started")]).mismatches.isEmpty)
+    #expect(Derive.pr(merged, tickets: ["MX-1": ticket("Done", "completed")]).mismatches.isEmpty)
+    #expect(Derive.pr(merged, tickets: ["MX-1": ticket("In Review", "started")]).mismatches == [.prMergedTicketOpen])
+    #expect(Derive.pr(merged, tickets: ["MX-1": ticket("Merged", "started")], afterMerge: []).mismatches == [.prMergedTicketOpen])
+  }
+
   @Test func stacksLinkToTheBranchTheyTarget() throws {
     let base = Derive.pr(try pr(["number": 1, "url": "u1", "headRefName": "a"]), tickets: nil)
     let top = Derive.pr(try pr(["number": 2, "url": "u2", "headRefName": "b", "baseRefName": "a"]), tickets: nil)

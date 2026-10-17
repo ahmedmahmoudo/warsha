@@ -20,6 +20,9 @@ final class AppSettings {
   /// Your home zone: where Today's and Activity's days start, and the Calendar's first zone.
   /// This Mac's zone unless changed in Settings.
   var timeZone: String { didSet { save(timeZone, "timeZone") } }
+  /// Comma-separated ticket states that are fine once a PR has merged (besides done and canceled),
+  /// for teams that move tickets to, say, "Merged" until they ship.
+  var afterMergeStates: String { didSet { save(afterMergeStates, "afterMergeStates") } }
   /// Light, dark, or whatever macOS is set to, like the web version's theme switch.
   var appearance: Appearance {
     didSet {
@@ -54,6 +57,7 @@ final class AppSettings {
     googleClientId = ""
     localRepos = ""
     timeZone = TimeZone.current.identifier
+    afterMergeStates = "Merged"
     appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
     if let file = DevHooks.envFile {
       persists = false
@@ -72,6 +76,7 @@ final class AppSettings {
     googleClientId = defaults.string(forKey: "googleClientId") ?? ""
     localRepos = defaults.string(forKey: "localRepos") ?? ""
     timeZone = defaults.string(forKey: "timeZone") ?? TimeZone.current.identifier
+    afterMergeStates = defaults.string(forKey: "afterMergeStates") ?? "Merged"
   }
 
   /// Sets every window's appearance; nil follows macOS, switching live when it changes.

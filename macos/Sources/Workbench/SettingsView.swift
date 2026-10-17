@@ -155,6 +155,12 @@ private struct GeneralSettings: View {
         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
       }
       Section {
+        TextField("Ticket states after merge", text: $settings.afterMergeStates, prompt: Text("Merged"))
+      } footer: {
+        Text("Ticket states that are fine once a PR has merged, besides done and canceled, separated by commas. A merged PR whose ticket is in any other state shows a ticket mismatch.")
+          .foregroundStyle(.secondary)
+      }
+      Section {
         TextField("Local repos", text: $settings.localRepos, prompt: Text("owner/repo=/path/to/clone"))
       } footer: {
         Text("Where repos are cloned, for opening a conflicted PR in Claude. Without it, Workbench looks in your home folder and the folders directly inside it.")

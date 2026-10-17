@@ -40,7 +40,9 @@ struct PrParityTests {
           ("status", pr.status.label, status["label"] as! String),
           ("waitingOn", "\(pr.waitingOn)", web["waitingOn"] as! String),
           ("tickets", pr.ticketKeys.joined(separator: ","), (web["ticketKeys"] as! [String]).joined(separator: ",")),
-          ("mismatches", pr.mismatches.map { $0.label }.joined(separator: ","), (web["mismatches"] as! [String]).map(Self.mismatchLabel).joined(separator: ",")),
+          // Merged PRs differ by design: the app accepts a "Merged" ticket state after merging.
+          ("mismatches", list == "open" ? pr.mismatches.map { $0.label }.joined(separator: ",") : "-",
+           list == "open" ? (web["mismatches"] as! [String]).map(Self.mismatchLabel).joined(separator: ",") : "-"),
           ("checks", "\(pr.checks.state)", (web["checks"] as! [String: Any])["state"] as! String),
           ("codeOwners", pr.reviewGate.map { $0.codeOwners.map { $0.map(\.id).joined(separator: "|") }.joined(separator: ",") } ?? "-",
            gate.map { ($0["codeOwners"] as! [[[String: Any]]]).map { $0.map { $0["id"] as! String }.joined(separator: "|") }.joined(separator: ",") } ?? "-"),

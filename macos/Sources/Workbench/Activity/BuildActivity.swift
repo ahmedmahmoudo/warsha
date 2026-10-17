@@ -7,7 +7,6 @@ actor ActivityService {
 
   /// GitHub keeps events for 90 days at most, however few there are.
   private static let eventsMaxAge: TimeInterval = 90 * 86_400
-  private static let closedTicketTypes: Set = ["completed", "canceled"]
   /// Linked PRs are looked for this far back, so a ticket started weeks ago still finds its PR.
   private static let linkedPrLookbackDays = 60.0
   private static let stateSinceChunk = 25
@@ -131,7 +130,7 @@ actor ActivityService {
     let shipped = TodayRules.stableSorted(merged.map { raw -> ShippedPr in
       let pr = prs[Self.prKey(raw.repository.nameWithOwner, raw.number)]!
       let prTickets = pr.ticketKeys.compactMap { tickets[$0] }
-      return ShippedPr(pr: pr, tickets: prTickets, ticketLagging: prTickets.contains { !Self.closedTicketTypes.contains($0.stateType) })
+      return ShippedPr(pr: pr, tickets: prTickets, ticketLagging: prTickets.contains { Derive.lagging($0, afterMerge: config.afterMerge) })
     }) { ($0.pr.mergedAt ?? "") > ($1.pr.mergedAt ?? "") }
 
     let reviewsGiven = TodayRules.stableSorted(reviewed.compactMap { raw -> ReviewGiven? in

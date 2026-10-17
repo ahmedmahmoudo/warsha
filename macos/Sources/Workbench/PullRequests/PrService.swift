@@ -12,15 +12,19 @@ struct PrConfig: Sendable, Hashable {
   let githubTeam: [String]
   /// Where repos are cloned on this Mac, keyed by lower-case "owner/repo".
   let localRepos: [String: String]
+  /// Lower-case ticket states that are fine once a PR has merged, besides done and canceled.
+  let afterMerge: Set<String>
 
   nonisolated init(
-    githubToken: String, linearApiKey: String, githubRepos: [String], githubTeam: [String], localRepos: [String: String] = [:]
+    githubToken: String, linearApiKey: String, githubRepos: [String], githubTeam: [String], localRepos: [String: String] = [:],
+    afterMerge: Set<String> = ["merged"]
   ) {
     self.githubToken = githubToken
     self.linearApiKey = linearApiKey
     self.githubRepos = githubRepos
     self.githubTeam = githubTeam
     self.localRepos = localRepos
+    self.afterMerge = afterMerge
   }
 
   @MainActor
@@ -33,7 +37,7 @@ struct PrConfig: Sendable, Hashable {
     self.init(
       githubToken: settings.githubToken, linearApiKey: settings.linearApiKey,
       githubRepos: AppSettings.list(settings.githubRepos), githubTeam: AppSettings.list(settings.githubTeam),
-      localRepos: localRepos
+      localRepos: localRepos, afterMerge: Set(AppSettings.list(settings.afterMergeStates).map { $0.lowercased() })
     )
   }
 }
@@ -97,9 +101,9 @@ actor PrService {
     return PrsResponse(
       scope: scope,
       viewer: viewer,
-      open: Derive.linkStacks(open.prs.map { Derive.pr($0, tickets: tickets, review: reviews[$0.url]) })
+      open: Derive.linkStacks(open.prs.map { Derive.pr($0, tickets: tickets, review: reviews[$0.url], afterMerge: config.afterMerge) })
         .sorted { $0.updatedAt > $1.updatedAt },
-      recentlyMerged: merged.prs.map { Derive.pr($0, tickets: tickets) }
+      recentlyMerged: merged.prs.map { Derive.pr($0, tickets: tickets, afterMerge: config.afterMerge) }
         .sorted { ($0.mergedAt ?? "") > ($1.mergedAt ?? "") },
       fetchedAt: Date(),
       warnings: warnings
@@ -195,7 +199,7 @@ actor PrService {
     let tickets = try? await Linear.tickets(Derive.ticketKeys(raw.base), apiKey: config.linearApiKey)
     let reviews = raw.state == "OPEN" ? await reviewContexts([raw.base], token: config.githubToken) : [:]
     let actions = await actions(raw, key: key, config: config)
-    return BuildDetail.detail(raw, pr: Derive.pr(raw.base, tickets: tickets, review: reviews[raw.base.url]), actions: actions)
+    return BuildDetail.detail(raw, pr: Derive.pr(raw.base, tickets: tickets, review: reviews[raw.base.url], afterMerge: config.afterMerge), actions: actions)
   }
 
   /// What can be done about the branch: hand conflicts to Claude, or bring it up to date.
