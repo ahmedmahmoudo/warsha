@@ -8,8 +8,10 @@ DEVELOPMENT_TEAM =
 
 #include? "Local.xcconfig"
 
-// Workbench's own Google client, baked into the app so people can connect Google Calendar without
-// creating one. Kept out of git; build.sh writes it from .env.local the first time.
+// Workbench's own sign-in clients (Google, GitHub, Linear), baked into the app so people sign in
+// without making their own. They're in Secrets.xcconfig, kept out of git; see Secrets.example.xcconfig.
 WORKBENCH_GOOGLE_CLIENT_ID =
 WORKBENCH_GOOGLE_CLIENT_SECRET =
+WORKBENCH_GITHUB_CLIENT_ID =
+WORKBENCH_LINEAR_CLIENT_ID =
 #include? "Secrets.xcconfig"

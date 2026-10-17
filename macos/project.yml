@@ -10,6 +10,12 @@ options:
 configFiles:
   Debug: Signing.xcconfig
   Release: Signing.xcconfig
+# In Xcode's navigator, though not built: how the app is signed, and its built-in sign-in clients
+# (Secrets.xcconfig, git-ignored; build.sh makes it from Secrets.example.xcconfig when missing).
+fileGroups:
+  - Signing.xcconfig
+  - Secrets.xcconfig
+  - Secrets.example.xcconfig
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -33,6 +39,8 @@ targets:
         NSHighResolutionCapable: true
         WorkbenchGoogleClientId: $(WORKBENCH_GOOGLE_CLIENT_ID)
         WorkbenchGoogleClientSecret: $(WORKBENCH_GOOGLE_CLIENT_SECRET)
+        WorkbenchGitHubClientId: $(WORKBENCH_GITHUB_CLIENT_ID)
+        WorkbenchLinearClientId: $(WORKBENCH_LINEAR_CLIENT_ID)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.workbench.app

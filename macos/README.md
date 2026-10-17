@@ -87,9 +87,13 @@ token is all it needs, with Linear and Google Calendar when they like. Everythin
 go in their Keychain and data in their own `~/Library/Application Support/Workbench`. The home time
 zone and the date formats come from their Mac.
 
-**Google Calendar.** `build.sh` bakes Workbench's own Google client into the app from git-ignored
-`Secrets.xcconfig` (written from `.env.local`'s `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` the
-first time), so nobody makes their own; Settings → Accounts still takes one. For people outside
+**Built-in sign-in clients.** The Google, GitHub and Linear clients are build settings in
+git-ignored `macos/Secrets.xcconfig` (in Xcode's navigator; `Secrets.example.xcconfig` lists the
+keys, and `build.sh` copies it when the file is missing). The build bakes them into the app, so
+nobody makes their own; Settings → Accounts still takes someone's own. `.env.local` is only for
+the web version, the parity tests and `-WorkbenchEnvFile`.
+
+**Google Calendar.** For people outside
 your Google account to sign in, the client's OAuth consent screen has to be published:
 `calendar.readonly` is a sensitive scope, so until Google verifies the app they see an "unverified
 app" warning and it's capped at 100 users. An Internal app (Google Workspace) skips both but only

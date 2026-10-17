@@ -22,19 +22,13 @@ if [ ! -f "$LOCAL" ] && security find-identity -v -p codesigning | grep -q "Appl
 fi
 [ -f "$LOCAL" ] || echo "note: no Apple Development certificate, so this build is signed to run locally only" >&2
 
-# Workbench's built-in Google client: Secrets.xcconfig (git-ignored), written from .env.local's
-# GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET the first time.
+# Workbench's built-in sign-in clients live in Secrets.xcconfig (git-ignored). Start it from the
+# example when it's missing; the project lists it, so it has to exist.
 SECRETS="$MACOS/Secrets.xcconfig"
-ENV_FILE="$MACOS/../.env.local"
-if [ ! -f "$SECRETS" ] && [ -f "$ENV_FILE" ]; then
-  ID="$(sed -n 's/^GOOGLE_CLIENT_ID=//p' "$ENV_FILE" | tr -d '"' | head -1)"
-  SECRET="$(sed -n 's/^GOOGLE_CLIENT_SECRET=//p' "$ENV_FILE" | tr -d '"' | head -1)"
-  if [ -n "$ID" ] && [ -n "$SECRET" ]; then
-    printf 'WORKBENCH_GOOGLE_CLIENT_ID = %s\nWORKBENCH_GOOGLE_CLIENT_SECRET = %s\n' "$ID" "$SECRET" >"$SECRETS"
-    echo "Built-in Google client written to macos/Secrets.xcconfig from .env.local"
-  fi
+if [ ! -f "$SECRETS" ]; then
+  cp "$MACOS/Secrets.example.xcconfig" "$SECRETS"
+  echo "note: made macos/Secrets.xcconfig from the example; fill in the sign-in clients there" >&2
 fi
-[ -f "$SECRETS" ] || echo "note: no built-in Google client (macos/Secrets.xcconfig), so users enter their own in Settings" >&2
 
 xcodegen generate --spec "$MACOS/project.yml" --quiet
 xcodebuild -project "$MACOS/Workbench.xcodeproj" -scheme Workbench -configuration Release \
