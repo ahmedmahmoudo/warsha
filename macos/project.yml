@@ -31,6 +31,8 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHighResolutionCapable: true
+        WorkbenchGoogleClientId: $(WORKBENCH_GOOGLE_CLIENT_ID)
+        WorkbenchGoogleClientSecret: $(WORKBENCH_GOOGLE_CLIENT_SECRET)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.workbench.app

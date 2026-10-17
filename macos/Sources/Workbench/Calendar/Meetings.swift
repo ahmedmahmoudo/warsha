@@ -146,9 +146,20 @@ final class CalendarModel {
 
   // MARK: Connection
 
+  /// Your own Google client when Settings has one, otherwise the one built into the app.
   private func client(_ settings: AppSettings) -> GoogleCalendar.Client? {
-    settings.googleClientId.isEmpty || settings.googleClientSecret.isEmpty
-      ? nil : GoogleCalendar.Client(id: settings.googleClientId, secret: settings.googleClientSecret)
+    if !settings.googleClientId.isEmpty, !settings.googleClientSecret.isEmpty {
+      return GoogleCalendar.Client(id: settings.googleClientId, secret: settings.googleClientSecret)
+    }
+    return Self.builtInClient
+  }
+
+  /// Workbench's own client, baked in at build time (macos/Secrets.xcconfig); nil in builds without one.
+  static var builtInClient: GoogleCalendar.Client? {
+    guard let id = Bundle.main.object(forInfoDictionaryKey: "WorkbenchGoogleClientId") as? String, !id.isEmpty,
+          let secret = Bundle.main.object(forInfoDictionaryKey: "WorkbenchGoogleClientSecret") as? String, !secret.isEmpty
+    else { return nil }
+    return GoogleCalendar.Client(id: id, secret: secret)
   }
 
   /// The refresh token, moved into the Keychain from an imported web database the first time.

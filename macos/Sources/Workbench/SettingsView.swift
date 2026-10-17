@@ -54,13 +54,22 @@ private struct AccountsSettings: View {
         }
       }
       Section {
-        TextField("Client ID", text: $settings.googleClientId)
-        SecureField("Client secret", text: $settings.googleClientSecret)
         GoogleConnection()
+        if CalendarModel.builtInClient == nil {
+          TextField("Client ID", text: $settings.googleClientId)
+          SecureField("Client secret", text: $settings.googleClientSecret)
+        } else {
+          DisclosureGroup("Use your own Google client") {
+            TextField("Client ID", text: $settings.googleClientId)
+            SecureField("Client secret", text: $settings.googleClientSecret)
+          }
+        }
       } header: {
         Text("Google Calendar")
       } footer: {
-        Text("A Desktop app client from Google Cloud Console. Signing in opens Google in your browser and comes back here.")
+        Text(CalendarModel.builtInClient == nil
+          ? "A Desktop app client from Google Cloud Console. Signing in opens Google in your browser and comes back here."
+          : "Signing in opens Google in your browser and comes back here. Workbench only reads your calendar.")
           .foregroundStyle(.secondary)
       }
     }

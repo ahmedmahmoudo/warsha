@@ -10,3 +10,4 @@ macos/build
 macos/Workbench.xcodeproj
 macos/Generated
 macos/Local.xcconfig
+macos/Secrets.xcconfig
