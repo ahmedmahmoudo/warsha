@@ -35,9 +35,7 @@ struct PullRequestsView: View {
           for pr in chosen { NSWorkspace.shared.open(URL(string: pr.url)!) }
         }
       }
-      .safeAreaInset(edge: .top, spacing: 0) {
-        if let data { filterBar(data) }
-      }
+      .safeAreaInset(edge: .top, spacing: 0) { topBar(data) }
       .overlay { placeholder(data) }
       .searchable(text: $search, placement: .toolbar, prompt: "Title, number, ticket or author")
       .navigationTitle("Pull Requests")
@@ -156,22 +154,33 @@ struct PullRequestsView: View {
 
   // MARK: Filter bar
 
-  /// The web version's summary cards, as a row of glass filter buttons. Clicking the active one
-  /// clears the filter.
-  private func filterBar(_ data: PrsResponse) -> some View {
-    let active = data.open.filter { store.parked(for: $0) == nil }
-    let mismatches = (active + data.recentlyMerged).filter { !$0.mismatches.isEmpty }.count
+  /// Whose PRs (Mine, Reviewing, Team), then the web version's summary cards as a row of glass
+  /// filter buttons. Clicking the active filter clears it. The scope switch shows before anything
+  /// loads, so a scope that failed can be left.
+  private func topBar(_ data: PrsResponse?) -> some View {
+    let active = data?.open.filter { store.parked(for: $0) == nil } ?? []
+    let mismatches = (active + (data?.recentlyMerged ?? [])).filter { !$0.mismatches.isEmpty }.count
     return ScrollView(.horizontal, showsIndicators: false) {
       GlassEffectContainer(spacing: 6) {
         HStack(spacing: 6) {
-          ForEach(WaitingOn.allCases, id: \.self) { waitingOn in
-            FilterButton(
-              count: active.filter { $0.waitingOn == waitingOn }.count, label: waitingOn.title(scope),
-              isOn: filter == .waitingOn(waitingOn)
-            ) { toggle(.waitingOn(waitingOn)) }
+          Picker("Scope", selection: $scope) {
+            ForEach(PrScope.allCases) { Text($0.label).tag($0) }
           }
-          FilterButton(count: mismatches, label: "Ticket mismatches", isOn: filter == .mismatches, warn: true) {
-            toggle(.mismatches)
+          .pickerStyle(.segmented)
+          .labelsHidden()
+          .controlSize(.large)
+          .fixedSize()
+          .padding(.trailing, 6)
+          if data != nil {
+            ForEach(WaitingOn.allCases, id: \.self) { waitingOn in
+              FilterButton(
+                count: active.filter { $0.waitingOn == waitingOn }.count, label: waitingOn.title(scope),
+                isOn: filter == .waitingOn(waitingOn)
+              ) { toggle(.waitingOn(waitingOn)) }
+            }
+            FilterButton(count: mismatches, label: "Ticket mismatches", isOn: filter == .mismatches, warn: true) {
+              toggle(.mismatches)
+            }
           }
         }
         .padding(.horizontal, 16)
@@ -195,13 +204,6 @@ struct PullRequestsView: View {
 
   @ToolbarContentBuilder
   private var toolbar: some ToolbarContent {
-    ToolbarItem(placement: .principal) {
-      Picker("Scope", selection: $scope) {
-        ForEach(PrScope.allCases) { Text($0.label).tag($0) }
-      }
-      .pickerStyle(.segmented)
-      .fixedSize()
-    }
     ToolbarItem {
       Button("Refresh", systemImage: "arrow.clockwise") {
         Task { await model.load(scope, settings: settings) }

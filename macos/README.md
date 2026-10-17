@@ -33,14 +33,15 @@ open -n macos/build/Workbench.app --args -WorkbenchEnvFile "$PWD/.env.local" \
 ```
 
 The snapshot is drawn by the app itself, so it needs no screen-recording permission, but it can't
-draw Liquid Glass: the sidebar comes out blank.
+draw Liquid Glass: glass controls (the toolbar tabs' selection, the PR filter buttons) come out
+blank.
 
 ## Layout
 
 ```
 Sources/Workbench/
-  WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu
-  ContentView.swift     sidebar and pages; pages not ported yet link to the web version
+  WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu (⌘1–⌘4)
+  ContentView.swift     the pages as toolbar tabs, the Dock badge; pages not ported yet link to the web version
   Theme.swift           the web version's palette: background, text, borders and status tones
   DevHooks.swift        launch arguments for opening a page and saving a snapshot of the window
   SettingsView.swift    accounts, general preferences, data import

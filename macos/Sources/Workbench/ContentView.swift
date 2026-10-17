@@ -1,6 +1,8 @@
+import AppKit
 import SwiftUI
 
-/// The main window: a sidebar of pages and the selected one.
+/// The main window: the pages as tabs in the toolbar, like the web version's top bar, and the
+/// selected page below.
 struct ContentView: View {
   @Environment(Navigation.self) private var navigation
   @Environment(PullRequestsModel.self) private var pullRequests
@@ -9,39 +11,52 @@ struct ContentView: View {
 
   var body: some View {
     @Bindable var navigation = navigation
-    NavigationSplitView {
-      List(selection: Binding($navigation.page)) {
-        Section("Workbench") {
-          ForEach(Page.allCases) { page in
-            Label(page.title, systemImage: page.symbol)
-              .badge(page == .pullRequests ? pullRequests.needsYou(store: store) : 0)
+    page
+      .toolbar {
+        ToolbarItem(placement: .principal) {
+          Picker("Page", selection: $navigation.page) {
+            ForEach(Page.allCases) { page in
+              Text(page.title).tag(page)
+            }
           }
+          .pickerStyle(.segmented)
+          .labelsHidden()
+          .fixedSize()
         }
       }
-      .navigationSplitViewColumnWidth(min: 180, ideal: 210)
-    } detail: {
-      switch navigation.page {
-      case .today: TodayView()
-      case .pullRequests:
-        NavigationStack(path: $navigation.pullRequestPath) {
-          PullRequestsView()
-            .navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
+      .containerBackground(Palette.background, for: .window)
+      .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
+      .task {
+        settings.applyAppearance()
+        await DevHooks.apply(to: navigation)
+      }
+      // Your own PRs stay fresh for the Dock badge, whichever page is open.
+      .task {
+        while !Task.isCancelled {
+          await pullRequests.load(.mine, settings: settings, maxAge: .seconds(15))
+          try? await Task.sleep(for: PullRequestsModel.refreshInterval)
         }
-      case .activity, .calendar: NotPortedView(page: navigation.page)
       }
-    }
-    .containerBackground(Palette.background, for: .window)
-    .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
-    .task {
-      settings.applyAppearance()
-      await DevHooks.apply(to: navigation)
-    }
-    // Your own PRs stay fresh for the sidebar badge, whichever page is open.
-    .task {
-      while !Task.isCancelled {
-        await pullRequests.load(.mine, settings: settings, maxAge: .seconds(15))
-        try? await Task.sleep(for: PullRequestsModel.refreshInterval)
+      .onChange(of: pullRequests.needsYou(store: store), initial: true) { _, count in
+        NSApp.dockTile.badgeLabel = count > 0 ? String(count) : nil
       }
+  }
+
+  /// Each page has its own navigation stack, so the PR list keeps its back stack while you look
+  /// at another page.
+  @ViewBuilder
+  private var page: some View {
+    @Bindable var navigation = navigation
+    switch navigation.page {
+    case .today:
+      NavigationStack { TodayView() }
+    case .pullRequests:
+      NavigationStack(path: $navigation.pullRequestPath) {
+        PullRequestsView()
+          .navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
+      }
+    case .activity, .calendar:
+      NavigationStack { NotPortedView(page: navigation.page) }
     }
   }
 }
