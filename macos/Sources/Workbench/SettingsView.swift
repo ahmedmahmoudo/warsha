@@ -5,13 +5,19 @@ import SwiftUI
 struct SettingsView: View {
   var body: some View {
     TabView {
-      Tab("Accounts", systemImage: "person.crop.circle") { AccountsSettings() }
-      Tab("General", systemImage: "gearshape") { GeneralSettings() }
-      Tab("Data", systemImage: "externaldrive") { DataSettings() }
+      // The palette's text colours go on each form, not the window: the native tab bar can't draw them.
+      Tab("Accounts", systemImage: "person.crop.circle") { AccountsSettings().palettedText() }
+      Tab("General", systemImage: "gearshape") { GeneralSettings().palettedText() }
+      Tab("Data", systemImage: "externaldrive") { DataSettings().palettedText() }
     }
     .frame(width: 560)
     .scenePadding()
-    .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
+  }
+}
+
+private extension View {
+  func palettedText() -> some View {
+    foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
   }
 }
 

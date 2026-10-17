@@ -56,7 +56,7 @@ struct PrRowView: View {
         }
         Text("→ \(Text(pr.baseRef).font(.caption.monospaced()))")
         if let stackParent {
-          Link("stacked on #\(stackParent.number)", destination: URL(string: stackParent.url)!)
+          Link("stacked on #\(stackParent.number)", destination: URL(string: stackParent.url)!).clickable(underline: true)
         }
         HStack(spacing: 4) {
           Text("+\(pr.additions)").foregroundStyle(Tone.good.color)
@@ -109,7 +109,7 @@ private struct CheckLink: View {
 
   var body: some View {
     if let url = check.url.flatMap(URL.init(string:)) {
-      Link(check.name, destination: url).foregroundStyle(color)
+      Link(check.name, destination: url).foregroundStyle(color).clickable(underline: true)
     } else {
       Text(check.name).foregroundStyle(color)
     }
@@ -198,6 +198,7 @@ struct TicketChip: View {
       }
       .chipBorder()
     }
+    .clickable()
     .help([ticket.title, ticket.assignee, ticket.project].compactMap { $0 }.joined(separator: " · "))
   }
 }

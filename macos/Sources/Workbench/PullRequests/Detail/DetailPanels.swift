@@ -77,6 +77,7 @@ private struct ConflictAction: View {
             }
           }
           .buttonStyle(.borderedProminent)
+          .clickable()
         }
         CopyButton(text: conflicts.prompt, label: "Copy Prompt")
         if let command = conflicts.command { CopyButton(text: command, label: "Copy Command") }
@@ -123,6 +124,7 @@ private struct UpdateBranchAction: View {
           .buttonStyle(.bordered)
           .controlSize(.small)
           .disabled(!update.canUpdate || running)
+          .clickable()
           .confirmationDialog("Update \(pr.headRef) with \(update.base)?", isPresented: $confirming) {
             Button("Update Branch") { Task { await run() } }
           } message: {
@@ -172,6 +174,7 @@ private struct CopyButton: View {
         copied = false
       }
     }
+    .clickable()
   }
 }
 
@@ -274,7 +277,7 @@ struct ChecksPanel: View {
         count(checks, .pending, "running", .warn)
         if !model.isFinished {
           Button("Check Now", systemImage: "arrow.clockwise") { Task { await model.pollChecks(settings: settings) } }
-            .labelStyle(.iconOnly).buttonStyle(.borderless).disabled(model.checkingNow).help("Check now")
+            .labelStyle(.iconOnly).buttonStyle(.borderless).disabled(model.checkingNow).clickable().help("Check now")
         }
       }
     } content: {
@@ -299,7 +302,7 @@ struct ChecksPanel: View {
         if hidden > 0 { Button("Include \(hidden) Passed or Skipped") { includeAll = true } }
         if includeAll && !advisory.isEmpty { Button("Hide Passed and Skipped") { includeAll = false } }
       }
-      .buttonStyle(.link).font(.caption)
+      .buttonStyle(.link).font(.caption).clickable(underline: true)
     }
   }
 
@@ -340,7 +343,7 @@ private struct CheckRow: View {
     HStack(spacing: 6) {
       Image(systemName: symbol).foregroundStyle(color).font(.caption)
       if let url = check.url.flatMap(URL.init(string:)) {
-        Link(check.name, destination: url).foregroundStyle(.primary)
+        Link(check.name, destination: url).foregroundStyle(.primary).clickable(underline: true)
       } else {
         Text(check.name)
       }
@@ -406,7 +409,7 @@ struct ActivityPanel: View {
         Spacer()
         if botCount > 0 {
           Button("\(showBots ? "Hide" : "Show") \(botCount) bot event\(botCount == 1 ? "" : "s")") { showBots.toggle() }
-            .buttonStyle(.link).font(.caption)
+            .buttonStyle(.link).font(.caption).clickable(underline: true)
         }
       }
       .padding(.top, 6)
@@ -441,7 +444,7 @@ private struct ActivityRow: View {
           Text(item.actor?.name ?? "Someone").fontWeight(.medium)
           Text(item.title).foregroundStyle(.secondary)
           if let url = item.url.flatMap(URL.init(string:)) {
-            Link(relative(item.at), destination: url).font(.caption).foregroundStyle(.tertiary)
+            Link(relative(item.at), destination: url).font(.caption).foregroundStyle(.tertiary).clickable(underline: true)
           } else {
             Text(relative(item.at)).font(.caption).foregroundStyle(.tertiary)
           }
@@ -502,6 +505,7 @@ private struct ThreadCard: View {
       HStack(spacing: 6) {
         Link("\(thread.path)\(thread.line.map { ":\($0)" } ?? "")", destination: URL(string: thread.url)!)
           .font(.caption.monospaced()).foregroundStyle(Tone.info.color).lineLimit(1).truncationMode(.head)
+          .clickable(underline: true)
         if thread.isOutdated { Chip(text: "outdated", tone: .neutral) }
         if thread.isBot { Chip(text: "bot", tone: .neutral) }
       }
@@ -531,6 +535,7 @@ private struct ChangeRequestCard: View {
         Text(request.reviewer.name).fontWeight(.medium)
         Text("requested changes").foregroundStyle(Tone.bad.color)
         Link(relative(request.at), destination: URL(string: request.url)!).font(.caption).foregroundStyle(.tertiary)
+          .clickable(underline: true)
       }
       .font(.callout)
       if !request.body.isEmpty { Text(request.body).font(.caption).textSelection(.enabled) }
@@ -566,6 +571,7 @@ struct GalleryView: View {
           }
         }
         .buttonStyle(.plain)
+        .clickable()
       }
     }
     .sheet(item: Binding(get: { open.map { OpenImage(index: $0) } }, set: { open = $0?.index })) { current in

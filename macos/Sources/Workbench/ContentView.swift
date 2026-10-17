@@ -8,6 +8,7 @@ struct ContentView: View {
   @Environment(PullRequestsModel.self) private var pullRequests
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
+  @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     @Bindable var navigation = navigation
@@ -32,7 +33,7 @@ struct ContentView: View {
       .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
       .task {
         settings.applyAppearance()
-        await DevHooks.apply(to: navigation)
+        await DevHooks.apply(to: navigation, openSettings: openSettings)
       }
       // Your own PRs stay fresh for the Dock badge, whichever page is open.
       .task {

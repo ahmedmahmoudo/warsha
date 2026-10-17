@@ -199,6 +199,7 @@ struct Panel<Accessory: View, Content: View>: View {
           .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .clickable()
         .accessibilityHint(expanded ? "Collapses the section" : "Expands the section")
         Spacer(minLength: 8)
         accessory.font(.caption)

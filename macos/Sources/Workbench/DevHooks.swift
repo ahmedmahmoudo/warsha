@@ -8,7 +8,7 @@ import SwiftUI
 ///
 /// `-WorkbenchAppearance` overrides Settings → General → Appearance for this launch.
 /// `-WorkbenchEnvFile` reads settings from a file for this launch only, without the Keychain.
-/// `-WorkbenchOpen` opens a page ("prs", "today") or a PR's details. `-WorkbenchSnapshot` saves the
+/// `-WorkbenchOpen` opens a page ("prs", "today"), a PR's details, or "settings". `-WorkbenchSnapshot` saves the
 /// window as a PNG once it has loaded (`-WorkbenchSnapshotDelay`, seconds, default 15). The app draws
 /// its own window, so no screen-recording permission is needed.
 enum DevHooks {
@@ -17,14 +17,16 @@ enum DevHooks {
   static var envFile: String? { defaults.string(forKey: "WorkbenchEnvFile") }
 
   @MainActor
-  static func apply(to navigation: Navigation) async {
+  static func apply(to navigation: Navigation, openSettings: OpenSettingsAction) async {
     switch defaults.string(forKey: "WorkbenchAppearance") {
     case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
     case "light": NSApp.appearance = NSAppearance(named: .aqua)
     default: break
     }
     if let target = defaults.string(forKey: "WorkbenchOpen") {
-      if let page = Page.allCases.first(where: { $0.rawValue.lowercased().hasPrefix(target.lowercased()) }) {
+      if target == "settings" {
+        openSettings()
+      } else if let page = Page.allCases.first(where: { $0.rawValue.lowercased().hasPrefix(target.lowercased()) }) {
         navigation.page = page
       } else if let match = target.wholeMatch(of: /([\w.-]+\/[\w.-]+)#(\d+)/), let number = Int(match.2) {
         navigation.page = .pullRequests
@@ -39,7 +41,7 @@ enum DevHooks {
 
   @MainActor
   private static func snapshot(to path: String) {
-    guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil && $0.title != "" }),
+    guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil && $0.title != "" }),
           let view = window.contentView?.superview ?? window.contentView,
           let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
     else { return }
