@@ -7,3 +7,6 @@ data/
 macos/.build
 macos/build
 .DS_Store
+macos/Workbench.xcodeproj
+macos/Generated
+macos/Local.xcconfig

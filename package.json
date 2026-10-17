@@ -14,7 +14,8 @@
     "service:stop": "scripts/service.sh stop",
     "service:logs": "scripts/service.sh logs",
     "app:build": "macos/build.sh",
-    "app:install": "macos/build.sh install"
+    "app:install": "macos/build.sh install",
+    "app:xcode": "xcodegen generate --spec macos/project.yml && open macos/Workbench.xcodeproj"
   },
   "type": "module",
   "private": true,

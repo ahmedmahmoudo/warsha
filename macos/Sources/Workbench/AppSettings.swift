@@ -59,6 +59,10 @@ final class AppSettings {
       _ = try? importEnvFile(URL(fileURLWithPath: file))
       return
     }
+    if DevHooks.isHostingTests {
+      persists = false
+      return
+    }
     githubToken = Keychain.get("githubToken") ?? ""
     linearApiKey = Keychain.get("linearApiKey") ?? ""
     googleClientSecret = Keychain.get("googleClientSecret") ?? ""

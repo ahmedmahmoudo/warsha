@@ -16,6 +16,9 @@ enum DevHooks {
 
   static var envFile: String? { defaults.string(forKey: "WorkbenchEnvFile") }
 
+  /// The app is hosting Xcode's tests: it leaves the Keychain and your settings alone.
+  static var isHostingTests: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
+
   @MainActor
   static func apply(to navigation: Navigation, openSettings: OpenSettingsAction) async {
     switch defaults.string(forKey: "WorkbenchAppearance") {

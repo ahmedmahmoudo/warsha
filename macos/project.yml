@@ -1,0 +1,63 @@
+# XcodeGen spec for Workbench.xcodeproj, which is generated (and git-ignored): run
+# `xcodegen generate --spec macos/project.yml`, or `npm run app:build`, which does it first.
+# The same sources also build as a Swift package (Package.swift), for `swift test`.
+name: Workbench
+options:
+  bundleIdPrefix: com.workbench
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+targets:
+  Workbench:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Workbench
+      - path: Resources/Assets.xcassets
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: Workbench
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHighResolutionCapable: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.workbench.app
+        PRODUCT_NAME: Workbench
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+  WorkbenchTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/WorkbenchTests
+    dependencies:
+      - target: Workbench
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.workbench.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Workbench.app/Contents/MacOS/Workbench
+        BUNDLE_LOADER: $(TEST_HOST)
+schemes:
+  Workbench:
+    build:
+      targets:
+        Workbench: all
+        WorkbenchTests: [test]
+    test:
+      targets:
+        - WorkbenchTests

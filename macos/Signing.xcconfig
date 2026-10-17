@@ -1,0 +1,9 @@
+// How Workbench is signed. Without a certificate it's signed to run on this Mac only, like the
+// SwiftPM build, so the Keychain asks again after each rebuild. With your Apple Development
+// certificate (Xcode → Settings → Accounts), Local.xcconfig signs with it instead and the prompts
+// stop. build.sh writes Local.xcconfig from the certificate; it's git-ignored, since the team is yours.
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

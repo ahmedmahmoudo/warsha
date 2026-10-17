@@ -1,6 +1,6 @@
 # Resources
 
-`Assets.xcassets` is compiled into the app by `build.sh` (actool).
+`Assets.xcassets` holds the app icon (`AppIcon`, from `public/icon-512.png`) and the accent colour.
 
 **AccentColor** is the app's accent: selection, prominent buttons, the active filter, and the text of
 buttons and links. In light mode it's the web version's `--primary` (`#1c1c1a`). In dark mode macOS
@@ -11,7 +11,8 @@ so dark mode uses `#4f74d0`, a mid blue from the web's info family that reads ab
 If you choose an accent colour other than Multicolor in System Settings → Appearance, macOS uses
 yours instead, as it does for every app.
 
-`actool` needs Xcode's first-launch setup (`xcodebuild -runFirstLaunch`). Without it, `build.sh`
-skips the catalog with a warning, and the app still applies the same colour through SwiftUI's
-`.tint` (`Color.workbenchAccent` in `Theme.swift`). That covers buttons, toggles and links, but not
-list selection, which then uses the system accent.
+Xcode compiles the catalog (`ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` in `project.yml`).
+`build-swiftpm.sh` compiles it with `actool`, which needs Xcode's first-launch setup
+(`xcodebuild -runFirstLaunch`); without it, that build skips the catalog and the app still applies the
+same colour through SwiftUI's `.tint` (`Color.workbenchAccent` in `Theme.swift`), everywhere but list
+selection.
