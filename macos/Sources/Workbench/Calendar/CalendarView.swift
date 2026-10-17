@@ -87,7 +87,7 @@ struct CalendarView: View {
         Button("Later", systemImage: "chevron.right") { date = Self.step(span, current, 1) }
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().keyboardShortcut(.rightArrow, modifiers: .command)
         if current != today {
-          Button("Today") { date = nil }.controlSize(.small).clickable().keyboardShortcut("t", modifiers: .command)
+          Button("Today") { date = nil }.scaledControlSize(.small).clickable().keyboardShortcut("t", modifiers: .command)
         }
       }
       Spacer()

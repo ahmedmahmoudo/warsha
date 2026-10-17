@@ -93,7 +93,7 @@ private struct GoogleConnection: View {
           Text("Add the client ID and secret first").foregroundStyle(.secondary)
         case .disconnected:
           if calendar.signingIn {
-            ProgressView().controlSize(.small)
+            ProgressView().scaledControlSize(.small)
             Text("Finish signing in in your browser…").foregroundStyle(.secondary)
           }
           Button("Connect Google Calendar") {
@@ -133,7 +133,7 @@ private struct ConnectionCheck: View {
       case let .failure(error): Text(error.localizedDescription).foregroundStyle(Tone.bad.color)
       case nil: EmptyView()
       }
-      if checking { ProgressView().controlSize(.small) }
+      if checking { ProgressView().scaledControlSize(.small) }
       Button("Test") {
         checking = true
         Task {

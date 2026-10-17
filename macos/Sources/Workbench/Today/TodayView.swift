@@ -172,7 +172,7 @@ struct LoadingPanel: View {
 
   var body: some View {
     VStack(spacing: 10) {
-      ProgressView().controlSize(.regular).tint(Color.secondary)
+      ProgressView().scaledControlSize(.regular).tint(Color.secondary)
       Text(text).scaledFont(.callout).foregroundStyle(Color.secondary)
     }
     .frame(maxWidth: .infinity)
@@ -205,7 +205,7 @@ struct ActionButton: View {
     }
     .buttonStyle(.bordered)
     .tint(tone == .neutral ? nil : tone.color)
-    .controlSize(.small)
+    .scaledControlSize(.small)
     .clickable()
   }
 }
@@ -386,7 +386,7 @@ private struct NeedsYouRow: View {
         if let ping, let pr = item.pr {
           CopyLinkButton(url: pr.url) { store.ping(pr.url, ping) }
           Button(ping == .sent ? "Sent" : "Nudged", systemImage: "checkmark") { store.ping(pr.url, ping) }
-            .buttonStyle(.bordered).tint(item.tone.color).controlSize(.small).clickable()
+            .buttonStyle(.bordered).tint(item.tone.color).scaledControlSize(.small).clickable()
             .help(ping == .sent ? "Mark as sent to the team for review" : "Mark the reviewers as nudged")
         } else {
           ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
@@ -416,7 +416,7 @@ private struct CopyLinkButton: View {
       }
     }
     .buttonStyle(.bordered)
-    .controlSize(.small)
+    .scaledControlSize(.small)
     .clickable()
     .help("Copy the PR link")
   }
@@ -734,6 +734,7 @@ private struct TodosSection: View {
         Button("Add Todo", systemImage: "plus", action: add)
           .labelStyle(.iconOnly)
           .buttonStyle(.bordered)
+          .scaledControlSize(.regular)
           .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
           .clickable()
           .help("Add todo")
@@ -794,7 +795,7 @@ private struct DueDateButton: View {
           .keyboardShortcut(.defaultAction)
           .buttonStyle(.borderedProminent)
         }
-        .controlSize(.small)
+        .scaledControlSize(.small)
       }
       .padding(12)
     }

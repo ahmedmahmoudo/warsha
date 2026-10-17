@@ -70,7 +70,7 @@ struct ActivityView: View {
         Button("Later", systemImage: "chevron.right") { date = next }
           .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().disabled(!canGoForward).keyboardShortcut(.rightArrow, modifiers: .command)
         if !range.isCurrent {
-          Button("Today") { date = nil }.controlSize(.small).clickable().keyboardShortcut("t", modifiers: .command)
+          Button("Today") { date = nil }.scaledControlSize(.small).clickable().keyboardShortcut("t", modifiers: .command)
         }
       }
       Spacer()

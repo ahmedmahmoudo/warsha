@@ -78,12 +78,13 @@ private struct ConflictAction: View {
             }
           }
           .buttonStyle(.borderedProminent)
+          .scaledControlSize(.regular)
           .clickable()
         }
         CopyButton(text: conflicts.prompt, label: "Copy Prompt")
         if let command = conflicts.command { CopyButton(text: command, label: "Copy Command") }
       }
-      .controlSize(.small)
+      .scaledControlSize(.small)
       OutcomeLine(outcome: outcome)
       DisclosureGroup("Prompt", isExpanded: $showPrompt) {
         Text(conflicts.prompt)
@@ -124,7 +125,7 @@ private struct UpdateBranchAction: View {
       if updatedFrom != update.headOid {
         Button("Update with \(update.base)", systemImage: "arrow.clockwise") { confirming = true }
           .buttonStyle(.bordered)
-          .controlSize(.small)
+          .scaledControlSize(.small)
           .disabled(!update.canUpdate || running)
           .clickable()
           .confirmationDialog("Update \(pr.headRef) with \(update.base)?", isPresented: $confirming) {
@@ -133,7 +134,7 @@ private struct UpdateBranchAction: View {
             Text("This pushes a merge commit to the PR branch. CI runs again, and branches that dismiss stale reviews lose their approvals.")
           }
       }
-      if running { ProgressView().controlSize(.small) }
+      if running { ProgressView().scaledControlSize(.small) }
       OutcomeLine(outcome: outcome)
     }
   }
@@ -631,7 +632,7 @@ private struct GitHubImage: View {
           Label("Open on GitHub", systemImage: "photo.badge.exclamationmark").scaledFont(.caption)
         }
       } else {
-        ProgressView().controlSize(.small)
+        ProgressView().scaledControlSize(.small)
       }
     }
     .task(id: image.src) {

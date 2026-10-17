@@ -11,38 +11,48 @@ extension EnvironmentValues {
 }
 
 struct Typeface: Sendable {
+  /// The macOS text style it is, if any: at actual size it's drawn as that style, exactly as before.
+  var style: Font.TextStyle?
   var size: CGFloat
-  var weight: Font.Weight = .regular
+  /// nil keeps the style's own weight (headline is bold).
+  var weight: Font.Weight?
   var design: Font.Design = .default
 
-  private static func style(_ style: NSFont.TextStyle, _ weight: Font.Weight = .regular) -> Typeface {
-    Typeface(size: NSFont.preferredFont(forTextStyle: style).pointSize, weight: weight)
+  private static func style(_ style: Font.TextStyle, _ nsStyle: NSFont.TextStyle) -> Typeface {
+    Typeface(style: style, size: NSFont.preferredFont(forTextStyle: nsStyle).pointSize)
   }
 
-  static let largeTitle = style(.largeTitle)
-  static let title = style(.title1)
-  static let title2 = style(.title2)
-  static let title3 = style(.title3)
-  static let headline = style(.headline, .bold)
-  static let subheadline = style(.subheadline)
-  static let body = style(.body)
-  static let callout = style(.callout)
-  static let footnote = style(.footnote)
-  static let caption = style(.caption1)
-  static let caption2 = style(.caption2)
+  static let largeTitle = style(.largeTitle, .largeTitle)
+  static let title = style(.title, .title1)
+  static let title2 = style(.title2, .title2)
+  static let title3 = style(.title3, .title3)
+  static let headline = style(.headline, .headline)
+  static let subheadline = style(.subheadline, .subheadline)
+  static let body = style(.body, .body)
+  static let callout = style(.callout, .callout)
+  static let footnote = style(.footnote, .footnote)
+  static let caption = style(.caption, .caption1)
+  static let caption2 = style(.caption2, .caption2)
 
-  static func system(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Typeface {
+  static func system(size: CGFloat, weight: Font.Weight? = nil, design: Font.Design = .default) -> Typeface {
     Typeface(size: size, weight: weight, design: design)
   }
   static func system(_ style: Typeface, design: Font.Design) -> Typeface {
-    Typeface(size: style.size, weight: style.weight, design: design)
+    Typeface(style: style.style, size: style.size, weight: style.weight, design: design)
   }
 
-  func weight(_ weight: Font.Weight) -> Typeface { Typeface(size: size, weight: weight, design: design) }
+  func weight(_ weight: Font.Weight) -> Typeface { Typeface(style: style, size: size, weight: weight, design: design) }
   func bold() -> Typeface { weight(.bold) }
-  func monospaced() -> Typeface { Typeface(size: size, weight: weight, design: .monospaced) }
+  func monospaced() -> Typeface { Typeface(style: style, size: size, weight: weight, design: .monospaced) }
 
-  func font(_ scale: CGFloat) -> Font { .system(size: (size * scale).rounded(), weight: weight, design: design) }
+  func font(_ scale: CGFloat) -> Font {
+    if scale == 1, let style {
+      let font = Font.system(style, design: design)
+      return weight.map { font.weight($0) } ?? font
+    }
+    let defaultWeight: Font.Weight = style == .headline ? .bold : .regular
+    return .system(size: (size * scale).rounded(), weight: weight ?? defaultWeight, design: design)
+  }
 }
 
 private struct ScaledFont: ViewModifier {
@@ -50,6 +60,23 @@ private struct ScaledFont: ViewModifier {
   let typeface: Typeface
 
   func body(content: Content) -> some View { content.font(typeface.font(scale)) }
+}
+
+private struct ScaledControlSize: ViewModifier {
+  @Environment(\.textScale) private var scale
+  let size: ControlSize
+
+  func body(content: Content) -> some View { content.font(nil).controlSize(size.scaled(scale)) }
+}
+
+extension ControlSize {
+  /// One step per text size range: smaller below 90%, bigger from 120%, two bigger from 150%.
+  func scaled(_ scale: CGFloat) -> ControlSize {
+    let sizes: [ControlSize] = [.mini, .small, .regular, .large, .extraLarge]
+    let step = scale >= 1.5 ? 2 : scale >= 1.2 ? 1 : scale < 0.9 ? -1 : 0
+    let index = sizes.firstIndex(of: self) ?? 2
+    return sizes[min(max(index + step, 0), sizes.count - 1)]
+  }
 }
 
 private struct ScaledFrame: ViewModifier {
@@ -79,8 +106,12 @@ extension View {
   func textScale(_ scale: CGFloat) -> some View {
     environment(\.textScale, scale)
       .scaledFont(.body)
-      .controlSize(scale >= 1.25 ? .large : scale <= 0.85 ? .small : .regular)
+      .controlSize(ControlSize.regular.scaled(scale))
   }
+
+  /// A control's size, a step bigger or smaller with the text size. The control keeps its own
+  /// system font: a scaled font in a fixed-height bezel (bordered buttons) leaves it no padding.
+  func scaledControlSize(_ size: ControlSize) -> some View { modifier(ScaledControlSize(size: size)) }
 }
 
 /// The text sizes View → Zoom In and Zoom Out step through.

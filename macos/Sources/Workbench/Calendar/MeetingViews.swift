@@ -38,7 +38,7 @@ struct JoinButton: View {
     if let join = meeting.joinUrl.flatMap(URL.init(string:)), !(meeting.change?.isDeleted ?? false) {
       Link(destination: join) { Label("Join", systemImage: "video.fill") }
         .buttonStyle(.borderedProminent)
-        .controlSize(.small)
+        .scaledControlSize(.small)
         .clickable()
     }
   }
@@ -224,7 +224,7 @@ struct MeetingDetails: View {
             calendar.dismiss(meeting, store)
             dismiss()
           }
-          .controlSize(.small)
+          .scaledControlSize(.small)
         }
       }
     }

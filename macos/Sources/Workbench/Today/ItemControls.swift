@@ -180,7 +180,7 @@ struct NoteButton: View {
           .keyboardShortcut(.return, modifiers: .command)
           .buttonStyle(.borderedProminent)
         }
-        .controlSize(.small)
+        .scaledControlSize(.small)
       }
       .padding(12)
     }
@@ -243,7 +243,7 @@ struct ParkButton: View {
             .scaledFont(.caption)
           }
         }
-        HStack { Spacer(); Button("Done") { open = false }.buttonStyle(.borderedProminent) }
+        HStack { Spacer(); Button("Done") { open = false }.buttonStyle(.borderedProminent).scaledControlSize(.regular) }
       } else {
         Text("Parked items leave Today, the attention counts and the stuck flags until you unpark them.")
           .scaledFont(.caption).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
@@ -300,7 +300,7 @@ struct ParkButton: View {
           .buttonStyle(.borderedProminent)
           .disabled(saving)
         }
-        .controlSize(.small)
+        .scaledControlSize(.small)
       }
     }
     .padding(12)
