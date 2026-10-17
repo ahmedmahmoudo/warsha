@@ -224,6 +224,7 @@ struct MeetingDetails: View {
             dismiss()
           }
           .scaledControlSize(.small)
+          .clickable()
         }
       }
     }

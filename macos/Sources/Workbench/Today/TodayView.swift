@@ -44,6 +44,7 @@ struct TodayView: View {
     .toolbar {
       ToolbarItem {
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load(settings: settings) } }
+          .clickable()
           .keyboardShortcut("r")
           .disabled(model.loading)
       }
@@ -589,13 +590,16 @@ private struct NewForYouSection: View {
   }
 }
 
+/// One thing from your Linear inbox. The whole row opens it in Linear: hovering highlights the
+/// row and underlines the ticket, since a link inside a sentence gives no pointer on its own.
 private struct InboxRow: View {
   let item: InboxItem
+  @State private var hovering = false
 
   /// The ticket key or project name, linked to where it happened.
   private var subject: AttributedString {
     var text = AttributedString(item.ticket?.key ?? item.project?.name ?? "")
-    text.link = item.url.flatMap(URL.init(string:))
+    if hovering { text.underlineStyle = .single }
     return text
   }
 
@@ -619,7 +623,18 @@ private struct InboxRow: View {
       Text(relative(item.at)).scaledFont(.caption).foregroundStyle(.tertiary)
     }
     .scaledFont(.callout)
+    .padding(.horizontal, 6).padding(.vertical, 4)
+    .background(hovering ? Palette.fill : .clear, in: .rect(cornerRadius: 6))
+    .padding(.horizontal, -6).padding(.vertical, -4)
+    .contentShape(.rect)
+    .onTapGesture { if let url { NSWorkspace.shared.open(url) } }
+    .onHover { hovering = $0 && url != nil }
+    .pointerStyle(url != nil ? .link : nil)
+    .animation(.easeOut(duration: 0.12), value: hovering)
+    .help(url != nil ? "Open in Linear" : "")
   }
+
+  private var url: URL? { item.url.flatMap(URL.init(string:)) }
 
   private var symbol: String {
     switch item.kind {
@@ -783,6 +798,7 @@ private struct DueDateButton: View {
               due = nil
               open = false
             }
+            .clickable()
           }
           Spacer()
           Button("Set") {
@@ -791,6 +807,7 @@ private struct DueDateButton: View {
           }
           .keyboardShortcut(.defaultAction)
           .buttonStyle(.borderedProminent)
+          .clickable()
         }
         .scaledControlSize(.small)
       }

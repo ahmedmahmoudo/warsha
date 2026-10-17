@@ -208,6 +208,7 @@ struct PullRequestsView: View {
       Button("Refresh", systemImage: "arrow.clockwise") {
         Task { await model.load(scope, settings: settings) }
       }
+      .clickable()
       .keyboardShortcut("r")
       .disabled(model.loading.contains(scope))
     }
@@ -296,6 +297,7 @@ private struct FilterButton: View {
       .contentShape(.capsule)
     }
     .buttonStyle(.plain)
+    .pointerStyle(.link)
     .glassEffect(isOn ? .regular.tint(.workbenchAccent).interactive() : .regular.tint(Palette.card.opacity(0.7)).interactive(), in: .capsule)
     .accessibilityAddTraits(isOn ? .isSelected : [])
   }

@@ -24,9 +24,10 @@ struct GetStartedSheet: View {
       HStack {
         Text("All of this is in Settings → Accounts later.").scaledFont(.caption).foregroundStyle(.secondary)
         Spacer()
-        Button("Later") { dismiss() }
+        Button("Later") { dismiss() }.clickable()
         Button("Done") { dismiss() }
           .keyboardShortcut(.defaultAction)
+          .clickable()
           .disabled(!settings.hasGitHub)
       }
       .padding(20)

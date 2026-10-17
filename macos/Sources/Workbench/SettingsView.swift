@@ -104,10 +104,12 @@ private struct GoogleConnection: View {
               do { try await calendar.signIn(settings, store) } catch { self.error = error.localizedDescription }
             }
           }
+          .clickable()
           .disabled(calendar.signingIn)
         case .connected:
           Text(calendar.email(store) ?? "Connected").foregroundStyle(Tone.good.color)
           Button("Disconnect") { confirmingDisconnect = true }
+            .clickable()
             .confirmationDialog("Disconnect Google Calendar?", isPresented: $confirmingDisconnect) {
               Button("Disconnect", role: .destructive) { Task { await calendar.disconnect(store) } }
             } message: {
@@ -144,6 +146,7 @@ struct ConnectionCheck: View {
         }
       }
       .disabled(checking)
+      .clickable()
     }
     .lineLimit(2)
     .scaledFont(.callout)
@@ -216,7 +219,7 @@ private struct OpenAtLogin: View {
     if status == .requiresApproval {
       HStack {
         Text("macOS needs you to allow it in Login Items.").foregroundStyle(Tone.warn.color)
-        Button("Open Login Items") { LoginItem.openSystemSettings() }
+        Button("Open Login Items") { LoginItem.openSystemSettings() }.clickable()
       }
       .scaledFont(.callout)
     }
@@ -238,6 +241,7 @@ private struct ShortcutSetting: View {
           .onChange(of: enabled) { _, on in GlobalShortcut.isEnabled = on }
         Button(recording ? "Press a shortcut…" : combo.display) { recording ? stop() : record() }
           .monospaced()
+          .clickable()
           .disabled(!enabled)
           .help("Click, then press the keys you want, with ⌘, ⌥ or ⌃. Esc cancels.")
         if combo != .standard {
@@ -245,7 +249,7 @@ private struct ShortcutSetting: View {
             combo = .standard
             GlobalShortcut.combo = .standard
           }
-          .labelStyle(.iconOnly).buttonStyle(.borderless).help("Back to ⌃⌥⌘W")
+          .labelStyle(.iconOnly).buttonStyle(.borderless).clickable().help("Back to ⌃⌥⌘W")
         }
       }
     }
@@ -315,7 +319,7 @@ private struct DataSettings: View {
     Form {
       Section {
         LabeledContent("Database") {
-          Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([store.path]) }
+          Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([store.path]) }.clickable()
         }
         Text(store.path.path).scaledFont(.caption).foregroundStyle(.secondary).textSelection(.enabled)
       } footer: {
@@ -323,10 +327,10 @@ private struct DataSettings: View {
       }
       Section("From the web version") {
         LabeledContent("Settings and credentials") {
-          Button("Import .env.local…") { importEnv() }
+          Button("Import .env.local…") { importEnv() }.clickable()
         }
         LabeledContent("Pins, notes, todos and parked items") {
-          Button("Import workbench.sqlite…") { importDatabase() }
+          Button("Import workbench.sqlite…") { importDatabase() }.clickable()
         }
       }
       if let message { Text(message).foregroundStyle(.secondary) }

@@ -172,12 +172,14 @@ struct NoteButton: View {
               store.setNote(ref, body: "")
               open = false
             }
+            .clickable()
           }
           Button("Save") {
             store.setNote(ref, body: draft)
             open = false
           }
           .keyboardShortcut(.return, modifiers: .command)
+          .clickable()
           .buttonStyle(.borderedProminent)
         }
         .scaledControlSize(.small)
@@ -243,7 +245,7 @@ struct ParkButton: View {
             .scaledFont(.caption)
           }
         }
-        HStack { Spacer(); Button("Done") { open = false }.buttonStyle(.borderedProminent).scaledControlSize(.regular) }
+        HStack { Spacer(); Button("Done") { open = false }.buttonStyle(.borderedProminent).scaledControlSize(.regular).clickable() }
       } else {
         Text("Parked items leave Today, the attention counts and the stuck flags until you unpark them.")
           .scaledFont(.caption).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
@@ -293,11 +295,13 @@ struct ParkButton: View {
               store.unpark(ref)
               open = false
             }
+            .clickable()
           }
           Button(saving ? (postTo.isEmpty ? "Saving…" : "Posting…") : postTo.isEmpty ? (parked == nil ? "Park" : "Update") : "\(parked == nil ? "Park" : "Update") & Post") {
             Task { await save(postTo: postTo) }
           }
           .buttonStyle(.borderedProminent)
+          .clickable()
           .disabled(saving)
         }
         .scaledControlSize(.small)

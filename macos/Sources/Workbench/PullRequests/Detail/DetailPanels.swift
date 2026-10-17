@@ -467,6 +467,7 @@ private struct ActivityRow: View {
               .padding(.horizontal, 10).padding(.vertical, 6)
               .background(Palette.fill, in: .rect(cornerRadius: 6))
               .onTapGesture { expanded.toggle() }
+              .pointerStyle(.link)
               .help(expanded ? "Show less" : "Show more")
           }
         }
@@ -598,13 +599,13 @@ private struct ImageViewer: View {
       GitHubImage(image: image, fit: true).frame(minWidth: 640, minHeight: 420)
       HStack {
         Button("Previous", systemImage: "chevron.left") { index -= 1 }
-          .disabled(index == 0).keyboardShortcut(.leftArrow, modifiers: [])
+          .disabled(index == 0).keyboardShortcut(.leftArrow, modifiers: []).clickable()
         Text("\(image.caption) · \(index + 1) of \(images.count)").foregroundStyle(.secondary)
         Button("Next", systemImage: "chevron.right") { index += 1 }
-          .disabled(index == images.count - 1).keyboardShortcut(.rightArrow, modifiers: [])
+          .disabled(index == images.count - 1).keyboardShortcut(.rightArrow, modifiers: []).clickable()
         Spacer()
-        Link("Open Original", destination: URL(string: image.original)!)
-        Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+        Link("Open Original", destination: URL(string: image.original)!).clickable(underline: true)
+        Button("Done") { dismiss() }.keyboardShortcut(.defaultAction).clickable()
       }
     }
     .padding(16)
@@ -630,6 +631,7 @@ private struct GitHubImage: View {
         Link(destination: URL(string: image.original)!) {
           Label("Open on GitHub", systemImage: "photo.badge.exclamationmark").scaledFont(.caption)
         }
+        .clickable(underline: true)
       } else {
         ProgressView().scaledControlSize(.small)
       }

@@ -59,10 +59,12 @@ struct PrDetailView: View {
     ToolbarItemGroup {
       if let pr = model.detail?.pr {
         Link(destination: URL(string: pr.url)!) { Label("Open on GitHub", systemImage: "arrow.up.right.square") }
+          .clickable()
       }
       Button("Refresh", systemImage: "arrow.clockwise") {
         Task { await model.load(settings: settings) }
       }
+      .clickable()
       .keyboardShortcut("r")
       .disabled(model.loading)
     }

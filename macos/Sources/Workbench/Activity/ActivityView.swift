@@ -42,6 +42,7 @@ struct ActivityView: View {
       ToolbarItemGroup {
         if let data = model.data { CopySummaryButton(data: data) }
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load(range, settings: settings) } }
+          .clickable()
           .keyboardShortcut("r")
           .disabled(model.loading)
       }
@@ -168,6 +169,7 @@ private struct CopySummaryButton: View {
         copied = false
       }
     }
+    .clickable()
     .help("Copy a paste-ready summary of this range")
   }
 }

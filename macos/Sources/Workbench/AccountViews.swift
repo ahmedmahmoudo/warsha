@@ -18,7 +18,7 @@ struct GitHubAccount: View {
         HStack(spacing: 8) {
           if signIns.githubBusy {
             ProgressView().scaledControlSize(.small)
-            Button("Cancel") { signIns.cancelGitHub() }
+            Button("Cancel") { signIns.cancelGitHub() }.clickable()
           } else {
             Button("Sign in with GitHub") { signIns.signInToGitHub(settings) }
               .buttonStyle(.pill(.neutral, prominent: true))
@@ -40,6 +40,7 @@ struct GitHubAccount: View {
           Button("Use gh CLI token") {
             Task { if let token = await AppSettings.ghToken() { settings.githubToken = token } }
           }
+          .clickable()
           Spacer()
           ConnectionCheck { try await "Signed in as \(GitHub.viewer(token: settings.githubToken))" }
             .id(settings.githubToken)
@@ -107,6 +108,7 @@ private struct SignedIn: View {
       HStack(spacing: 8) {
         Text(account).foregroundStyle(Tone.good.color)
         Button("Sign Out") { confirming = true }
+          .clickable()
           .confirmationDialog("Sign out of \(account)?", isPresented: $confirming) {
             Button("Sign Out", role: .destructive, action: signOut)
           } message: {

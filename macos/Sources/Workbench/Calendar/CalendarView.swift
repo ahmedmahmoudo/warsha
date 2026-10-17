@@ -58,6 +58,7 @@ struct CalendarView: View {
     .toolbar {
       ToolbarItem {
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await load(force: true) } }
+          .clickable()
           .keyboardShortcut("r")
           .disabled(loading)
           .help("Check Google for changes now")
