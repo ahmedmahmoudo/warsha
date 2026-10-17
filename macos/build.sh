@@ -28,8 +28,9 @@ xcodebuild -project "$MACOS/Workbench.xcodeproj" -scheme Workbench -configuratio
 
 rm -rf "$APP"
 cp -R "$MACOS/build/DerivedData/Build/Products/Release/Workbench.app" "$APP"
-SIGNER="$(codesign -dv --verbose=2 "$APP" 2>&1 | awk -F= '/^Authority/ { print $2; exit }')"
-echo "Built $APP, signed ${SIGNER:+by $SIGNER}${SIGNER:-to run locally}"
+# awk reads to the end: stopping early would break codesign's pipe and, with pipefail, the script.
+SIGNER="$(codesign -dv --verbose=2 "$APP" 2>&1 | awk -F= '/^Authority/ && !found { print $2; found = 1 }')"
+if [ -n "$SIGNER" ]; then echo "Built $APP, signed by $SIGNER"; else echo "Built $APP, signed to run locally"; fi
 
 if [ "${1:-}" = "install" ]; then
   osascript -e 'quit app id "com.workbench.app"' 2>/dev/null || true
