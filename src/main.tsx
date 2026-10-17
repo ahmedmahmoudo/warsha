@@ -6,7 +6,13 @@ import { router } from './router'
 import { ThemeProvider } from './theme/ThemeProvider'
 import './styles.css'
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: true, retry: 1 } } })
+/**
+ * Opening a page or coming back to the window refetches in the background: what's on screen stays
+ * while the new answer loads, so a PR fixed elsewhere updates without the page blanking.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchOnWindowFocus: 'always', refetchOnMount: 'always', retry: 1 } },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

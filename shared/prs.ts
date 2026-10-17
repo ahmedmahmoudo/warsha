@@ -31,6 +31,27 @@ export type CodeRabbitSummary = {
   unresolvedThreads: number
 }
 
+/** A GitHub user or team, ready to render. `id` is a login, or "org/slug" for a team. */
+export type Person = {
+  kind: 'user' | 'team'
+  id: string
+  name: string
+  avatarUrl: string | null
+  url: string
+}
+
+/** What review still stands between an open PR and merging, per the base branch's rules. */
+export type ReviewGate = {
+  /** Code-owner groups still missing an approval; one approval from anyone in a group clears it. */
+  codeOwners: Person[][]
+  /** Approvals still needed from anyone, beyond the code owners. */
+  approvalsNeeded: number
+  /** Requested reviewers whose approval isn't required to merge. */
+  optional: Person[]
+  /** False when not every changed file could be read, so `codeOwners` may be missing some. */
+  complete: boolean
+}
+
 /** Who the PR is waiting on right now. */
 export type WaitingOn = 'you' | 'reviewer' | 'ci' | 'merge' | 'draft'
 
@@ -46,6 +67,7 @@ export type Pr = {
   url: string
   repo: string
   author: string
+  authorAvatarUrl: string | null
   isDraft: boolean
   headRef: string
   baseRef: string
@@ -60,9 +82,10 @@ export type Pr = {
   checks: CheckSummary
   coderabbit: CodeRabbitSummary
   reviewDecision: string | null
-  approvals: string[]
-  changesRequestedBy: string[]
-  pendingReviewers: string[]
+  approvals: Person[]
+  changesRequestedBy: Person[]
+  /** Null for merged PRs. */
+  reviewGate: ReviewGate | null
   unresolvedThreads: number
   ticketKeys: string[]
   tickets: Ticket[]

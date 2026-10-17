@@ -1,8 +1,6 @@
 import { Link, Outlet } from '@tanstack/react-router'
 import { Settings } from 'lucide-react'
 
-const UPCOMING = ['Slack', 'Activity']
-
 export function AppShell() {
   return (
     <div className="min-h-screen">
@@ -11,6 +9,14 @@ export function AppShell() {
           <span className="text-sm font-semibold tracking-tight">Workbench</span>
           <nav className="flex items-center gap-1 text-sm">
             <Link
+              to="/"
+              className="rounded-md px-2.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              activeProps={{ className: 'bg-muted text-foreground!' }}
+              activeOptions={{ exact: true }}
+            >
+              Today
+            </Link>
+            <Link
               to="/prs"
               search={{ scope: 'mine' }}
               className="rounded-md px-2.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -18,11 +24,14 @@ export function AppShell() {
             >
               Pull requests
             </Link>
-            {UPCOMING.map((label) => (
-              <span key={label} className="cursor-default rounded-md px-2.5 py-1 text-faint" title="Coming soon">
-                {label}
-              </span>
-            ))}
+            <Link
+              to="/activity"
+              search={{}}
+              className="rounded-md px-2.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              activeProps={{ className: 'bg-muted text-foreground!' }}
+            >
+              Activity
+            </Link>
           </nav>
           <Link
             to="/settings"

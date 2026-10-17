@@ -10,6 +10,6 @@ export default defineConfig({
   server: {
     port: WEB_PORT,
     strictPort: true,
-    proxy: { '/api': `http://localhost:${API_PORT}` },
+    proxy: { '/api': `http://127.0.0.1:${API_PORT}` },
   },
 })

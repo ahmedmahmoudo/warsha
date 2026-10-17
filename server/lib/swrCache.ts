@@ -21,11 +21,24 @@ export function createSwrCache<K, V>({ load, staleAfterMs }: { load: (key: K) =>
   }
 
   return {
-    async get(key: K, { force = false } = {}): Promise<V> {
+    /**
+     * `maxAgeMs` is how old an answer the caller will take: past it, wait for a fresh one (and fall
+     * back to the old one if the refresh fails). Pages ask this when you open them, so what you
+     * just changed elsewhere shows straight away.
+     */
+    async get(key: K, { force = false, maxAgeMs }: { force?: boolean; maxAgeMs?: number } = {}): Promise<V> {
       const entry = entries.get(key)
       if (!entry || force) return refresh(key)
-      if (Date.now() - entry.at > staleAfterMs)
-        refresh(key).catch((error: unknown) => console.error('Background refresh failed', error))
+      const age = Date.now() - entry.at
+      if (maxAgeMs !== undefined && age > maxAgeMs) {
+        try {
+          return await refresh(key)
+        } catch (error) {
+          console.error('Refresh failed; serving the older copy', error)
+          return entry.value
+        }
+      }
+      if (age > staleAfterMs) refresh(key).catch((error: unknown) => console.error('Background refresh failed', error))
       return entry.value
     },
     warm(key: K) {
