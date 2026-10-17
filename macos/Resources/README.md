@@ -1,6 +1,6 @@
 # Resources
 
-`Assets.xcassets` holds the app icon (`AppIcon`, from `public/icon-512.png`) and the accent colour.
+`Assets.xcassets` holds the app icon (`AppIcon`, from `design/icon-v2/c-board-macos.svg`: the board on the macOS icon grid) and the accent colour.
 
 **AccentColor** is the app's accent: selection, prominent buttons, the active filter, and the text of
 buttons and links. In light mode it's the web version's `--primary` (`#1c1c1a`). In dark mode macOS
