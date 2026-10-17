@@ -122,7 +122,13 @@ private struct MenuBarLabel: View {
   var body: some View {
     let count = AppState.shared.needsYou.count
     HStack(spacing: 3) {
-      Image(systemName: "wrench.and.screwdriver")
+      // The board icon is a template image in Assets.xcassets; a SwiftPM build without actool has no
+      // catalog, so it falls back to a symbol.
+      if let icon = NSImage(named: "MenuBarIcon") {
+        Image(nsImage: icon)
+      } else {
+        Image(systemName: "wrench.and.screwdriver")
+      }
       if count > 0 { Text("\(count)").monospacedDigit() }
     }
     .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
