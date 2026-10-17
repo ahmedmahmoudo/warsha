@@ -1,53 +1,63 @@
 # Workbench for macOS
 
-A native shell around Workbench: a Swift (AppKit) app with a Dock icon, a menu bar item and a window
-that shows the existing pages in a `WKWebView`. It starts the Node server from this checkout on
-http://127.0.0.1:5181 when it opens, restarts it if it dies, and stops it on quit, so it replaces the
-launchd service (`npm run service:stop` once you've switched).
+Workbench as a native macOS app: SwiftUI pages, a menu bar item, credentials in the Keychain and
+Workbench's own data in SQLite. No Node server and no web view. It's being ported from the web
+version one page at a time. Until a page is ported, it links to the web version (the launchd
+service on http://localhost:5180), so keep that running for now.
 
 ```bash
 npm run app:build      # build macos/build/Workbench.app
 npm run app:install    # build, copy to ~/Applications and open it
+swift test --package-path macos
 ```
 
-The app runs the server from this checkout, so it uses this folder's `.env.local`, `data/` and
-`node_modules`. After changing server code, use **Restart Server** in the menu bar item. After
-changing pages, `npm run build` and reload (⌘R). Rebuild the app only when `macos/` changes.
-The server's output goes to `~/Library/Logs/Workbench/server.log`.
+**First run:** open Settings (⌘,) → Data and import the web version's `.env.local`, which fills in
+the tokens and preferences, and `data/workbench.sqlite`, which brings over pins, notes, todos and
+parked items. Then test each account under Accounts.
 
-- Links to GitHub, Linear and other sites open in your default browser. Google sign-in does too,
-  since Google refuses embedded browsers. Finish it there, then come back.
-- Closing the window keeps the app in the menu bar. Click the Dock icon or ⌘0 to bring it back.
-- Right-click → Inspect Element opens Web Inspector for the pages.
+The app is ad-hoc signed, so macOS treats every rebuild as a new app, and the Keychain asks again
+before letting it read its credentials. Choose Always Allow. A stable signing identity (phase 2)
+ends that.
 
 ## Layout
 
 ```
 Sources/Workbench/
-  AppDelegate.swift     launch, main menu, menu bar item
-  MainWindow.swift      the WKWebView window, external links, alert/confirm
-  ServerProcess.swift   starts, watches, restarts and stops the Node server
-  Config.swift          port, checkout and node paths (written into Info.plist by build.sh)
+  WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu
+  ContentView.swift     sidebar and pages; pages not ported yet link to the web version
+  SettingsView.swift    accounts, general preferences, data import
+  AppSettings.swift     what .env.local held: secrets in the Keychain, the rest in UserDefaults
+  Keychain.swift        generic passwords under the service com.workbench.app
+  Store.swift           pins, notes, todos, parked, settings: server/store/repo.ts in Swift
+  Database.swift        a small wrapper over the system SQLite library
+  Integrations.swift    GitHub and Linear GraphQL clients
+Tests/WorkbenchTests/   swift-testing tests
 build.sh                swift build, then bundle, icon and sign Workbench.app
 ```
 
-## Roadmap
+The database is `~/Library/Application Support/Workbench/workbench.sqlite`. It uses the same schema
+and migrations as `server/store/db.ts`, so a file from either version opens in the other.
 
-Each phase ships on its own. Native features live in Swift and save through the server's API, so
-the pages can show them next to PRs, tickets and meetings.
+## Port plan
 
-1. **Shell** (done): window, menu bar item, server supervision, build script.
-2. **Everyday app**: open at login (`SMAppService`), a Dock and menu bar badge with the "Needs you
-   now" count, native notifications for new Needs-you items and upcoming meetings (with actions
-   like Open PR), and a global shortcut to bring Workbench forward.
-3. **Signing**: a stable self-signed identity in place of ad-hoc signing, so macOS keeps
-   Accessibility permission across rebuilds. Needed before phase 4's window titles.
-4. **App usage tracking**: frontmost app from `NSWorkspace` activation events (no permission),
-   idle, lock and sleep from the system, and window titles via Accessibility (opt-in). Stored as
-   sessions in Workbench's SQLite file through a new `/api/usage` route.
-5. **Breaks**: timers based on continuous active time, a notification first and an optional
-   full-screen break across all displays, skipped during calendar meetings.
-6. **Stats**: a Focus page with focus blocks, context switches and meeting load, joined with the
-   PRs and tickets you touched each day.
-7. **Later, if it pays off**: move the menu bar popover and the breaks screen to SwiftUI, and
-   eventually drop Node once nothing needs it.
+Each step ships on its own. Each port keeps the web version's rules (the README at the repo root
+describes them), and the TypeScript is the reference.
+
+1. **Foundation** (done): SwiftUI app, Settings with Keychain credentials and import from the web
+   version, the SQLite store, GitHub and Linear clients with connection checks.
+2. **Signing**: a stable self-signed identity, so the Keychain and later Accessibility permissions
+   survive rebuilds.
+3. **Pull Requests list**: `integrations/github.ts` search and details, `prs/derive.ts` status and
+   merge blockers, `prs/codeowners.ts`, Linear ticket lookup, a cache that serves stale data and
+   refreshes in the background (`lib/swrCache.ts`), and the Mine / Reviewing / Team views.
+4. **PR details**: description (rendered Markdown), timeline, threads, checks with live polling,
+   Merge status, and the Actions (Update branch, open in Claude).
+5. **Today**: Needs you now, Up next, New for you, Deadlines, Waiting on others, plus pins, notes,
+   todos and parking (with posting the reason to Linear and GitHub).
+6. **Google Calendar**: sign-in via `ASWebAuthenticationSession`, meeting sync with reschedule and
+   deletion tracking, the Calendar page, and meetings on Today.
+7. **Activity**: Day, Week and Month views, stuck-ticket flags, Copy summary.
+8. **Native extras**: Dock and menu bar badge, notifications, open at login, global shortcut.
+9. **Productivity**: app usage tracking (`NSWorkspace`, idle and lock), breaks, focus stats.
+
+When step 7 is done, the web version (`server/`, `src/`, `shared/`) and the launchd service can go.

@@ -1,20 +1,15 @@
 #!/bin/bash
-# Builds Workbench.app: the native shell in macos/ around this checkout's server and pages.
+# Builds Workbench.app, the native macOS app in macos/.
 #
 #   npm run app:build     build macos/build/Workbench.app
 #   npm run app:install   build, copy to ~/Applications and open it
-#
-# The app runs the server from this checkout (it reads .env.local and data/ here), so rebuild the
-# pages with `npm run build` (app:build does) and restart the server from its menu after changes.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MACOS="$ROOT/macos"
 APP="$MACOS/build/Workbench.app"
-NODE="$(command -v node)"
-VERSION="$(node -p "require('$ROOT/package.json').version")"
+VERSION=0.1.0
 
-(cd "$ROOT" && npm run build)
 swift build -c release --package-path "$MACOS"
 
 rm -rf "$APP"
@@ -44,19 +39,16 @@ cat >"$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$(date +%Y%m%d%H%M)</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
-  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key><true/>
-  <key>NSAppTransportSecurity</key>
-  <dict><key>NSAllowsLocalNetworking</key><true/></dict>
-  <key>WorkbenchRoot</key><string>$ROOT</string>
-  <key>WorkbenchNode</key><string>$NODE</string>
 </dict>
 </plist>
 PLIST
 
-# Ad-hoc signed for now. Before adding anything that needs Accessibility, switch to a stable
-# self-signed identity so macOS keeps the permission across rebuilds.
+# Ad-hoc signed for now, so each rebuild is a new app to macOS: the Keychain asks again before
+# letting it read its credentials. A stable self-signed identity fixes that (and keeps
+# Accessibility permission across rebuilds, which app tracking will need).
 codesign --force --sign - "$APP"
 echo "Built $APP"
 
