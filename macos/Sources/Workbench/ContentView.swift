@@ -26,6 +26,8 @@ struct ContentView: View {
       case .activity, .calendar: NotPortedView(page: navigation.page)
       }
     }
+    .containerBackground(Palette.background, for: .window)
+    .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
     // Your own PRs stay fresh for the sidebar badge, whichever page is open.
     .task {
       while !Task.isCancelled {
@@ -48,6 +50,8 @@ struct NotPortedView: View {
     } actions: {
       Link("Open the web version", destination: URL(string: "http://localhost:5180\(page.webPath)")!)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .workbenchPage()
     .navigationTitle(page.title)
   }
 }
@@ -113,6 +117,7 @@ struct TodayView: View {
       }
     }
     .listStyle(.inset)
+    .workbenchPage()
     .navigationTitle("Today")
     .navigationSubtitle("PRs, tickets and meetings arrive as those pages are ported")
   }

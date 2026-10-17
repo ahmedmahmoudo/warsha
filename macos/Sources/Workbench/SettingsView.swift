@@ -11,6 +11,7 @@ struct SettingsView: View {
     }
     .frame(width: 560)
     .scenePadding()
+    .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
   }
 }
 

@@ -1,9 +1,43 @@
 import AppKit
 import SwiftUI
 
-/// The web version's status tones (src/styles.css: `:root` for light, `.dark` for midnight), as
-/// colours that follow the window's appearance. Backgrounds stay the system's, so Liquid Glass
-/// works.
+/// The web version's palette (src/styles.css: `:root` for light, `.dark` for midnight). The window
+/// background is the web's, so the Liquid Glass sidebar and toolbar take on its tint; text uses
+/// its foreground, muted and faint as the primary, secondary and tertiary styles.
+enum Palette {
+  static let background = Color.dynamic(light: 0xF7F7F5, dark: 0x0E1420)
+  static let border = Color.dynamic(light: 0xE4E4DF, dark: 0x253045)
+  /// `--muted` as a fill: neutral chips and placeholders.
+  static let fill = Color.dynamic(light: 0xF1F1EE, dark: 0x1D2738)
+
+  static let foreground = PaletteText(light: 0x1C1C1A, dark: 0xE4E9F1, onAccent: 1)
+  static let muted = PaletteText(light: 0x6B6B66, dark: 0x9AA7BB, onAccent: 0.85)
+  static let faint = PaletteText(light: 0x9A9A94, dark: 0x66738A, onAccent: 0.65)
+}
+
+/// A text colour from the palette that turns white on a selected row, as the system's own styles
+/// do; otherwise light mode's near-black text would vanish on the near-black accent.
+struct PaletteText: ShapeStyle {
+  let light: UInt32
+  let dark: UInt32
+  let onAccent: Double
+
+  func resolve(in environment: EnvironmentValues) -> Color.Resolved {
+    if environment.backgroundProminence == .increased { return Color.white.opacity(onAccent).resolve(in: environment) }
+    return Color(nsColor: NSColor(rgb: environment.colorScheme == .dark ? dark : light)).resolve(in: environment)
+  }
+}
+
+extension View {
+  /// The web's page: its background behind a list or form, and its text colours.
+  func workbenchPage() -> some View {
+    scrollContentBackground(.hidden)
+      .background(Palette.background)
+      .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
+  }
+}
+
+/// The web version's status tones, following the window's appearance.
 extension Tone {
   var color: Color {
     switch self {
@@ -22,7 +56,7 @@ extension Tone {
     case .bad: .dynamic(light: 0xFDE8E6, dark: 0x3A1D26)
     case .warn: .dynamic(light: 0xFDF1DC, dark: 0x33291A)
     case .info: .dynamic(light: 0xE6ECFC, dark: 0x1A2846)
-    case .neutral: Color(nsColor: .quaternarySystemFill)
+    case .neutral: Palette.fill
     }
   }
 }

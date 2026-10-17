@@ -226,7 +226,7 @@ struct AvatarView: View {
       image.resizable().scaledToFill()
     } placeholder: {
       Image(systemName: team ? "person.2.fill" : "person.fill").resizable().scaledToFit().padding(size * 0.2).foregroundStyle(.secondary)
-        .background(.quaternary)
+        .background(Palette.fill)
     }
     .frame(width: size, height: size)
     .clipShape(team ? AnyShape(.rect(cornerRadius: size * 0.2)) : AnyShape(.circle))
@@ -237,7 +237,7 @@ struct AvatarView: View {
 extension View {
   func chipBorder() -> some View {
     padding(.horizontal, 7).padding(.vertical, 2)
-      .overlay(Capsule().strokeBorder(.quaternary))
+      .overlay(Capsule().strokeBorder(Palette.border))
   }
 }
 

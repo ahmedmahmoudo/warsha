@@ -22,6 +22,7 @@ struct PullRequestsView: View {
     let data = model.responses[scope]
     list(data)
       .listStyle(.inset)
+      .workbenchPage()
       .contextMenu(forSelectionType: Pr.ID.self) { ids in
         menu(for: prs(ids, in: data))
       } primaryAction: { ids in
@@ -92,6 +93,7 @@ struct PullRequestsView: View {
   private func rows(_ prs: [Pr], all: [Pr], viewer: String) -> some View {
     ForEach(prs) { pr in
       PrRowView(pr: pr, viewer: viewer, stackParent: all.first { $0.number == pr.stackedOn && $0.repo == pr.repo })
+        .listRowSeparatorTint(Palette.border)
     }
   }
 

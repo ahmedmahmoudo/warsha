@@ -17,9 +17,11 @@ WORKBENCH_PARITY=1 swift test --package-path macos --filter PrParity   # vs the 
 the tokens and preferences, and `data/workbench.sqlite`, which brings over pins, notes, todos and
 parked items. Then test each account under Accounts.
 
-The app is ad-hoc signed, so macOS treats every rebuild as a new app, and the Keychain asks again
-before letting it read its credentials. Choose Always Allow. A stable signing identity (phase 2)
-ends that.
+Secrets live in one login-keychain item named "Workbench" (a JSON object), so macOS asks once per
+build rather than once per secret, and new secrets go in the same item. Older builds kept one item per
+secret; the first launch moves them over and deletes them, which can ask once for each of those.
+The app is ad-hoc signed, so macOS treats every rebuild as a new app and asks again. Choose Always
+Allow. A stable signing identity (step 2) ends that.
 
 ## Layout
 
@@ -27,9 +29,10 @@ ends that.
 Sources/Workbench/
   WorkbenchApp.swift    scenes (window, Settings, menu bar item), pages, Go menu
   ContentView.swift     sidebar and pages; pages not ported yet link to the web version
+  Theme.swift           the web version's palette: background, text, borders and status tones
   SettingsView.swift    accounts, general preferences, data import
   AppSettings.swift     what .env.local held: secrets in the Keychain, the rest in UserDefaults
-  Keychain.swift        generic passwords under the service com.workbench.app
+  Keychain.swift        every secret in one generic password (service com.workbench.app)
   Store.swift           pins, notes, todos, parked, settings: server/store/repo.ts in Swift
   Database.swift        a small wrapper over the system SQLite library
   Integrations.swift    GitHub and Linear GraphQL clients, Linear ticket lookup
