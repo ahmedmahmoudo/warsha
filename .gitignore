@@ -4,3 +4,6 @@ dist
 .env.local
 *.sqlite
 data/
+macos/.build
+macos/build
+.DS_Store

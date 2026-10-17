@@ -11,6 +11,24 @@ npm install
 npm run dev                  # web on http://localhost:5179, API on :8787
 ```
 
+To keep it running without a terminal, install it as a macOS background service (a launchd agent
+that starts at login and restarts if it crashes). It serves the built app and the API together on
+http://localhost:5180, only on this machine, so it can run alongside `npm run dev`:
+
+```bash
+npm run service:install      # build, install and start
+npm run service:restart      # rebuild and restart after code changes
+npm run service:stop         # stop and remove
+npm run service:logs         # follow ~/Library/Logs/workbench.log
+```
+
+Or run it as a Mac app with a Dock icon and menu bar item, which starts and stops the server itself
+(on http://localhost:5181). See [macos/README.md](macos/README.md):
+
+```bash
+npm run app:install          # build Workbench.app, copy to ~/Applications and open it
+```
+
 ## Layout
 
 ```
@@ -25,6 +43,7 @@ server/
   prs/                  the Pull Requests list and details pages: routes, CODEOWNERS matching,
                         pure derivation of status, merge blockers and activity (detail.ts)
 shared/                 types the server and the UI both read
+macos/                  the native macOS app (Swift): window, menu bar item, runs the server
 src/                    Vite + React, TanStack Router (code-based routes) and Query
   components/ui/        shadcn components (`npx shadcn@latest add <name>`)
   theme/                light / midnight dark / system; System follows the OS live

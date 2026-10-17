@@ -2,9 +2,9 @@ import './env'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
-import { API_PORT } from '../shared/ports'
 import { activityRoute } from './activity/route'
 import { calendarRoute } from './calendar/route'
+import { env } from './env'
 import { syncMeetings } from './calendar/sync'
 import { googleRoute } from './google/route'
 import { imagesRoute } from './images/route'
@@ -42,8 +42,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Locally the API can open Terminal and act with your token, so it only listens on this machine.
-const hostname = process.env.NODE_ENV === 'production' ? undefined : '127.0.0.1'
-serve({ fetch: app.fetch, port: API_PORT, hostname }, ({ port }) => {
+const hostname = env.local ? '127.0.0.1' : undefined
+serve({ fetch: app.fetch, port: env.port, hostname }, ({ port }) => {
   console.log(`API on http://localhost:${port}`)
   // Catch up on what changed in your calendar while Workbench was closed.
   void syncMeetings()

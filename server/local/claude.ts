@@ -14,7 +14,7 @@ import { env } from '../env'
 const run = promisify(execFile)
 
 /** Running a local program from a web request only makes sense on your own machine. */
-export const canRunLocally = process.env.NODE_ENV !== 'production'
+export const canRunLocally = env.local
 
 async function git(cwd: string, ...args: string[]): Promise<string> {
   const { stdout } = await run('git', ['-C', cwd, ...args], { timeout: 10_000 })

@@ -8,7 +8,13 @@
     "dev:web": "vite",
     "build": "vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "service:install": "scripts/service.sh install",
+    "service:restart": "scripts/service.sh restart",
+    "service:stop": "scripts/service.sh stop",
+    "service:logs": "scripts/service.sh logs",
+    "app:build": "macos/build.sh",
+    "app:install": "macos/build.sh install"
   },
   "type": "module",
   "private": true,

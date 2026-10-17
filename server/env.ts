@@ -1,3 +1,5 @@
+import { API_PORT } from '../shared/ports'
+
 try {
   process.loadEnvFile('.env.local')
 } catch {
@@ -21,7 +23,13 @@ function repoPaths(value: string | undefined): Map<string, string> {
   )
 }
 
+const production = process.env.NODE_ENV === 'production'
+
 export const env = {
+  /** Running on your own machine: listen on 127.0.0.1 only, and allow local actions like opening Claude. */
+  local: !production || process.env.WORKBENCH_LOCAL === '1',
+  /** The port this server listens on; in production it serves the pages too. */
+  port: Number(process.env.PORT) || API_PORT,
   githubToken: process.env.GITHUB_TOKEN || null,
   githubRepos: list(process.env.GITHUB_REPOS),
   githubTeam: list(process.env.GITHUB_TEAM),

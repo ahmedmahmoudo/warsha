@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import type { GoogleStatus } from '../../shared/google'
-import { API_PORT, WEB_PORT } from '../../shared/ports'
+import { WEB_PORT } from '../../shared/ports'
 import { syncMeetings } from '../calendar/sync'
+import { env } from '../env'
 import { IntegrationNotConfigured } from '../integrations/errors'
 import {
   authorizationUrl,
@@ -19,7 +20,7 @@ const UPCOMING = 5
  * Where Google sends the browser back: the page you're using, not this server, since in development
  * Vite serves the pages and proxies /api here. A Desktop client allows any localhost port.
  */
-const REDIRECT_URI = `http://localhost:${process.env.NODE_ENV === 'production' ? API_PORT : WEB_PORT}/api/google/callback`
+const REDIRECT_URI = `http://localhost:${process.env.NODE_ENV === 'production' ? env.port : WEB_PORT}/api/google/callback`
 
 /** Back to Settings, with how the sign-in went in the query string. */
 const backToSettings = (result: string) => `/settings?${new URLSearchParams({ google: result })}`
