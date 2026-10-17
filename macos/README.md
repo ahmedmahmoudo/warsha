@@ -9,6 +9,7 @@ service on http://localhost:5180), so keep that running for now.
 npm run app:build      # build macos/build/Workbench.app
 npm run app:install    # build, copy to ~/Applications and open it
 swift test --package-path macos
+WORKBENCH_PARITY=1 swift test --package-path macos --filter PrParity   # vs the web version on :5180
 ```
 
 **First run:** open Settings (⌘,) → Data and import the web version's `.env.local`, which fills in
@@ -30,8 +31,10 @@ Sources/Workbench/
   Keychain.swift        generic passwords under the service com.workbench.app
   Store.swift           pins, notes, todos, parked, settings: server/store/repo.ts in Swift
   Database.swift        a small wrapper over the system SQLite library
-  Integrations.swift    GitHub and Linear GraphQL clients
-Tests/WorkbenchTests/   swift-testing tests
+  Integrations.swift    GitHub and Linear GraphQL clients, Linear ticket lookup
+  PullRequests/         the Pull Requests page: GitHub queries (GitHubPrs), status rules (Derive),
+                        CODEOWNERS, the loader with its caches (PrService), and the views
+Tests/WorkbenchTests/   swift-testing tests; PrParityTests compares with the running web version
 build.sh                swift build, then bundle, icon and sign Workbench.app
 ```
 
@@ -47,9 +50,11 @@ describes them), and the TypeScript is the reference.
    version, the SQLite store, GitHub and Linear clients with connection checks.
 2. **Signing**: a stable self-signed identity, so the Keychain and later Accessibility permissions
    survive rebuilds.
-3. **Pull Requests list**: `integrations/github.ts` search and details, `prs/derive.ts` status and
-   merge blockers, `prs/codeowners.ts`, Linear ticket lookup, a cache that serves stale data and
-   refreshes in the background (`lib/swrCache.ts`), and the Mine / Reviewing / Team views.
+3. **Pull Requests list** (done): GitHub search and details, status and merge blockers, CODEOWNERS,
+   Linear tickets, the token check, Mine / Reviewing / Team, the waiting-on cards, and parked PRs.
+   The page reloads every 30 seconds while it's open. Pin and unpin are in each row's context menu;
+   parking with a reason comes with Today. A PR's title opens it on GitHub until the details page
+   is ported.
 4. **PR details**: description (rendered Markdown), timeline, threads, checks with live polling,
    Merge status, and the Actions (Update branch, open in Claude).
 5. **Today**: Needs you now, Up next, New for you, Deadlines, Waiting on others, plus pins, notes,

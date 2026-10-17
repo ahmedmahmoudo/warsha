@@ -288,7 +288,7 @@ final class Store {
   /// Timestamps as the web version writes them (JavaScript's toISOString), so both sort together.
   /// Milliseconds are written from a whole number: the formatter's own fractions truncate the
   /// double, turning .123 into .122.
-  static func timestamp(_ date: Date) -> String {
+  nonisolated static func timestamp(_ date: Date) -> String {
     let milliseconds = Int64((date.timeIntervalSince1970 * 1000).rounded())
     let seconds = Date(timeIntervalSince1970: TimeInterval(milliseconds / 1000)).formatted(.iso8601)
     return seconds.dropLast() + String(format: ".%03dZ", milliseconds % 1000)

@@ -14,7 +14,8 @@ struct ContentView: View {
     } detail: {
       switch navigation.page {
       case .today: TodayView()
-      case .pullRequests, .activity, .calendar: NotPortedView(page: navigation.page)
+      case .pullRequests: PullRequestsView()
+      case .activity, .calendar: NotPortedView(page: navigation.page)
       }
     }
   }

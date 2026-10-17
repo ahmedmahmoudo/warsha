@@ -33,7 +33,7 @@ final class AppSettings {
     timeZone = defaults.string(forKey: "timeZone") ?? "Australia/Sydney"
   }
 
-  static func list(_ value: String) -> [String] {
+  nonisolated static func list(_ value: String) -> [String] {
     value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
   }
 

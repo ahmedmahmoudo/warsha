@@ -11,11 +11,53 @@ struct IntegrationError: LocalizedError {
   init(_ message: String) { errorDescription = message }
 }
 
+struct GraphqlError: Decodable, Sendable {
+  let message: String
+  let type: String?
+  /// Field names and list indexes, all as text.
+  let path: [String]?
+
+  private enum Keys: String, CodingKey { case message, type, path }
+  private struct Segment: Decodable {
+    let text: String
+    init(from decoder: any Decoder) throws {
+      let value = try decoder.singleValueContainer()
+      if let name = try? value.decode(String.self) { text = name } else { text = String(try value.decode(Int.self)) }
+    }
+  }
+
+  init(from decoder: any Decoder) throws {
+    let c = try decoder.container(keyedBy: Keys.self)
+    message = try c.decode(String.self, forKey: .message)
+    type = try c.decodeIfPresent(String.self, forKey: .type)
+    path = try c.decodeIfPresent([Segment].self, forKey: .path)?.map(\.text)
+  }
+
+  var formatted: String {
+    "\(type ?? "ERROR")\(path.map { " at \($0.joined(separator: "."))" } ?? ""): \(message)"
+  }
+}
+
+/// Partial data alongside per-field errors, and the response headers; the token check needs all three.
+struct RawResult<T: Sendable>: Sendable {
+  let data: T?
+  let errors: [GraphqlError]
+  /// Lower-cased names.
+  let headers: [String: String]
+}
+
+private struct GraphqlResponse<T: Decodable>: Decodable {
+  let data: T?
+  let errors: [GraphqlError]?
+}
+
 /// GitHub's GraphQL API. Ported from server/integrations/github.ts as the pages that need it are.
 enum GitHub {
   private static let endpoint = URL(string: "https://api.github.com/graphql")!
 
-  static func graphql<T: Decodable>(_ query: String, variables: [String: any Sendable] = [:], token: String, as: T.Type) async throws -> T {
+  static func graphqlRaw<T: Decodable & Sendable>(
+    _ query: String, variables: [String: any Sendable] = [:], token: String, as: T.Type
+  ) async throws -> RawResult<T> {
     guard !token.isEmpty else { throw NotConfigured("Add a GitHub token in Settings.") }
     var request = URLRequest(url: endpoint)
     request.httpMethod = "POST"
@@ -28,8 +70,17 @@ enum GitHub {
     let http = response as! HTTPURLResponse
     guard http.statusCode == 200 else { throw IntegrationError(describeFailure(http, body: data)) }
     let result = try JSONDecoder().decode(GraphqlResponse<T>.self, from: data)
-    if let errors = result.errors, !errors.isEmpty {
-      throw IntegrationError("GitHub: " + errors.map(\.message).joined(separator: "; "))
+    var headers: [String: String] = [:]
+    for case let (name as String, value as String) in http.allHeaderFields { headers[name.lowercased()] = value }
+    return RawResult(data: result.data, errors: result.errors ?? [], headers: headers)
+  }
+
+  static func graphql<T: Decodable & Sendable>(
+    _ query: String, variables: [String: any Sendable] = [:], token: String, as type: T.Type
+  ) async throws -> T {
+    let result = try await graphqlRaw(query, variables: variables, token: token, as: type)
+    if !result.errors.isEmpty {
+      throw IntegrationError("GitHub: " + result.errors.map(\.formatted).joined(separator: "; "))
     }
     guard let value = result.data else { throw IntegrationError("GitHub returned no data") }
     return value
@@ -49,7 +100,7 @@ enum GitHub {
     return "GitHub \(response.statusCode): \(text)"
   }
 
-  /// Who the token belongs to, for Settings' connection check.
+  /// Who the token belongs to.
   static func viewer(token: String) async throws -> String {
     struct Viewer: Decodable { struct Login: Decodable { let login: String }; let viewer: Login }
     return try await graphql("query { viewer { login } }", token: token, as: Viewer.self).viewer.login
@@ -60,7 +111,18 @@ enum GitHub {
 enum Linear {
   private static let endpoint = URL(string: "https://api.linear.app/graphql")!
 
-  static func graphql<T: Decodable>(_ query: String, variables: [String: any Sendable] = [:], apiKey: String, as: T.Type) async throws -> T {
+  static func graphql<T: Decodable & Sendable>(
+    _ query: String, variables: [String: any Sendable] = [:], apiKey: String, as: T.Type
+  ) async throws -> T {
+    let (data, errors, status) = try await post(query, variables: variables, apiKey: apiKey, as: T.self)
+    if !errors.isEmpty { throw IntegrationError("Linear: " + errors.map(\.message).joined(separator: "; ")) }
+    guard status == 200, let data else { throw IntegrationError("Linear \(status)") }
+    return data
+  }
+
+  private static func post<T: Decodable & Sendable>(
+    _ query: String, variables: [String: any Sendable], apiKey: String, as: T.Type
+  ) async throws -> (T?, [GraphqlError], Int) {
     guard !apiKey.isEmpty else { throw NotConfigured("Add a Linear API key in Settings.") }
     var request = URLRequest(url: endpoint)
     request.httpMethod = "POST"
@@ -73,11 +135,7 @@ enum Linear {
     guard let result = try? JSONDecoder().decode(GraphqlResponse<T>.self, from: data) else {
       throw IntegrationError("Linear \(status): \(String(decoding: data.prefix(300), as: UTF8.self))")
     }
-    if let errors = result.errors, !errors.isEmpty {
-      throw IntegrationError("Linear: " + errors.map(\.message).joined(separator: "; "))
-    }
-    guard status == 200, let value = result.data else { throw IntegrationError("Linear \(status)") }
-    return value
+    return (result.data, result.errors ?? [], status)
   }
 
   /// Who the key belongs to, for Settings' connection check.
@@ -86,10 +144,41 @@ enum Linear {
     let user = try await graphql("query { viewer { name email } }", apiKey: apiKey, as: Viewer.self).viewer
     return "\(user.name) (\(user.email))"
   }
-}
 
-private struct GraphqlResponse<T: Decodable>: Decodable {
-  struct Failure: Decodable { let message: String }
-  let data: T?
-  let errors: [Failure]?
+  private struct RawIssue: Decodable, Sendable {
+    struct State: Decodable { let name: String; let type: String; let color: String }
+    struct Named: Decodable { let name: String }
+    struct Assignee: Decodable { let displayName: String }
+    let identifier: String
+    let title: String
+    let url: String
+    let state: State
+    let assignee: Assignee?
+    let project: Named?
+  }
+
+  /// Tickets by key. Keys that aren't real tickets come back as errors for their field, with the
+  /// rest still answered, so those errors are ignored.
+  static func tickets(_ keys: [String], apiKey: String) async throws -> [String: Ticket] {
+    guard !apiKey.isEmpty else { throw NotConfigured("Add a Linear API key in Settings.") }
+    guard !keys.isEmpty else { return [:] }
+    let definitions = keys.indices.map { "$k\($0): String!" }.joined(separator: ", ")
+    let selections = keys.indices.map {
+      "t\($0): issue(id: $k\($0)) { identifier title url state { name type color } assignee { displayName } project { name } }"
+    }.joined(separator: "\n")
+    var variables: [String: any Sendable] = [:]
+    for (index, key) in keys.enumerated() { variables["k\(index)"] = key }
+    let (data, _, status) = try await post(
+      "query Tickets(\(definitions)) {\n\(selections)\n}", variables: variables, apiKey: apiKey, as: [String: RawIssue?].self
+    )
+    guard status == 200 || status == 400 else { throw IntegrationError("Linear \(status)") }
+    var tickets: [String: Ticket] = [:]
+    for case let issue? in (data ?? [:]).values {
+      tickets[issue.identifier] = Ticket(
+        key: issue.identifier, title: issue.title, url: issue.url, state: issue.state.name, stateType: issue.state.type,
+        stateColor: issue.state.color, assignee: issue.assignee?.displayName, project: issue.project?.name
+      )
+    }
+    return tickets
+  }
 }
