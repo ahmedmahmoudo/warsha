@@ -203,9 +203,7 @@ struct ActionButton: View {
         if case .web = action { Image(systemName: "arrow.up.right").scaledFont(.caption2) }
       }
     }
-    .buttonStyle(.bordered)
-    .tint(tone == .neutral ? nil : tone.color)
-    .scaledControlSize(.small)
+    .buttonStyle(.pill(tone))
     .clickable()
   }
 }
@@ -386,7 +384,7 @@ private struct NeedsYouRow: View {
         if let ping, let pr = item.pr {
           CopyLinkButton(url: pr.url) { store.ping(pr.url, ping) }
           Button(ping == .sent ? "Sent" : "Nudged", systemImage: "checkmark") { store.ping(pr.url, ping) }
-            .buttonStyle(.bordered).tint(item.tone.color).scaledControlSize(.small).clickable()
+            .buttonStyle(.pill(item.tone)).clickable()
             .help(ping == .sent ? "Mark as sent to the team for review" : "Mark the reviewers as nudged")
         } else {
           ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
@@ -415,8 +413,7 @@ private struct CopyLinkButton: View {
         copied = false
       }
     }
-    .buttonStyle(.bordered)
-    .scaledControlSize(.small)
+    .buttonStyle(.pill(.info))
     .clickable()
     .help("Copy the PR link")
   }

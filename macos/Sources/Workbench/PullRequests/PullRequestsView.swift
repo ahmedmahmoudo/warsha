@@ -168,7 +168,7 @@ struct PullRequestsView: View {
           }
           .pickerStyle(.segmented)
           .labelsHidden()
-          .scaledControlSize(.large)
+          .controlSize(.large)
           .fixedSize()
           .padding(.trailing, 6)
           if data != nil {

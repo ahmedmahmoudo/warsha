@@ -25,3 +25,52 @@ private struct Clickable: ViewModifier {
       .animation(.easeOut(duration: 0.12), value: active)
   }
 }
+
+/// A small action in a row (Open check, Reply, Copy link) as a glass capsule in its tone. Its
+/// padding is in proportion to its text, so it keeps its shape at every text size, which macOS's
+/// fixed control sizes don't. `prominent` fills it with the tone, for the one main action.
+struct PillButtonStyle: ButtonStyle {
+  var tone: Tone = .neutral
+  var prominent = false
+
+  func makeBody(configuration: Configuration) -> some View {
+    PillBody(configuration: configuration, tone: tone, prominent: prominent)
+  }
+}
+
+private struct PillBody: View {
+  let configuration: ButtonStyleConfiguration
+  let tone: Tone
+  let prominent: Bool
+  @Environment(\.textScale) private var scale
+  @Environment(\.isEnabled) private var isEnabled
+
+  var body: some View {
+    let fill: Color = prominent ? (tone == .neutral ? .workbenchAccent : tone.color) : tone == .neutral ? Palette.card.opacity(0.7) : tone.soft
+    configuration.label
+      .labelStyle(PillLabelStyle())
+      .scaledFont(.subheadline.weight(.medium))
+      .lineLimit(1)
+      .foregroundStyle(prominent ? AnyShapeStyle(Color.white) : tone == .neutral ? AnyShapeStyle(Palette.foreground) : AnyShapeStyle(tone.color))
+      .padding(.horizontal, (10 * scale).rounded())
+      .padding(.vertical, (4 * scale).rounded())
+      .contentShape(.capsule)
+      .glassEffect(.regular.tint(fill).interactive(), in: .capsule)
+      .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
+  }
+}
+
+/// An icon and title close together, the icon a little smaller, as in a toolbar button.
+private struct PillLabelStyle: LabelStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    HStack(spacing: 4) {
+      configuration.icon.imageScale(.small)
+      configuration.title
+    }
+  }
+}
+
+extension ButtonStyle where Self == PillButtonStyle {
+  static var pill: PillButtonStyle { PillButtonStyle() }
+  static func pill(_ tone: Tone, prominent: Bool = false) -> PillButtonStyle { PillButtonStyle(tone: tone, prominent: prominent) }
+}

@@ -37,8 +37,7 @@ struct JoinButton: View {
   var body: some View {
     if let join = meeting.joinUrl.flatMap(URL.init(string:)), !(meeting.change?.isDeleted ?? false) {
       Link(destination: join) { Label("Join", systemImage: "video.fill") }
-        .buttonStyle(.borderedProminent)
-        .scaledControlSize(.small)
+        .buttonStyle(.pill(.neutral, prominent: true))
         .clickable()
     }
   }

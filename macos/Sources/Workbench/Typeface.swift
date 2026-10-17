@@ -102,11 +102,12 @@ extension View {
 
   func scaledFont(_ typeface: Typeface) -> some View { modifier(ScaledFont(typeface: typeface)) }
 
-  /// The root of a window: text and controls at the chosen size.
+  /// The root of a window: text at the chosen size. Native controls keep their size, toolbar ones
+  /// included, as their text doesn't scale; a view scales one on purpose with scaledControlSize.
   func textScale(_ scale: CGFloat) -> some View {
-    environment(\.textScale, scale)
-      .scaledFont(.body)
-      .controlSize(ControlSize.regular.scaled(scale))
+    // The scale goes outermost: the base font below reads it.
+    scaledFont(.body)
+      .environment(\.textScale, scale)
   }
 
   /// A control's size, a step bigger or smaller with the text size. The control keeps its own

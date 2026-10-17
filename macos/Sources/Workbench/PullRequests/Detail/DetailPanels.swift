@@ -77,8 +77,7 @@ private struct ConflictAction: View {
               outcome = Outcome(good: false, text: error.localizedDescription)
             }
           }
-          .buttonStyle(.borderedProminent)
-          .scaledControlSize(.regular)
+          .buttonStyle(.pill(.neutral, prominent: true))
           .clickable()
         }
         CopyButton(text: conflicts.prompt, label: "Copy Prompt")
@@ -124,8 +123,7 @@ private struct UpdateBranchAction: View {
       }
       if updatedFrom != update.headOid {
         Button("Update with \(update.base)", systemImage: "arrow.clockwise") { confirming = true }
-          .buttonStyle(.bordered)
-          .scaledControlSize(.small)
+          .buttonStyle(.pill)
           .disabled(!update.canUpdate || running)
           .clickable()
           .confirmationDialog("Update \(pr.headRef) with \(update.base)?", isPresented: $confirming) {
@@ -177,6 +175,7 @@ private struct CopyButton: View {
         copied = false
       }
     }
+    .buttonStyle(.pill)
     .clickable()
   }
 }
