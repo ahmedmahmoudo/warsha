@@ -6,7 +6,7 @@ import SwiftUI
 /// its foreground, muted and faint as the primary, secondary and tertiary styles.
 enum Palette {
   static let background = Color.dynamic(light: 0xF7F7F5, dark: 0x0E1420)
-  /// `--card`: panels on the details page.
+  /// `--card`: panels on the details page, and the tint of glass buttons on the page.
   static let card = Color.dynamic(light: 0xFFFFFF, dark: 0x151D2B)
   static let border = Color.dynamic(light: 0xE4E4DF, dark: 0x253045)
   /// `--muted` as a fill: neutral chips and placeholders.

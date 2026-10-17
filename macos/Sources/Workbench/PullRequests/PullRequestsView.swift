@@ -295,7 +295,7 @@ private struct FilterButton: View {
     if isOn {
       button.buttonStyle(.glassProminent)
     } else {
-      button.buttonStyle(.glass)
+      button.buttonStyle(.glass(.regular.tint(Palette.card)))
     }
   }
 }

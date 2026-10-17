@@ -25,6 +25,10 @@ struct ContentView: View {
         }
       }
       .containerBackground(Palette.background, for: .window)
+      // The toolbar in the page's colour rather than the system's, with the standard glass
+      // controls on it; glass takes its tint from what's behind it.
+      .toolbarBackground(Palette.background, for: .windowToolbar)
+      .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
       .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
       .task {
         settings.applyAppearance()
