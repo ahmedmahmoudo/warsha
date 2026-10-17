@@ -9,6 +9,7 @@ struct PrRowView: View {
   @Environment(Store.self) private var store
 
   private var itemRef: Ref { pr.tickets.first.map { ticketRef($0.key) } ?? prRef(pr.repo, pr.number) }
+  private var controlTitle: String { pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title }
 
   var body: some View {
     HStack(alignment: .top, spacing: 16) {
@@ -37,17 +38,14 @@ struct PrRowView: View {
       HStack(spacing: 6) {
         // Double-click or Return opens the details; the list owns that, so the title is plain text.
         Text(pr.title).font(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
-        if store.pins.contains(where: { $0.ref == itemRef }) {
-          Image(systemName: "pin.fill").font(.caption).foregroundStyle(.secondary).help("Pinned")
-        }
+        // Pin, note and park follow the ticket when there is one, as on Today.
+        ItemControls(ref: itemRef, title: controlTitle, url: pr.tickets.first?.url ?? pr.url, prs: [PrKey(pr)])
       }
 
-      if let note = store.notes.first(where: { $0.ref == itemRef }) {
-        Label(note.body, systemImage: "note.text").font(.caption).foregroundStyle(.secondary).lineLimit(2)
-      }
+      NoteLine(ref: itemRef)
 
       HStack(spacing: 12) {
-        Text("#\(pr.number)").font(.caption.monospaced())
+        Text("#\(String(pr.number))").font(.caption.monospaced())
         if pr.author != viewer {
           HStack(spacing: 4) {
             AvatarView(url: pr.authorAvatarUrl, size: 16)
@@ -56,7 +54,7 @@ struct PrRowView: View {
         }
         Text("→ \(Text(pr.baseRef).font(.caption.monospaced()))")
         if let stackParent {
-          Link("stacked on #\(stackParent.number)", destination: URL(string: stackParent.url)!).clickable(underline: true)
+          Link("stacked on #\(String(stackParent.number))", destination: URL(string: stackParent.url)!).clickable(underline: true)
         }
         HStack(spacing: 4) {
           Text("+\(pr.additions)").foregroundStyle(Tone.good.color)

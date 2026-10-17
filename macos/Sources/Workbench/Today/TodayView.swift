@@ -205,7 +205,7 @@ private struct TicketOrPr: View {
     if let ticket {
       TicketChip(ticket: ticket)
     } else if let pr {
-      Text("#\(pr.number)").font(.caption.monospaced()).foregroundStyle(.secondary).chipBorder()
+      Text("#\(String(pr.number))").font(.caption.monospaced()).foregroundStyle(.secondary).chipBorder()
     }
   }
 }
@@ -222,7 +222,7 @@ private struct PrLine<Accessory: View>: View {
         navigation.page = .pullRequests
         navigation.pullRequestPath = [PrKey(pr)]
       } label: {
-        Text("\(Text("#\(pr.number)").foregroundStyle(.tertiary)) \(pr.title)").lineLimit(1).truncationMode(.tail)
+        Text("\(Text("#\(String(pr.number))").foregroundStyle(.tertiary)) \(pr.title)").lineLimit(1).truncationMode(.tail)
       }
       .buttonStyle(.plain)
       .clickable(underline: true)
@@ -346,7 +346,7 @@ private struct NeedsYouRow: View {
           TicketOrPr(ticket: item.ticket, pr: item.pr)
           Text(title).font(.callout.weight(.medium)).lineLimit(1).help(title)
         }
-        Text("\(Text(item.title).foregroundStyle(.primary).fontWeight(.medium))\(item.pr.map { Text(" · #\($0.number)").foregroundStyle(.tertiary) } ?? Text(""))\(item.detail.map { Text(" · \($0)") } ?? Text(""))")
+        Text("\(Text(item.title).foregroundStyle(.primary).fontWeight(.medium))\(item.pr.map { Text(" · #\(String($0.number))").foregroundStyle(.tertiary) } ?? Text(""))\(item.detail.map { Text(" · \($0)") } ?? Text(""))")
           .font(.caption).foregroundStyle(.secondary)
         NoteLine(ref: item.ref)
         if let nudge = item.nudge, !nudge.isEmpty { NudgeList(groups: nudge) }

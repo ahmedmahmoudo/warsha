@@ -57,15 +57,6 @@ struct PrDetailView: View {
   private var toolbar: some ToolbarContent {
     ToolbarItemGroup {
       if let pr = model.detail?.pr {
-        let ref = itemRef(pr)
-        let pinned = store.pins.contains { $0.ref == ref }
-        Button(pinned ? "Unpin" : "Pin to Focus", systemImage: pinned ? "pin.slash" : "pin") {
-          if pinned {
-            store.unpin(ref)
-          } else {
-            store.pin(ref, title: pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title, url: pr.tickets.first?.url ?? pr.url)
-          }
-        }
         Link(destination: URL(string: pr.url)!) { Label("Open on GitHub", systemImage: "arrow.up.right.square") }
       }
       Button("Refresh", systemImage: "arrow.clockwise") {
@@ -114,11 +105,13 @@ struct PrDetailView: View {
       }
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text(pr.title).font(.title2.weight(.semibold)).textSelection(.enabled)
-        Text("#\(pr.number)").font(.title2).foregroundStyle(.tertiary)
+        Text("#\(String(pr.number))").font(.title2).foregroundStyle(.tertiary)
+        ItemControls(
+          ref: itemRef(pr), title: pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title,
+          url: pr.tickets.first?.url ?? pr.url, prs: [PrKey(pr)]
+        )
       }
-      if let note = store.notes.first(where: { $0.ref == itemRef(pr) }) {
-        Label(note.body, systemImage: "note.text").font(.callout).foregroundStyle(.secondary)
-      }
+      NoteLine(ref: itemRef(pr))
       HStack(spacing: 14) {
         HStack(spacing: 5) {
           AvatarView(url: pr.authorAvatarUrl, size: 16)
