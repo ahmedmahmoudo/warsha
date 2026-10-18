@@ -77,12 +77,12 @@ extension Store {
 
   /// What's parked right now: an item whose "until" date has passed is back in play.
   func activeParked(_ ref: Ref) -> Parked? {
-    let today = Date().formatted(.iso8601.year().month().day())
-    return parked.first { $0.ref == ref && ($0.until == nil || $0.until! >= today) }
+    guard let item = parkedByRef[ref], item.until.map({ $0 >= Store.today }) ?? true else { return nil }
+    return item
   }
 
   var activeParkedItems: [Parked] {
-    let today = Date().formatted(.iso8601.year().month().day())
+    let today = Store.today
     return parked.filter { $0.until == nil || $0.until! >= today }
   }
 }

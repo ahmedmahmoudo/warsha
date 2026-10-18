@@ -18,6 +18,9 @@ struct PullRequestsView: View {
   @State private var search = ""
   @State private var selection = Set<Pr.ID>()
   @State private var showParked = false
+  /// Which page of the list, from 0; back to the first whenever what's listed changes.
+  @State private var page = 0
+  private static let pageSize = 20
 
   var body: some View {
     let data = model.responses[scope]
@@ -41,8 +44,15 @@ struct PullRequestsView: View {
       .navigationTitle("Pull Requests")
       .navigationSubtitle(subtitle(data))
       .toolbar { toolbar }
+      .task(id: data?.fetchedAt) {
+        // Avatars ready before their rows scroll in, so none appears late.
+        if let data { AvatarCache.shared.warm(data.open + data.recentlyMerged) }
+      }
+      .onChange(of: filter) { page = 0 }
+      .onChange(of: search) { page = 0 }
       .task(id: scope) {
         filter = nil
+        page = 0
         selection = []
         while !Task.isCancelled {
           await model.load(scope, settings: settings, maxAge: .seconds(15))
@@ -54,7 +64,7 @@ struct PullRequestsView: View {
   // MARK: The list
 
   private func list(_ data: PrsResponse?) -> some View {
-    let groups = data.map(grouped) ?? Groups()
+    let paged = paginate(data.map(grouped) ?? Groups())
     return List(selection: $selection) {
       if let error = model.errors[scope] {
         Section {
@@ -70,29 +80,67 @@ struct PullRequestsView: View {
         }
       }
       if let data {
-        ForEach(groups.sections, id: \.waitingOn) { section in
-          Section {
-            rows(section.prs, all: data.open, viewer: data.viewer)
-          } header: {
-            SectionHeader(title: section.waitingOn.title(scope), count: section.prs.count)
+        ForEach(paged.blocks, id: \.id) { block in
+          if block.id == Block.parkedID {
+            Section(isExpanded: $showParked) {
+              rows(block.prs, all: data.open, viewer: data.viewer)
+            } header: {
+              SectionHeader(title: block.title, count: block.count)
+            }
+          } else {
+            Section {
+              rows(block.prs, all: block.id == Block.mergedID ? data.recentlyMerged : data.open, viewer: data.viewer)
+            } header: {
+              SectionHeader(title: block.title, count: block.count)
+            }
           }
         }
-        if !groups.parked.isEmpty {
-          Section(isExpanded: $showParked) {
-            rows(groups.parked, all: data.open, viewer: data.viewer)
-          } header: {
-            SectionHeader(title: "Parked", count: groups.parked.count)
-          }
-        }
-        if !groups.merged.isEmpty {
+        if paged.pages > 1 {
           Section {
-            rows(groups.merged, all: data.recentlyMerged, viewer: data.viewer)
-          } header: {
-            SectionHeader(title: "Merged in the last 7 days", count: groups.merged.count)
+            PageBar(page: paged.page, pages: paged.pages, range: paged.range, total: paged.total) { page = $0 }
           }
         }
       }
     }
+    // A new page starts at its top.
+    .id(paged.page)
+  }
+
+  /// A section as one page shows it: its rows on this page, and its full count.
+  private struct Block {
+    static let parkedID = "parked", mergedID = "merged"
+    let id: String
+    let title: String
+    let count: Int
+    var prs: [Pr]
+  }
+
+  /// Splits the list into pages of `pageSize` rows, in order: the waiting-on groups, Parked (when
+  /// open) and merged. A section shows on each page that has some of its rows, with its whole count
+  /// in the header; folded Parked shows on the page where it falls.
+  private func paginate(_ groups: Groups) -> (blocks: [Block], page: Int, pages: Int, range: Range<Int>, total: Int) {
+    var all = groups.sections.map { Block(id: "\($0.waitingOn)", title: $0.waitingOn.title(scope), count: $0.prs.count, prs: $0.prs) }
+    if !groups.parked.isEmpty { all.append(Block(id: Block.parkedID, title: "Parked", count: groups.parked.count, prs: groups.parked)) }
+    if !groups.merged.isEmpty { all.append(Block(id: Block.mergedID, title: "Merged in the last 7 days", count: groups.merged.count, prs: groups.merged)) }
+    let listed = { (block: Block) in block.id == Block.parkedID && !showParked ? [] : block.prs }
+    let total = all.map { listed($0).count }.reduce(0, +)
+    let pages = max(1, (total + Self.pageSize - 1) / Self.pageSize)
+    let current = min(page, pages - 1)
+    let range = current * Self.pageSize ..< min((current + 1) * Self.pageSize, total)
+    var offset = 0
+    var shown: [Block] = []
+    for block in all {
+      let prs = listed(block)
+      let slice = prs.indices.filter { range.contains(offset + $0) }.map { prs[$0] }
+      let folded = prs.isEmpty && (range.contains(offset) || (offset == total && current == pages - 1))
+      if !slice.isEmpty || folded {
+        var block = block
+        block.prs = slice
+        shown.append(block)
+      }
+      offset += prs.count
+    }
+    return (shown, current, pages, range, total)
   }
 
   private func rows(_ prs: [Pr], all: [Pr], viewer: String) -> some View {
@@ -306,6 +354,43 @@ private struct FilterButton: View {
     if isOn { return AnyShapeStyle(Color.white) }
     if count == 0 { return AnyShapeStyle(.tertiary) }
     return warn ? AnyShapeStyle(Tone.warn.color) : AnyShapeStyle(.primary)
+  }
+}
+
+/// Previous and next page, and where you are.
+private struct PageBar: View {
+  let page: Int
+  let pages: Int
+  let range: Range<Int>
+  let total: Int
+  let go: (Int) -> Void
+
+  var body: some View {
+    HStack {
+      Button("Previous", systemImage: "chevron.left") { go(page - 1) }
+        .disabled(page == 0)
+        .clickable()
+      Spacer()
+      Text("\(range.lowerBound + 1)–\(range.upperBound) of \(total) · page \(page + 1) of \(pages)")
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+      Spacer()
+      Button { go(page + 1) } label: { Label("Next", systemImage: "chevron.right").labelStyle(TrailingIconLabelStyle()) }
+        .disabled(page == pages - 1)
+        .clickable()
+    }
+    .buttonStyle(.pill)
+    .padding(.vertical, 6)
+  }
+}
+
+/// Title, then icon: "Next ›".
+private struct TrailingIconLabelStyle: LabelStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    HStack(spacing: 4) {
+      configuration.title
+      configuration.icon.imageScale(.small)
+    }
   }
 }
 

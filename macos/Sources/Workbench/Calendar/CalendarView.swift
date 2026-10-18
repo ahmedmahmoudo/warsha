@@ -266,7 +266,7 @@ private struct TimeGrid: View {
         Divider().overlay(Palette.border)
       }
       ScrollViewReader { proxy in
-        ScrollView {
+        PageScrollView {
           HStack(alignment: .top, spacing: 0) {
             // Real rows, one an hour, so scrolling to an hour finds it (offsets don't move a view's frame).
             VStack(spacing: 0) {

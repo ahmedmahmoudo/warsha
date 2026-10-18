@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 
 /// One PR: what it's waiting on, its tickets, its checks and who still has to review.
@@ -220,17 +221,85 @@ struct AvatarView: View {
   let url: String?
   let size: CGFloat
   var team = false
+  @Environment(\.displayScale) private var displayScale
+  @State private var loaded: NSImage?
 
   var body: some View {
-    AsyncImage(url: url.flatMap(URL.init(string:))) { image in
-      image.resizable().scaledToFill()
-    } placeholder: {
-      Image(systemName: team ? "person.2.fill" : "person.fill").resizable().scaledToFit().padding(size * 0.2).foregroundStyle(.secondary)
-        .background(Palette.fill)
+    // From memory when it's been seen before, so a row scrolled back in shows it at once instead
+    // of the placeholder and then the picture.
+    let image = loaded ?? url.flatMap { AvatarCache.shared.image(for: $0, pixels: pixels) }
+    Group {
+      if let image {
+        Image(nsImage: image).resizable().scaledToFill()
+      } else {
+        Image(systemName: team ? "person.2.fill" : "person.fill").resizable().scaledToFit().padding(size * 0.2).foregroundStyle(.secondary)
+          .background(Palette.fill)
+      }
     }
     .frame(width: size, height: size)
     .clipShape(team ? AnyShape(.rect(cornerRadius: size * 0.2)) : AnyShape(.circle))
     .overlay(Circle().strokeBorder(.background, lineWidth: 1).opacity(team ? 0 : 1))
+    .task(id: url) {
+      guard let url, image == nil else { return }
+      loaded = await AvatarCache.shared.load(url, pixels: pixels)
+    }
+  }
+
+  private var pixels: Int { Int((size * displayScale).rounded(.up)) }
+}
+
+/// Avatars, downsized to the size they're drawn at and kept for the session. GitHub sends 460px
+/// pictures; scaling those down on every frame of a scroll is what made lists stutter.
+@MainActor
+final class AvatarCache {
+  static let shared = AvatarCache()
+  private var images: [String: NSImage] = [:]
+  private var loading: [String: Task<NSImage?, Never>] = [:]
+
+  func image(for url: String, pixels: Int) -> NSImage? { images["\(pixels)@\(url)"] }
+
+  func load(_ url: String, pixels: Int) async -> NSImage? {
+    let key = "\(pixels)@\(url)"
+    if let image = images[key] { return image }
+    if let task = loading[key] { return await task.value }
+    let task = Task.detached(priority: .utility) { () -> NSImage? in
+      guard let address = URL(string: url), let (data, _) = try? await URLSession.shared.data(from: address) else { return nil }
+      return Self.downsized(data, pixels: pixels)
+    }
+    loading[key] = task
+    let image = await task.value
+    loading[key] = nil
+    if let image { images[key] = image }
+    return image
+  }
+
+  /// Fetches avatars before their rows scroll in, so none appears late. `size` is in points.
+  func warm(_ avatars: [(url: String, size: CGFloat)]) {
+    let scale = NSScreen.main?.backingScaleFactor ?? 2
+    for avatar in avatars {
+      let pixels = Int((avatar.size * scale).rounded(.up))
+      Task { _ = await load(avatar.url, pixels: pixels) }
+    }
+  }
+
+  /// Every avatar a PR's row shows: its author's, and the reviewers' (four per line at most).
+  func warm(_ prs: [Pr]) {
+    warm(prs.flatMap { pr -> [(url: String, size: CGFloat)] in
+      let reviewers = (pr.reviewGate?.codeOwners ?? []).map { Array($0.prefix(4)) } + [pr.changesRequestedBy, pr.approvals].map { Array($0.prefix(4)) }
+      return [pr.authorAvatarUrl.map { ($0, CGFloat(16)) }].compactMap { $0 }
+        + reviewers.joined().compactMap { $0.avatarUrl.map { ($0, CGFloat(18)) } }
+    })
+  }
+
+  private nonisolated static func downsized(_ data: Data, pixels: Int) -> NSImage? {
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+          let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(pixels, 1),
+          ] as CFDictionary)
+    else { return nil }
+    return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
   }
 }
 
@@ -246,21 +315,26 @@ func parseDate(_ iso: String) -> Date? {
   try? Date(iso, strategy: .iso8601)
 }
 
-/// Lays children out in rows, wrapping when the row is full.
+/// Lays children out in rows, wrapping when the row is full. Each child is measured once per
+/// layout pass and kept in the cache, rather than again for every row and placement.
 struct FlowLayout: Layout {
   var spacing: CGFloat = 6
 
-  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-    let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
+  func makeCache(subviews: Subviews) -> [CGSize] { subviews.map { $0.sizeThatFits(.unspecified) } }
+
+  func updateCache(_ cache: inout [CGSize], subviews: Subviews) { cache = makeCache(subviews: subviews) }
+
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout [CGSize]) -> CGSize {
+    let rows = arrange(width: proposal.width ?? .infinity, sizes: cache)
     return CGSize(width: rows.map(\.width).max() ?? 0, height: rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0)))
   }
 
-  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout [CGSize]) {
     var y = bounds.minY
-    for row in arrange(width: bounds.width, subviews: subviews) {
+    for row in arrange(width: bounds.width, sizes: cache) {
       var x = bounds.minX
       for index in row.indices {
-        let size = subviews[index].sizeThatFits(.unspecified)
+        let size = cache[index]
         subviews[index].place(at: CGPoint(x: x, y: y + (row.height - size.height) / 2), proposal: .unspecified)
         x += size.width + spacing
       }
@@ -268,10 +342,9 @@ struct FlowLayout: Layout {
     }
   }
 
-  private func arrange(width: CGFloat, subviews: Subviews) -> [(indices: [Int], width: CGFloat, height: CGFloat)] {
+  private func arrange(width: CGFloat, sizes: [CGSize]) -> [(indices: [Int], width: CGFloat, height: CGFloat)] {
     var rows: [(indices: [Int], width: CGFloat, height: CGFloat)] = []
-    for index in subviews.indices {
-      let size = subviews[index].sizeThatFits(.unspecified)
+    for (index, size) in sizes.enumerated() {
       if let last = rows.last, last.width + spacing + size.width <= width {
         rows[rows.count - 1] = (last.indices + [index], last.width + spacing + size.width, max(last.height, size.height))
       } else {

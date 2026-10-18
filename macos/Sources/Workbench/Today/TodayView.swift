@@ -13,9 +13,12 @@ struct TodayView: View {
   @State private var firstVisitSince = Store.timestamp(Date(timeIntervalSinceNow: -3 * 86_400))
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        header
+    // Derived once per render: the sections below all read it, and it filters every item.
+    let data = self.data
+    let since = self.since
+    return PageScrollView {
+      LazyVStack(alignment: .leading, spacing: 20) {
+        header(data, since: since)
         if let error = model.error {
           Label(error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription, systemImage: "exclamationmark.triangle.fill")
             .foregroundStyle(Tone.bad.color)
@@ -23,13 +26,13 @@ struct TodayView: View {
         ForEach(model.data?.warnings ?? [], id: \.self) { Text($0).scaledFont(.caption).foregroundStyle(Tone.warn.color) }
         if width >= 880 * textScale {
           HStack(alignment: .top, spacing: 20) {
-            main.frame(maxWidth: .infinity, alignment: .leading)
-            side.scaledFrame(width: 352)
+            main(data, since: since).frame(maxWidth: .infinity, alignment: .leading)
+            side(data, since: since).scaledFrame(width: 352)
           }
         } else {
           VStack(alignment: .leading, spacing: 20) {
-            main
-            side
+            main(data, since: since)
+            side(data, since: since)
           }
         }
       }
@@ -48,6 +51,15 @@ struct TodayView: View {
           .keyboardShortcut("r")
           .disabled(model.loading)
       }
+    }
+    .task(id: model.data?.fetchedAt) {
+      // Avatars ready before their rows scroll in, so none appears late.
+      guard let raw = model.data else { return }
+      let people = raw.needsYou.flatMap { ($0.nudge ?? []).joined().flatMap { [$0.owner] + $0.members.prefix(6) } }
+      AvatarCache.shared.warm(
+        people.compactMap { $0.avatarUrl.map { ($0, CGFloat(16)) } }
+          + (raw.reviewRequests + raw.waiting).compactMap { $0.authorAvatarUrl.map { ($0, CGFloat(16)) } }
+      )
     }
     .task {
       while !Task.isCancelled {
@@ -90,7 +102,7 @@ struct TodayView: View {
 
   private var since: String { store.setting(TodayModel.lastSeenKey) ?? firstVisitSince }
 
-  private var header: some View {
+  private func header(_ data: TodayData?, since: String) -> some View {
     let hour = Calendar.current.component(.hour, from: Date())
     let greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
     var line = Date().formatted(.dateTime.weekday(.wide).day().month(.wide))
@@ -110,9 +122,8 @@ struct TodayView: View {
     }
   }
 
-  @ViewBuilder
-  private var main: some View {
-    VStack(alignment: .leading, spacing: 20) {
+  private func main(_ data: TodayData?, since: String) -> some View {
+    LazyVStack(alignment: .leading, spacing: 20) {
       MeetingChangesSection()
       FocusSection(tickets: data?.tickets)
       if let data {
@@ -125,9 +136,8 @@ struct TodayView: View {
     }
   }
 
-  @ViewBuilder
-  private var side: some View {
-    VStack(alignment: .leading, spacing: 20) {
+  private func side(_ data: TodayData?, since: String) -> some View {
+    LazyVStack(alignment: .leading, spacing: 20) {
       MeetingsTodaySection()
       if let data { NewForYouSection(data: data, since: since) }
       TodosSection(timeZone: data?.timeZone ?? settings.timeZone)
@@ -247,6 +257,23 @@ private struct PrLine<Accessory: View>: View {
   }
 }
 
+/// The first few of a long list, then a link for the rest: a long list of heavy rows is what
+/// made Today slow to scroll.
+private struct Capped<Item: Identifiable, Row: View>: View {
+  let items: [Item]
+  let limit: Int
+  @ViewBuilder let row: (_ index: Int, _ item: Item) -> Row
+  @State private var showAll = false
+
+  var body: some View {
+    let shown = showAll ? items : Array(items.prefix(limit))
+    ForEach(Array(shown.enumerated()), id: \.element.id) { row($0.offset, $0.element) }
+    if items.count > limit {
+      SmallLink(title: showAll ? "Show fewer" : "Show all \(items.count)") { showAll.toggle() }
+    }
+  }
+}
+
 private struct SmallLink: View {
   let title: String
   let action: () -> Void
@@ -300,7 +327,7 @@ private struct NeedsYouSection: View {
       ForEach(groups.filter { active == "all" || $0.0.id == active }, id: \.0.id) { group, items in
         // Housekeeping waits behind a click in the overview; picked on its own, it shows.
         let hidden = group.id == "housekeeping" && active == "all" && !showHousekeeping
-        VStack(alignment: .leading, spacing: 0) {
+        LazyVStack(alignment: .leading, spacing: 0) {
           if active == "all" {
             HStack(spacing: 6) {
               RoundedRectangle(cornerRadius: 1).fill(group.tone.color).frame(width: 3, height: 12)
@@ -311,7 +338,7 @@ private struct NeedsYouSection: View {
             .padding(.top, 6)
           }
           if !hidden {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+            Capped(items: items, limit: 5) { index, item in
               if index > 0 { Divider().overlay(Palette.border) }
               NeedsYouRow(item: item)
             }
@@ -381,16 +408,19 @@ private struct NeedsYouRow: View {
         if let nudge = item.nudge, !nudge.isEmpty { NudgeList(groups: nudge) }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      HStack(spacing: 4) {
-        if let ping, let pr = item.pr {
-          CopyLinkButton(url: pr.url)
-          Button(ping == .sent ? "Sent" : "Nudged", systemImage: "checkmark") { store.ping(pr.url, ping) }
-            .buttonStyle(.pill(item.tone)).clickable()
-            .help(ping == .sent ? "Mark as sent to the team for review" : "Mark the reviewers as nudged")
-        } else {
-          ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
+      // One glass pass for the row's pills, not one each: they redraw as the page scrolls.
+      GlassEffectContainer(spacing: 4) {
+        HStack(spacing: 4) {
+          if let ping, let pr = item.pr {
+            CopyLinkButton(url: pr.url)
+            Button(ping == .sent ? "Sent" : "Nudged", systemImage: "checkmark") { store.ping(pr.url, ping) }
+              .buttonStyle(.pill(item.tone)).clickable()
+              .help(ping == .sent ? "Mark as sent to the team for review" : "Mark the reviewers as nudged")
+          } else {
+            ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
+          }
+          ItemControls(ref: item.ref, title: title, url: item.ticket?.url ?? item.pr?.url, prs: item.pr.map { [PrKey($0)] } ?? [])
         }
-        ItemControls(ref: item.ref, title: title, url: item.ticket?.url ?? item.pr?.url, prs: item.pr.map { [PrKey($0)] } ?? [])
       }
     }
     .padding(.vertical, 8)
@@ -571,18 +601,18 @@ private struct NewForYouSection: View {
       if nothing { Text("Nothing new since you last looked.").foregroundStyle(.tertiary) }
       if !fresh.isEmpty {
         Text("In Linear").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary)
-        ForEach(fresh) { InboxRow(item: $0) }
+        Capped(items: fresh, limit: 8) { _, item in InboxRow(item: item) }
       }
       if !data.reviewRequests.isEmpty {
         Text("Asked to review").scaledFont(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.top, 4)
-        ForEach(data.reviewRequests) { pr in
+        Capped(items: data.reviewRequests, limit: 6) { _, pr in
           PrLine(pr: pr) { AvatarView(url: pr.authorAvatarUrl, size: 16) }
         }
       }
       if !earlier.isEmpty {
         SmallLink(title: showEarlier ? "Hide earlier" : "Earlier (\(earlier.count))") { showEarlier.toggle() }
         if showEarlier {
-          ForEach(earlier) { InboxRow(item: $0) }.opacity(0.8)
+          Capped(items: earlier, limit: 8) { _, item in InboxRow(item: item).opacity(0.8) }
         }
       }
     }
@@ -929,7 +959,7 @@ private struct WaitingSection: View {
   var body: some View {
     Panel("Waiting on others", aside: "\(data.waiting.count) PRs") {
       if data.waiting.isEmpty { Text("Nothing of yours is waiting on others.").foregroundStyle(.tertiary) }
-      ForEach(data.waiting) { pr in
+      Capped(items: data.waiting, limit: 6) { _, pr in
         PrLine(pr: pr) { PingLabel(ping: store.pings[pr.url]) }
       }
     }

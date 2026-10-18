@@ -9,6 +9,19 @@ extension View {
   }
 }
 
+/// A vertical scroll view whose content ignores the pointer while it scrolls. Content moving under
+/// a still pointer makes SwiftUI hit-test every hover, tooltip and glass button on every frame,
+/// which on Today took most of each frame; with hit testing off there's nothing to test.
+struct PageScrollView<Content: View>: View {
+  @ViewBuilder let content: Content
+  @State private var scrolling = false
+
+  var body: some View {
+    ScrollView { content.allowsHitTesting(!scrolling) }
+      .onScrollPhaseChange { _, phase in scrolling = phase.isScrolling }
+  }
+}
+
 private struct Clickable: ViewModifier {
   let underline: Bool
   @State private var hovering = false

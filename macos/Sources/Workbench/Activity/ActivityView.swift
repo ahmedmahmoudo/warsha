@@ -19,7 +19,7 @@ struct ActivityView: View {
   private var range: ActivityRange { ActivityRange(span, date: current, timeZone: zone) }
 
   var body: some View {
-    ScrollView {
+    PageScrollView {
       VStack(alignment: .leading, spacing: 12) {
         controls
         if let error = model.error {

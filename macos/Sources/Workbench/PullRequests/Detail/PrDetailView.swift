@@ -18,7 +18,7 @@ struct PrDetailView: View {
   }
 
   var body: some View {
-    ScrollView {
+    PageScrollView {
       if let detail = model.detail {
         content(detail).padding(.horizontal, 24).padding(.vertical, 20)
       } else if let error = model.error {
@@ -204,7 +204,7 @@ struct Panel<Accessory: View, Content: View>: View {
       .padding(.horizontal, 14).padding(.vertical, 10)
       if expanded {
         Divider().overlay(Palette.border)
-        VStack(alignment: .leading, spacing: 10) { content }
+        LazyVStack(alignment: .leading, spacing: 10) { content }
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(14)
       }

@@ -51,6 +51,10 @@ final class Store {
   private(set) var notes: [Note] = []
   private(set) var todos: [Todo] = []
   private(set) var parked: [Parked] = []
+  /// `parked` by ref, so a row's lookup is one hash rather than a scan.
+  private(set) var parkedByRef: [Ref: Parked] = [:]
+  /// The settings table, read once per change: views ask for these while they draw.
+  private var settings: [String: String] = [:]
   /// When you sent each PR (by URL) for review or last nudged its reviewers.
   private(set) var pings: [String: Ping] = [:]
   /// The last failure, shown where the data is; nil once something works again.
@@ -165,7 +169,12 @@ final class Store {
           until: $0.string("until"), parkedAt: $0.string("parked_at")!
         )
       }
-      pings = (try db.query("select value from settings where key = ?", .text(Self.pingsKey)).first?.string("value"))
+      parkedByRef = Dictionary(parked.map { ($0.ref, $0) }, uniquingKeysWith: { first, _ in first })
+      settings = Dictionary(
+        try db.query("select key, value from settings").map { ($0.string("key")!, $0.string("value")!) },
+        uniquingKeysWith: { first, _ in first }
+      )
+      pings = settings[Self.pingsKey]
         .flatMap { try? JSONDecoder().decode([String: Ping].self, from: Data($0.utf8)) } ?? [:]
       error = nil
     } catch {
@@ -279,9 +288,7 @@ final class Store {
   }
 
   /// Small values Workbench keeps for itself (not credentials; those live in the Keychain).
-  func setting(_ key: String) -> String? {
-    try? db?.query("select value from settings where key = ?", .text(key)).first?.string("value")
-  }
+  func setting(_ key: String) -> String? { settings[key] }
 
   func setSetting(_ key: String, _ value: String?) {
     write {
@@ -316,6 +323,20 @@ final class Store {
   }
 
   private static func now() -> String { timestamp(Date()) }
+
+  /// Today in UTC (YYYY-MM-DD), as parked items' `until` is compared. Formatted once a day rather
+  /// than on every lookup, since rows ask for it while they draw.
+  static var today: String {
+    let now = Date().timeIntervalSince1970
+    if now >= todayExpires {
+      todayCache = Date().formatted(.iso8601.year().month().day())
+      todayExpires = ((now / 86_400).rounded(.down) + 1) * 86_400
+    }
+    return todayCache
+  }
+
+  private static var todayCache = ""
+  private static var todayExpires: TimeInterval = 0
 }
 
 /// When a PR was sent to the team for review, and when its reviewers were last nudged.

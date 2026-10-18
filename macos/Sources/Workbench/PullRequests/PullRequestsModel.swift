@@ -40,9 +40,7 @@ extension Store {
   /// What's parked right now: an item whose "until" date has passed is back in play. A PR counts as
   /// parked when it is, or when one of its tickets is.
   func parked(for pr: Pr) -> Parked? {
-    let today = Date().formatted(.iso8601.year().month().day())
-    let active = parked.filter { $0.until == nil || $0.until! >= today }
-    return active.first { $0.ref == prRef(pr.repo, pr.number) }
-      ?? pr.tickets.lazy.compactMap { ticket in active.first { $0.ref == ticketRef(ticket.key) } }.first
+    guard !parkedByRef.isEmpty else { return nil }
+    return activeParked(prRef(pr.repo, pr.number)) ?? pr.tickets.lazy.compactMap { self.activeParked(ticketRef($0.key)) }.first
   }
 }
