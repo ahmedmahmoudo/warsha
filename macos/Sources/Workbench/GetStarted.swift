@@ -10,12 +10,12 @@ import UserNotifications
 /// the brand kit (design/website) and the app's own light and dark palette.
 struct GetStartedView: View {
   enum Step: Int, CaseIterable {
-    case welcome, github, repos, calendar, linear, permissions, done
+    case welcome, github, repos, team, calendar, linear, permissions, done
 
     /// The board tile the step stands for.
     var tile: BoardTile? {
       switch self {
-      case .github, .repos: .pullRequests
+      case .github, .repos, .team: .pullRequests
       case .calendar: .meetings
       case .linear: .tickets
       case .permissions: .notes
@@ -100,7 +100,7 @@ struct GetStartedView: View {
     switch step {
     case .welcome: "Get Started"
     case .done: "Open Workbench"
-    case .github, .repos, .permissions: "Continue"
+    case .github, .repos, .team, .permissions: "Continue"
     case .linear, .calendar: connected ? "Continue" : "Skip"
     }
   }
@@ -114,8 +114,8 @@ struct GetStartedView: View {
 
   private func go(_ by: Int) {
     guard var next = Step(rawValue: step.rawValue + by) else { return finish() }
-    // Choosing repos needs a GitHub account; without one it's passed over both ways.
-    if next == .repos && !settings.hasGitHub, let beyond = Step(rawValue: next.rawValue + by) { next = beyond }
+    // Choosing repos and teammates needs a GitHub account; without one they're passed over both ways.
+    while next == .repos || next == .team, !settings.hasGitHub, let beyond = Step(rawValue: next.rawValue + by) { next = beyond }
     forward = by > 0
     withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) { step = next }
   }
@@ -132,6 +132,7 @@ struct GetStartedView: View {
         detail: "Your pull requests, the reviews asked of you, checks and code owners. Sign in with GitHub, or paste a token."
       ) { GitHubConnect() }
     case .repos: ReposPage()
+    case .team: TeamPage()
     case .calendar:
       AccountPage(
         tile: .meetings, title: "Connect Google Calendar", connected: calendar.connection(settings, store) == .connected,
@@ -246,6 +247,26 @@ private struct ReposPage: View {
           .frame(maxWidth: 480).fixedSize(horizontal: false, vertical: true)
       }
       RepoPicker(preselect: true, listHeight: 250)
+        .padding(18)
+        .frame(width: 560)
+        .onboardingCard()
+      Spacer(minLength: 0)
+    }
+    .padding(.top, 4)
+  }
+}
+
+/// Whose PRs the Team view follows: your GitHub teammates come ticked, or no one for everyone.
+private struct TeamPage: View {
+  var body: some View {
+    VStack(spacing: 16) {
+      VStack(spacing: 8) {
+        Text("Who's on your team?").font(.system(size: 26, weight: .semibold)).tracking(-0.5)
+        Text("Pull Requests → Team shows their PRs. Your GitHub teammates are ticked; leave it empty to follow everyone in your repos.")
+          .font(.system(size: 14)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+          .frame(maxWidth: 480).fixedSize(horizontal: false, vertical: true)
+      }
+      TeamPicker(preselect: true, listHeight: 250)
         .padding(18)
         .frame(width: 560)
         .onboardingCard()

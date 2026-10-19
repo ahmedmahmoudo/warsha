@@ -131,8 +131,14 @@ actor PrService {
         ["is:pr is:merged reviewed-by:\(login) -author:\(login) \(mergedSince)"]
       )
     case .team:
-      guard !config.githubTeam.isEmpty else { throw NotConfigured("Add your team's GitHub logins in Settings → Accounts.") }
-      let authors = config.githubTeam.map { "author:\($0)" }.joined(separator: " ")
+      // No one chosen means everyone in your repos but you (yours are under Mine) and the bots.
+      // Without repos that would be all of GitHub, so then it needs one or the other.
+      let authors = config.githubTeam.isEmpty
+        ? "-author:\(login) -author:app/dependabot -author:app/renovate"
+        : config.githubTeam.map { "author:\($0)" }.joined(separator: " ")
+      if config.githubTeam.isEmpty && config.githubRepos.isEmpty {
+        throw NotConfigured("Choose your repos or your teammates in Settings → Accounts to see your team's PRs.")
+      }
       return (["is:pr is:open archived:false \(authors) \(repos)"], ["is:pr is:merged \(authors) \(repos) \(mergedSince)"])
     }
   }
