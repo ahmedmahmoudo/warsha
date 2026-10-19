@@ -156,6 +156,8 @@ struct MeetingsTodaySection: View {
         }
         TimelineView(.periodic(from: .now, by: 60)) { context in
           let now = Store.timestamp(context.date)
+          // Once today has nothing left, the next meeting on a later day.
+          let next = calendar.next(after: context.date, store).flatMap { next in meetings.contains { $0.id == next.id } ? nil : next }
           VStack(alignment: .leading, spacing: 10) {
             ForEach(meetings) { meeting in
               let over = !meeting.allDay && meeting.end <= now
@@ -176,6 +178,23 @@ struct MeetingsTodaySection: View {
               }
               .scaledFont(.callout)
               .opacity(over ? 0.55 : 1)
+            }
+            if let next {
+              if !meetings.isEmpty { Divider().overlay(Palette.border) }
+              Text("NEXT MEETING").scaledFont(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+              HStack(alignment: .top, spacing: 8) {
+                RoundedRectangle(cornerRadius: 1).fill(Color.workbenchAccent.opacity(0.4)).frame(width: 2, height: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                  HStack(spacing: 6) {
+                    MeetingTitle(meeting: next).fontWeight(.medium)
+                    if case .rescheduled = next.change { Chip(text: "Moved", tone: .warn) }
+                  }
+                  BothZones(next, homeZone: settings.timeZone, withDay: true).scaledFont(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                JoinButton(meeting: next)
+              }
+              .scaledFont(.callout)
             }
           }
         }

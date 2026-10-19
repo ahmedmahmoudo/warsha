@@ -290,6 +290,15 @@ final class CalendarModel {
       .sorted { $0.start < $1.start }
   }
 
+  /// The next meeting to go to, on any day in the synced 30 days: not deleted, declined or all-day.
+  func next(after now: Date, _ store: Store) -> Meeting? {
+    _ = revision
+    let at = Store.timestamp(now)
+    return store.meetings()
+      .filter { !($0.change?.isDeleted ?? false) && !$0.declined && !$0.allDay && $0.start > at }
+      .min { $0.start < $1.start }
+  }
+
   /// Rescheduled and deleted meetings, any day, newest change first, until dismissed.
   func changes(_ store: Store) -> [Meeting] {
     _ = revision
