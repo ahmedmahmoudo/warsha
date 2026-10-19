@@ -35,6 +35,7 @@ struct Sidebar: View {
         .padding(.bottom, 12)
       }
       .scrollIndicators(.never)
+      RateNotice()
       ProfileFooter()
     }
     .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
@@ -200,5 +201,28 @@ private extension View {
   /// Shows the page's shortcut on hover, as the row's help.
   func keyboardShortcutHint(_ key: KeyEquivalent) -> some View {
     help("⌘\(key.character)")
+  }
+}
+
+/// While GitHub's points for the hour are nearly gone: refreshing waits, and until when.
+private struct RateNotice: View {
+  var body: some View {
+    TimelineView(.periodic(from: .now, by: 30)) { _ in
+      if let until = RateBudget.shared.lowUntil {
+        let budget = RateBudget.shared.summary
+        Label {
+          Text("GitHub's hourly limit is nearly used\(budget.map { " (\($0.remaining) of \($0.limit) left)" } ?? ""). Refreshing waits until \(until.formatted(date: .omitted, time: .shortened)); Refresh still works.")
+        } icon: {
+          Image(systemName: "gauge.with.dots.needle.67percent")
+        }
+        .scaledFont(.caption)
+        .foregroundStyle(Tone.warn.color)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tone.warn.soft, in: .rect(cornerRadius: 8))
+        .padding(.horizontal, 10).padding(.bottom, 8)
+        .help("The limit belongs to the GitHub token, so the gh CLI and anything else using it count too.")
+      }
+    }
   }
 }

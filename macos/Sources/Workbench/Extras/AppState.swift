@@ -133,11 +133,13 @@ final class AppState {
       }
     }
     background = [
-      loop(every: .seconds(30)) { state in
-        await state.pullRequests.load(.mine, settings: state.settings, maxAge: .seconds(15))
+      // GitHub's points are an hourly budget shared with everything using the token, so these are
+      // unhurried, and the loads skip GitHub while it's low (see RateBudget).
+      loop(every: .seconds(60)) { state in
+        await state.pullRequests.load(.mine, settings: state.settings, maxAge: .seconds(45))
       },
-      loop(every: .seconds(120)) { state in
-        await state.pullRequests.load(.reviewing, settings: state.settings, maxAge: .seconds(60))
+      loop(every: .seconds(180)) { state in
+        await state.pullRequests.load(.reviewing, settings: state.settings, maxAge: .seconds(150))
       },
       loop(every: .seconds(60)) { state in
         await state.calendar.sync(state.settings, state.store)
@@ -158,7 +160,8 @@ final class AppState {
         await work(self)
         updateBadge()
         await notifier.check(self)
-        try? await Task.sleep(for: interval)
+        // In the background nothing's being looked at: five times slower until you come back.
+        try? await Task.sleep(for: NSApp.isActive ? interval : interval * 5)
       }
     }
   }

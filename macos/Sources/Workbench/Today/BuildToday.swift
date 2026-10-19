@@ -6,7 +6,7 @@ actor TodayService {
   static let shared = TodayService()
 
   /// The oldest PR list Today will build from.
-  private static let prListMaxAge: TimeInterval = 15
+  private static let prListMaxAge: TimeInterval = 60
   /// Teams change rarely; their members are re-read hourly.
   private static let teamMaxAge: TimeInterval = 60 * 60
 

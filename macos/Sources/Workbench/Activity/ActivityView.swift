@@ -50,8 +50,9 @@ struct ActivityView: View {
     }
     .task(id: "\(span.rawValue)|\(current)|\(zone)") {
       while !Task.isCancelled {
-        await model.load(range, settings: settings, maxAge: .seconds(60))
-        try? await Task.sleep(for: .seconds(60))
+        // What you did changes slowly, and its searches are the costliest to repeat.
+        await model.load(range, settings: settings, maxAge: .seconds(300))
+        try? await Task.sleep(for: .seconds(300))
       }
     }
   }
@@ -129,6 +130,10 @@ final class ActivityModel {
   /// `maxAge` skips the load when that range's answer is at least that recent.
   func load(_ range: ActivityRange, settings: AppSettings, maxAge: Duration? = nil) async {
     if let maxAge, let cached = byRange[range], Date().timeIntervalSince(cached.fetchedAt) < Double(maxAge.components.seconds) {
+      data = cached
+      return
+    }
+    if maxAge != nil, let cached = byRange[range], RateBudget.shared.lowUntil != nil {
       data = cached
       return
     }

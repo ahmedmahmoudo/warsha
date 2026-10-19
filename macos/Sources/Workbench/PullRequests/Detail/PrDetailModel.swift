@@ -22,14 +22,14 @@ final class PrDetailModels {
   }
 }
 
-/// One PR's details, kept fresh: the whole page every 30 seconds, and the checks on their own,
-/// every 10 seconds while any run and every minute otherwise. When a required check or the head
+/// One PR's details, kept fresh: the whole page every minute, and the checks on their own,
+/// every 15 seconds while any run and every minute otherwise. When a required check or the head
 /// commit changes, the whole page reloads so Merge status agrees.
 @MainActor
 @Observable
 final class PrDetailModel {
-  static let refreshInterval: Duration = .seconds(30)
-  static let checksRunningInterval: Duration = .seconds(10)
+  static let refreshInterval: Duration = .seconds(60)
+  static let checksRunningInterval: Duration = .seconds(15)
   static let checksIdleInterval: Duration = .seconds(60)
 
   let key: PrKey
@@ -54,6 +54,7 @@ final class PrDetailModel {
   /// `maxAge` skips the load when the page was read at least that recently.
   func load(settings: AppSettings, maxAge: Duration? = nil) async {
     if let maxAge, let fetchedAt = detail?.fetchedAt, Date().timeIntervalSince(fetchedAt) < Double(maxAge.components.seconds) { return }
+    if maxAge != nil, detail != nil, RateBudget.shared.lowUntil != nil { return }
     loading = true
     defer { loading = false }
     do {
@@ -67,6 +68,7 @@ final class PrDetailModel {
 
   /// Polls the checks; reloads the page when what Merge status depends on changes.
   func pollChecks(settings: AppSettings) async {
+    guard RateBudget.shared.lowUntil == nil else { return }
     checkingNow = true
     defer { checkingNow = false }
     do {

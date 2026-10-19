@@ -7,7 +7,7 @@ import Foundation
 @Observable
 final class PullRequestsModel {
   /// How often an open page reloads; loads are cheap after the first (CODEOWNERS and teams are kept).
-  static let refreshInterval: Duration = .seconds(30)
+  static let refreshInterval: Duration = .seconds(60)
 
   private(set) var responses: [PrScope: PrsResponse] = [:]
   private(set) var errors: [PrScope: any Error] = [:]
@@ -15,6 +15,8 @@ final class PullRequestsModel {
 
   /// `maxAge` skips the load when the last answer is at least that recent.
   func load(_ scope: PrScope, settings: AppSettings, maxAge: Duration? = nil) async {
+    // A timed refresh waits while GitHub's points are low; Refresh (no maxAge) always runs.
+    if maxAge != nil, RateBudget.shared.lowUntil != nil, responses[scope] != nil { return }
     if let maxAge, let fetchedAt = responses[scope]?.fetchedAt,
        Date().timeIntervalSince(fetchedAt) < Double(maxAge.components.seconds) {
       return

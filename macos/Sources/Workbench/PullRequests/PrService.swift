@@ -58,6 +58,8 @@ actor PrService {
   private var tokenChecks: [PrConfig: Task<[String], Never>] = [:]
   private var codeowners: [String: (at: Date, value: Codeowners?)] = [:]
   private var teams: [String: (at: Date, value: [String: Person])] = [:]
+  /// Each PR's details as last read, by node id, with the fingerprint they were read at.
+  private var details: [String: (fingerprint: String, at: Date, pr: GithubPr)] = [:]
   /// Members of the teams Team follows.
   private var teamLogins: [String: (at: Date, value: [String])] = [:]
 
@@ -189,14 +191,34 @@ actor PrService {
     }
   }
 
+  /// Details are re-read at least this often even when a PR's fingerprint hasn't moved, for what
+  /// the fingerprint can't see (a reviewer added to a team, a ruleset changing).
+  private static let detailsMaxAge: TimeInterval = 10 * 60
+
+  /// The search's PRs, each one's details read again only when it has changed (or is old): a
+  /// refresh where nothing moved costs a point or two instead of a couple per PR.
   private func searchAll(_ queries: [String], token: String) async throws -> (prs: [GithubPr], truncated: Bool) {
-    let results = try await withThrowingTaskGroup(of: (prs: [GithubPr], truncated: Bool).self) { group in
-      for query in queries { group.addTask { try await GitHub.searchPrs(query, token: token) } }
+    let results = try await withThrowingTaskGroup(of: (refs: [GitHub.PrSearchRef], truncated: Bool).self) { group in
+      for query in queries { group.addTask { try await GitHub.searchPrRefs(query, token: token) } }
       return try await group.reduce(into: []) { $0.append($1) }
     }
-    var byUrl: [String: GithubPr] = [:]
-    for pr in results.flatMap(\.prs) { byUrl[pr.url] = pr }
-    return (Array(byUrl.values), results.contains { $0.truncated })
+    var refs: [GitHub.PrSearchRef] = []
+    for ref in results.flatMap(\.refs) where !refs.contains(where: { $0.id == ref.id }) { refs.append(ref) }
+    let stale = refs.filter { ref in
+      guard let cached = details[ref.id] else { return true }
+      return cached.fingerprint != ref.fingerprint || -cached.at.timeIntervalSinceNow > Self.detailsMaxAge
+    }
+    if !stale.isEmpty {
+      let fresh = try await GitHub.prDetails(stale.map { ($0.id, $0.number) }, token: token)
+      let now = Date()
+      for pr in fresh {
+        guard let ref = stale.first(where: { $0.id == pr.id }) else { continue }
+        details[pr.id] = (ref.fingerprint, now, pr)
+      }
+    }
+    // PRs no search has returned for an hour (merged long ago, or another scope's) are let go.
+    details = details.filter { -$0.value.at.timeIntervalSinceNow < 3600 }
+    return (refs.compactMap { details[$0.id]?.pr }, results.contains { $0.truncated })
   }
 
   private func viewer(_ token: String) async throws -> String {

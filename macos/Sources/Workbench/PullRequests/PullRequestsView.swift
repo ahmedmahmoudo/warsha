@@ -63,7 +63,7 @@ struct PullRequestsView: View {
       }
       .task(id: scope) {
         while !Task.isCancelled {
-          await model.load(scope, settings: settings, maxAge: .seconds(15))
+          await model.load(scope, settings: settings, maxAge: .seconds(45))
           try? await Task.sleep(for: PullRequestsModel.refreshInterval)
         }
       }

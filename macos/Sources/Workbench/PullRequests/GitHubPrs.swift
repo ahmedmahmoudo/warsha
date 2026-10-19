@@ -224,15 +224,37 @@ extension GitHub {
   }
 
   private struct PrRef: Decodable, Sendable {
+    struct Commits: Decodable, Sendable {
+      struct Node: Decodable, Sendable {
+        struct Commit: Decodable, Sendable { struct Rollup: Decodable, Sendable { let state: String? }; let oid: String?; let statusCheckRollup: Rollup? }
+        let commit: Commit?
+      }
+      let nodes: [Node]
+    }
     let id: String?
     let number: Int?
+    let updatedAt: String?
+    let mergeStateStatus: String?
+    let reviewDecision: String?
+    let commits: Commits?
   }
 
   /// Search is slow on GitHub's side and gets slower with every nested field, so it only returns
   /// ids; the details come from batched `node` lookups that run in parallel.
-  static func searchPrs(_ query: String, token: String) async throws -> (prs: [GithubPr], truncated: Bool) {
+  /// A PR as search finds it: enough to tell whether it changed since its details were read.
+  struct PrSearchRef: Sendable {
+    let id: String
+    let number: Int
+    /// Changes when anything the list shows could have: an edit, a review or comment (updatedAt),
+    /// a push (the head commit), CI finishing (its rollup), or the base moving (merge state).
+    let fingerprint: String
+  }
+
+  /// The PRs a search matches, with their fingerprints. Costs one point per 100 PRs, where reading
+  /// their details costs about two each, so a refresh only reads the details of what changed.
+  static func searchPrRefs(_ query: String, token: String) async throws -> (refs: [PrSearchRef], truncated: Bool) {
     struct Search: Decodable { struct Inner: Decodable { let pageInfo: PageInfo; let nodes: [PrRef] }; let search: Inner }
-    var refs: [(id: String, number: Int)] = []
+    var refs: [PrSearchRef] = []
     var after: String?
     var truncated = true
     for _ in 0 ..< maxSearchPages {
@@ -241,24 +263,34 @@ extension GitHub {
         query SearchPrRefs($query: String!, $first: Int!, $after: String) {
           search(type: ISSUE, query: $query, first: $first, after: $after) {
             pageInfo { hasNextPage endCursor }
-            nodes { ... on PullRequest { id number } }
+            nodes { ... on PullRequest {
+              id number updatedAt mergeStateStatus reviewDecision
+              commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } }
+            } }
           }
         }
         """,
         variables: ["query": query, "first": searchPageSize, "after": after ?? NSNull()],
         token: token, as: Search.self
       ).search
-      refs += page.nodes.compactMap { ref in ref.id.flatMap { id in ref.number.map { (id, $0) } } }
+      refs += page.nodes.compactMap { ref in
+        guard let id = ref.id, let number = ref.number else { return nil }
+        let commit = ref.commits?.nodes.first?.commit
+        let fingerprint = [ref.updatedAt, ref.mergeStateStatus, ref.reviewDecision, commit?.oid, commit?.statusCheckRollup?.state]
+          .map { $0 ?? "-" }.joined(separator: "|")
+        return PrSearchRef(id: id, number: number, fingerprint: fingerprint)
+      }
       if !page.pageInfo.hasNextPage {
         truncated = false
         break
       }
       after = page.pageInfo.endCursor
     }
-    return (try await prDetails(refs, token: token), truncated)
+    return (refs, truncated)
   }
 
-  private static func prDetails(_ refs: [(id: String, number: Int)], token: String) async throws -> [GithubPr] {
+  /// Full details of PRs, read in parallel batches.
+  static func prDetails(_ refs: [(id: String, number: Int)], token: String) async throws -> [GithubPr] {
     let chunks = stride(from: 0, to: refs.count, by: detailChunk).map { Array(refs[$0 ..< min($0 + detailChunk, refs.count)]) }
     return try await withThrowingTaskGroup(of: [GithubPr].self) { group in
       var prs: [GithubPr] = []

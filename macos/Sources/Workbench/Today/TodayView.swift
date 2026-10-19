@@ -151,7 +151,7 @@ struct TodayView: View {
 @MainActor
 @Observable
 final class TodayModel {
-  static let refreshInterval: Duration = .seconds(60)
+  static let refreshInterval: Duration = .seconds(90)
   /// The same setting the web version keeps, so marking seen in either counts for both.
   static let lastSeenKey = "today.lastSeenAt"
 
@@ -163,6 +163,7 @@ final class TodayModel {
   /// current answer on screen until the new one replaces it.
   func load(settings: AppSettings, maxAge: Duration? = nil) async {
     if let maxAge, let fetchedAt = data?.fetchedAt, Date().timeIntervalSince(fetchedAt) < Double(maxAge.components.seconds) { return }
+    if maxAge != nil, data != nil, RateBudget.shared.lowUntil != nil { return }
     loading = true
     defer { loading = false }
     do {

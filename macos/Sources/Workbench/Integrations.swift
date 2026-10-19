@@ -68,10 +68,16 @@ enum GitHub {
     request.httpBody = try JSONSerialization.data(withJSONObject: ["query": query, "variables": variables])
     let (data, response) = try await URLSession.shared.data(for: request)
     let http = response as! HTTPURLResponse
-    guard http.statusCode == 200 else { throw IntegrationError(describeFailure(http, body: data)) }
+    guard http.statusCode == 200 else {
+      var headers: [String: String] = [:]
+      for case let (name as String, value as String) in http.allHeaderFields { headers[name.lowercased()] = value }
+      RateBudget.shared.record(headers)
+      throw IntegrationError(describeFailure(http, body: data))
+    }
     let result = try JSONDecoder().decode(GraphqlResponse<T>.self, from: data)
     var headers: [String: String] = [:]
     for case let (name as String, value as String) in http.allHeaderFields { headers[name.lowercased()] = value }
+    RateBudget.shared.record(headers)
     return RawResult(data: result.data, errors: result.errors ?? [], headers: headers)
   }
 
@@ -182,5 +188,40 @@ enum Linear {
       )
     }
     return tickets
+  }
+}
+
+/// GitHub's GraphQL points left this hour, from the headers of the last response. The budget is
+/// the token's, so it's shared with anything else using it (the gh CLI's token is everyone's on
+/// that Mac). Background refreshes stand down when it's low rather than spend the rest.
+final class RateBudget: @unchecked Sendable {
+  static let shared = RateBudget()
+  /// Below this share of the hour's points, only what you ask for (Refresh, opening a PR) runs.
+  static let reserve = 0.1
+
+  private let lock = NSLock()
+  private var remaining: Int?
+  private var limit: Int?
+  private var resetAt: Date?
+
+  func record(_ headers: [String: String]) {
+    guard let left = headers["x-ratelimit-remaining"].flatMap(Int.init) else { return }
+    lock.withLock {
+      remaining = left
+      limit = headers["x-ratelimit-limit"].flatMap(Int.init) ?? limit
+      resetAt = headers["x-ratelimit-reset"].flatMap(Double.init).map { Date(timeIntervalSince1970: $0) } ?? resetAt
+    }
+  }
+
+  /// When the points are nearly gone: until when background refreshes wait. Nil when they're fine.
+  var lowUntil: Date? {
+    lock.withLock {
+      guard let remaining, let limit, let resetAt, resetAt > Date() else { return nil }
+      return Double(remaining) < Double(limit) * Self.reserve ? resetAt : nil
+    }
+  }
+
+  var summary: (remaining: Int, limit: Int)? {
+    lock.withLock { remaining.flatMap { left in limit.map { (left, $0) } } }
   }
 }
