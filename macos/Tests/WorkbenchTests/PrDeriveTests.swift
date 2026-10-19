@@ -110,6 +110,25 @@ struct DeriveTests {
     #expect(Derive.pr(merged, tickets: ["MX-1": ticket("Merged", "started")], afterMerge: []).mismatches == [.prMergedTicketOpen])
   }
 
+  @Test func onlyThreadsWhereSomeoneElseSpokeLastNeedAReply() throws {
+    let thread = { (last: String) -> [String: Any] in
+      ["isResolved": false, "comments": ["nodes": [["author": ["login": "pal"]]]], "lastComment": ["nodes": [["author": ["login": last]]]]]
+    }
+    let approved: [String: Any] = ["nodes": [
+      ["state": "APPROVED", "author": ["login": "pal", "avatarUrl": "b"], "onBehalfOf": ["nodes": [["slug": "web"]]]],
+    ]]
+    let waiting = Derive.pr(try pr(["reviewThreads": ["nodes": [thread("pal"), thread("me")]], "latestOpinionatedReviews": approved]), tickets: nil, review: review)
+    #expect(waiting.status.label == "1 thread to reply to")
+    #expect(waiting.waitingOn == .you)
+    #expect(waiting.unresolvedThreads == 2)
+    #expect(TodayRules.prNeed(waiting, ageMessage: nil)?.kind == .threads)
+
+    // Answered, and the rules don't need threads resolved: nothing stands in the way.
+    let answered = Derive.pr(try pr(["reviewThreads": ["nodes": [thread("me")]], "latestOpinionatedReviews": approved]), tickets: nil, review: review)
+    #expect(answered.threadsToReply == 0)
+    #expect(answered.status.label == "Ready to merge")
+  }
+
   @Test func stacksLinkToTheBranchTheyTarget() throws {
     let base = Derive.pr(try pr(["number": 1, "url": "u1", "headRefName": "a"]), tickets: nil)
     let top = Derive.pr(try pr(["number": 2, "url": "u2", "headRefName": "b", "baseRefName": "a"]), tickets: nil)

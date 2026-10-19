@@ -134,6 +134,8 @@ struct Pr: Equatable, Identifiable, Sendable {
   /// Nil for merged PRs.
   let reviewGate: ReviewGate?
   let unresolvedThreads: Int
+  /// Unresolved threads whose latest comment isn't the author's: someone is waiting on a reply.
+  let threadsToReply: Int
   let ticketKeys: [String]
   let tickets: [Ticket]
   let mismatches: [Mismatch]

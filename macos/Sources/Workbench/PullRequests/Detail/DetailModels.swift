@@ -81,6 +81,8 @@ struct ReviewThread: Equatable, Identifiable, Sendable {
   let replies: Int
   let url: String
   let createdAt: String
+  /// The PR's author wrote the latest comment, so it's the reviewer's turn.
+  var replied = false
 }
 
 /// A reviewer whose latest review asks for changes, with what they asked for.

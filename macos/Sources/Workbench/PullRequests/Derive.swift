@@ -204,11 +204,19 @@ enum Derive {
     )
   }
 
+  /// A thread is answered when the PR's author wrote its latest comment: the next move is the
+  /// reviewer's. Without the latest comment (an older cached PR) it counts as waiting on a reply.
+  static func repliedByAuthor(_ thread: GithubPr.Thread, author: String?) -> Bool {
+    guard let author, let last = thread.lastComment?.nodes.last?.author?.login else { return false }
+    return last.caseInsensitiveCompare(author) == .orderedSame
+  }
+
   private static func plural(_ count: Int, _ word: String) -> String { "\(count) \(word)\(count == 1 ? "" : "s")" }
 
   /// Ordered so the first thing the author has to act on wins.
   private static func status(
-    _ raw: GithubPr, checks: CheckSummary, coderabbit: CodeRabbitSummary, unresolved: Int, changesRequested: Bool, gate: ReviewGate?
+    _ raw: GithubPr, checks: CheckSummary, coderabbit: CodeRabbitSummary, toReply: Int, answered: Int, changesRequested: Bool,
+    gate: ReviewGate?
   ) -> (PrStatus, WaitingOn) {
     if raw.mergedAt != nil { return (PrStatus(label: "Merged", tone: .good), .merge) }
     if raw.isDraft { return (PrStatus(label: "Draft", tone: .neutral), .draft) }
@@ -218,10 +226,14 @@ enum Derive {
     if raw.reviewDecision == "CHANGES_REQUESTED" || changesRequested { return (PrStatus(label: "Changes requested", tone: .bad), .you) }
     if coderabbit.review == .changesRequested { return (PrStatus(label: "CodeRabbit wants changes", tone: .warn), .you) }
     if checks.state == .pending { return (PrStatus(label: "CI running (\(checks.pending.count))", tone: .neutral), .ci) }
-    if unresolved > 0 { return (PrStatus(label: "\(plural(unresolved, "unresolved thread"))", tone: .warn), .you) }
+    if toReply > 0 { return (PrStatus(label: "\(plural(toReply, "thread")) to reply to", tone: .warn), .you) }
     if raw.mergeStateStatus == "BEHIND" { return (PrStatus(label: "Behind base", tone: .warn), .you) }
     if let gate, !gate.codeOwners.isEmpty { return (PrStatus(label: "Needs code owner", tone: .neutral), .reviewer) }
     if let gate, gate.approvalsNeeded > 0 { return (PrStatus(label: "Needs \(plural(gate.approvalsNeeded, "approval"))", tone: .neutral), .reviewer) }
+    // Replied to but not resolved: it's the reviewer's move, and only blocks when the rules say so.
+    if answered > 0 && mergeRules(raw.baseRef).threadResolution {
+      return (PrStatus(label: "\(plural(answered, "open thread")), replied", tone: .neutral), .reviewer)
+    }
     // With the review rules read and nothing outstanding, BLOCKED just means "use the merge queue".
     if gate?.complete == true || raw.reviewDecision == "APPROVED" || ["CLEAN", "HAS_HOOKS", "UNSTABLE"].contains(raw.mergeStateStatus) {
       return (PrStatus(label: "Ready to merge", tone: .good), .merge)
@@ -255,7 +267,9 @@ enum Derive {
 
     let checks = summariseChecks(raw)
     let coderabbit = summariseCodeRabbit(raw)
-    let unresolved = raw.reviewThreads.nodes.filter { !$0.isResolved }.count
+    let open = raw.reviewThreads.nodes.filter { !$0.isResolved }
+    let unresolved = open.count
+    let toReply = open.filter { !repliedByAuthor($0, author: raw.author?.login) }.count
     let humanReviews = raw.latestOpinionatedReviews.nodes.filter { !isCodeRabbit($0.author?.login) }
     func reviewers(_ state: String) -> [Person] {
       humanReviews.filter { $0.state == state }.compactMap { $0.author.map(userPerson) }
@@ -264,7 +278,8 @@ enum Derive {
     let changesRequestedBy = reviewers("CHANGES_REQUESTED")
     let gate = raw.mergedAt != nil ? nil : reviewGate(raw, approvals: approvals, review: review)
     let (status, waitingOn) = status(
-      raw, checks: checks, coderabbit: coderabbit, unresolved: unresolved, changesRequested: !changesRequestedBy.isEmpty, gate: gate
+      raw, checks: checks, coderabbit: coderabbit, toReply: toReply, answered: unresolved - toReply,
+      changesRequested: !changesRequestedBy.isEmpty, gate: gate
     )
 
     return Pr(
@@ -273,7 +288,7 @@ enum Derive {
       headRef: raw.headRefName, baseRef: raw.baseRefName, createdAt: raw.createdAt, updatedAt: raw.updatedAt,
       mergedAt: raw.mergedAt, additions: raw.additions, deletions: raw.deletions, status: status, waitingOn: waitingOn,
       checks: checks, coderabbit: coderabbit, reviewDecision: raw.reviewDecision, approvals: approvals,
-      changesRequestedBy: changesRequestedBy, reviewGate: gate, unresolvedThreads: unresolved, ticketKeys: keys,
+      changesRequestedBy: changesRequestedBy, reviewGate: gate, unresolvedThreads: unresolved, threadsToReply: toReply, ticketKeys: keys,
       tickets: tickets, mismatches: mismatches(raw, tickets: tickets, ticketKeys: keys, afterMerge: afterMerge), stackedOn: nil
     )
   }

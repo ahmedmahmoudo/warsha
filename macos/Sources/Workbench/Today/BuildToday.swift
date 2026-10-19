@@ -322,7 +322,7 @@ enum TodayRules {
       let names = pr.changesRequestedBy.map(\.name).joined(separator: ", ")
       return Need(kind: .changesRequested, tone: .bad, title: "Changes requested", detail: names.isEmpty ? nil : names, actionLabel: "See review", action: details)
     }
-    if label == "CodeRabbit wants changes" || label.contains("unresolved thread") {
+    if label == "CodeRabbit wants changes" || label.hasSuffix("to reply to") {
       return Need(kind: .threads, tone: .warn, title: label, detail: nil, actionLabel: "Reply", action: details)
     }
     if label == "Behind base" {

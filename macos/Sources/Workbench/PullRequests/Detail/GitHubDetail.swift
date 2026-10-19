@@ -28,6 +28,8 @@ struct RawThread: Decodable, Sendable {
   let path: String
   let line: Int?
   let comments: Comments
+  /// Who wrote the latest comment, to tell a thread waiting on a reply from one already answered.
+  let lastComment: Nodes<GithubPr.Thread.Comment>?
 }
 
 struct RawReview: Decodable, Sendable {
@@ -119,6 +121,7 @@ extension GitHub {
     threads: reviewThreads(first: 100) { nodes {
       id isResolved isOutdated path line
       comments(first: 1) { totalCount nodes { bodyText url createdAt author \(detailActor) } }
+      lastComment: comments(last: 1) { nodes { author { login } } }
     } }
     reviews: latestOpinionatedReviews(first: 20) { nodes { id state bodyText url submittedAt author \(detailActor) } }
     timelineItems(last: 100, itemTypes: [

@@ -151,7 +151,8 @@ enum BuildDetail {
         return ReviewThread(
           id: thread.id, path: thread.path, line: thread.line, author: person(first.author), isBot: isBot(first.author),
           isOutdated: thread.isOutdated, body: excerpt(first.bodyText) ?? "", replies: thread.comments.totalCount - 1,
-          url: first.url, createdAt: first.createdAt
+          url: first.url, createdAt: first.createdAt,
+          replied: thread.lastComment?.nodes.last?.author.map { $0.login.caseInsensitiveCompare(raw.base.author?.login ?? "") == .orderedSame } ?? false
         )
       }
       .sorted { ($0.isOutdated ? 1 : 0, $0.createdAt) < ($1.isOutdated ? 1 : 0, $1.createdAt) }

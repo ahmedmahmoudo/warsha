@@ -121,6 +121,8 @@ struct GithubPr: Decodable, Sendable {
     struct Comment: Decodable, Sendable { struct Author: Decodable, Sendable { let login: String }; let author: Author? }
     let isResolved: Bool
     let comments: Nodes<Comment>
+    /// The thread's latest comment: whoever wrote it is waiting on the other side.
+    let lastComment: Nodes<Comment>?
   }
   struct Review: Decodable, Sendable {
     struct Team: Decodable, Sendable { let slug: String }
@@ -206,7 +208,9 @@ extension GitHub {
     repository { nameWithOwner }
     \(checkFields(number))
     files(first: 100) { pageInfo { hasNextPage endCursor } nodes { path } }
-    reviewThreads(first: 100) { nodes { isResolved comments(first: 1) { nodes { author { login } } } } }
+    reviewThreads(first: 100) { nodes {
+      isResolved comments(first: 1) { nodes { author { login } } } lastComment: comments(last: 1) { nodes { author { login } } }
+    } }
     latestOpinionatedReviews(first: 20) { nodes {
       state author { login avatarUrl(size: 48) } onBehalfOf(first: 10) { nodes { slug } }
     } }

@@ -511,6 +511,7 @@ private struct ThreadCard: View {
           .clickable(underline: true)
         if thread.isOutdated { Chip(text: "outdated", tone: .neutral) }
         if thread.isBot { Chip(text: "bot", tone: .neutral) }
+        if thread.replied { Chip(text: "replied", tone: .good).help("You wrote the latest comment; it's waiting on the reviewer") }
       }
       Text(thread.body).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(3)
       HStack(spacing: 5) {
