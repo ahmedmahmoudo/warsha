@@ -129,6 +129,19 @@ struct DeriveTests {
     #expect(answered.status.label == "Ready to merge")
   }
 
+  @Test func anApprovalThatLeavesCodeOwnersPendingIsWorthANudge() throws {
+    let approvedByOther = try pr(["latestOpinionatedReviews": ["nodes": [
+      ["state": "APPROVED", "author": ["login": "pal", "avatarUrl": "b"], "onBehalfOf": ["nodes": []]],
+    ]]])
+    let need = TodayRules.prNeed(Derive.pr(approvedByOther, tickets: nil, review: review), ageMessage: nil)
+    #expect(need?.kind == .slowReview)
+    #expect(need?.title == "Waiting on code owners")
+    #expect(need?.detail == "web · approved by pal")
+    let nudged = Ping(nudgedAt: Store.timestamp(Date()))
+    #expect(TodayRules.recentlyPinged(nudged, kind: .slowReview, nudgeAgainHours: 24))
+    #expect(!TodayRules.recentlyPinged(nudged, kind: .slowReview, nudgeAgainHours: 0))
+  }
+
   @Test func stacksLinkToTheBranchTheyTarget() throws {
     let base = Derive.pr(try pr(["number": 1, "url": "u1", "headRefName": "a"]), tickets: nil)
     let top = Derive.pr(try pr(["number": 2, "url": "u2", "headRefName": "b", "baseRefName": "a"]), tickets: nil)

@@ -16,6 +16,7 @@ struct PrKey: Hashable, Sendable {
 
   var owner: String { String(repo.split(separator: "/").first ?? "") }
   var name: String { String(repo.split(separator: "/").last ?? "") }
+  var url: String { "https://github.com/\(repo)/pull/\(number)" }
 }
 
 /// The badge in the page header.

@@ -46,6 +46,10 @@ struct PrRowView: View {
 
       NoteLine(ref: itemRef)
 
+      if pr.author == viewer && pr.mergedAt == nil && TodayRules.prNeed(pr, ageMessage: nil)?.kind == .slowReview {
+        NudgeLine(pr: pr)
+      }
+
       HStack(spacing: 12) {
         Text("#\(String(pr.number))").scaledFont(.caption.monospaced())
         if pr.author != viewer {
@@ -68,6 +72,36 @@ struct PrRowView: View {
       }
       .scaledFont(.caption)
       .foregroundStyle(.secondary)
+    }
+  }
+}
+
+/// Your PR is short of approvals: copy its link to nudge the reviewers listed on the right, then
+/// mark it nudged. It's left alone for the nudge interval after that, as on Today.
+private struct NudgeLine: View {
+  let pr: Pr
+  @Environment(Store.self) private var store
+  @Environment(AppSettings.self) private var settings
+
+  var body: some View {
+    let ping = store.pings[pr.url]
+    if TodayRules.recentlyPinged(ping, kind: .slowReview, nudgeAgainHours: settings.nudgeAgainHours) {
+      HStack(spacing: 4) {
+        Image(systemName: "bell").scaledFont(.caption).foregroundStyle(.tertiary)
+        PingLabel(ping: ping)
+      }
+    } else {
+      HStack(spacing: 6) {
+        Chip(text: "Nudge reviewers", tone: .warn)
+        GlassEffectContainer(spacing: 4) {
+          HStack(spacing: 4) {
+            CopyLinkButton(url: pr.url)
+            Button("Nudged", systemImage: "checkmark") { store.ping(pr.url, .nudged) }
+              .buttonStyle(.pill(.warn)).clickable()
+              .help("Mark the reviewers as nudged")
+          }
+        }
+      }
     }
   }
 }

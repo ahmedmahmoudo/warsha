@@ -91,13 +91,8 @@ struct TodayView: View {
   }
 
   private func isPinged(_ item: NeedsYouItem) -> Bool {
-    guard let pr = item.pr, let ping = store.pings[pr.url] else { return false }
-    switch item.kind {
-    case .sendForReview: return ping.sentAt != nil
-    case .stuckReview, .slowReview:
-      return ping.last.map { Date().timeIntervalSince($0) < Double(settings.nudgeAgainHours) * 3600 } ?? false
-    default: return false
-    }
+    guard let pr = item.pr else { return false }
+    return TodayRules.recentlyPinged(store.pings[pr.url], kind: item.kind, nudgeAgainHours: settings.nudgeAgainHours)
   }
 
   private var since: String { store.setting(TodayModel.lastSeenKey) ?? firstVisitSince }
@@ -251,6 +246,7 @@ private struct PrLine<Accessory: View>: View {
       .help(pr.title)
       Spacer(minLength: 4)
       accessory
+      CopyLinkIcon(prs: [PrKey(pr)])
       Chip(text: pr.status.label, tone: pr.status.tone)
     }
     .scaledFont(.callout)
@@ -419,33 +415,13 @@ private struct NeedsYouRow: View {
           } else {
             ActionButton(label: item.actionLabel, action: item.action, tone: item.tone)
           }
-          ItemControls(ref: item.ref, title: title, url: item.ticket?.url ?? item.pr?.url, prs: item.pr.map { [PrKey($0)] } ?? [])
+          ItemControls(
+            ref: item.ref, title: title, url: item.ticket?.url ?? item.pr?.url, prs: item.pr.map { [PrKey($0)] } ?? [], copyLink: ping == nil
+          )
         }
       }
     }
     .padding(.vertical, 8)
-  }
-}
-
-/// Copies the PR's link, and only that: copying isn't sending, so Sent and Nudged stay their own
-/// buttons.
-private struct CopyLinkButton: View {
-  let url: String
-  @State private var copied = false
-
-  var body: some View {
-    Button(copied ? "Copied" : "Copy link", systemImage: copied ? "checkmark" : "link") {
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(url, forType: .string)
-      copied = true
-      Task {
-        try? await Task.sleep(for: .seconds(2))
-        copied = false
-      }
-    }
-    .buttonStyle(.pill(.info))
-    .clickable()
-    .help("Copy the PR link")
   }
 }
 
@@ -967,7 +943,7 @@ private struct WaitingSection: View {
 }
 
 /// "sent 2 hours ago" / "nudged yesterday" beside a waiting PR, or a clock when neither happened.
-private struct PingLabel: View {
+struct PingLabel: View {
   let ping: Ping?
 
   var body: some View {

@@ -339,7 +339,30 @@ enum TodayRules {
         detail: ageMessage.text, actionLabel: "Nudge", action: details
       )
     }
+    // Still short of code-owner approvals (or the approval count), even with someone's approval
+    // in: worth a nudge. Once nudged it waits on them until the nudge interval passes.
+    if pr.waitingOn == .reviewer, let gate = pr.reviewGate, !gate.codeOwners.isEmpty || gate.approvalsNeeded > 0 {
+      let owners = gate.codeOwners.map { $0.map(\.name).joined(separator: " or ") }.joined(separator: ", ")
+      let approved = pr.approvals.isEmpty ? nil : "approved by \(pr.approvals.map(\.name).joined(separator: ", "))"
+      let detail = [owners.isEmpty ? nil : owners, approved].compactMap { $0 }.joined(separator: " · ")
+      return Need(
+        kind: .slowReview, tone: .warn,
+        title: gate.codeOwners.isEmpty ? "Needs \(plural(gate.approvalsNeeded, "approval"))" : "Waiting on code owners",
+        detail: detail.isEmpty ? nil : detail,
+        actionLabel: "Nudge", action: details
+      )
+    }
     return nil
+  }
+
+  /// Whether a PR you've sent or nudged is still within the nudge interval, so it waits on others.
+  static func recentlyPinged(_ ping: Ping?, kind: NeedsYouKind, nudgeAgainHours: Int, now: Date = Date()) -> Bool {
+    guard let ping else { return false }
+    switch kind {
+    case .sendForReview: return ping.sentAt != nil
+    case .stuckReview, .slowReview: return ping.last.map { now.timeIntervalSince($0) < Double(nudgeAgainHours) * 3600 } ?? false
+    default: return false
+    }
   }
 
   /// A PR opened in the last `newPrHours` that's waiting on reviewers with nothing from them yet.

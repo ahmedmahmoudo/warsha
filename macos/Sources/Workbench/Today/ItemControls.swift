@@ -87,19 +87,88 @@ extension Store {
   }
 }
 
-/// Pin, note and park for one item.
+/// Puts text on the clipboard, replacing what was there.
+func copyToPasteboard(_ text: String) {
+  NSPasteboard.general.clearContents()
+  NSPasteboard.general.setString(text, forType: .string)
+}
+
+/// Copy link, pin, note and park for one item. The link is the PR's (a menu when there are several).
 struct ItemControls: View {
   let ref: Ref
   let title: String
   let url: String?
   var prs: [PrKey] = []
+  /// Off where the row already has its own Copy link button.
+  var copyLink = true
 
   var body: some View {
     HStack(spacing: 2) {
+      if copyLink && !prs.isEmpty { CopyLinkIcon(prs: prs) }
       PinButton(ref: ref, title: title, url: url)
       NoteButton(ref: ref, label: title)
       ParkButton(ref: ref, title: title, url: url, prs: prs)
     }
+  }
+}
+
+/// Copies a PR's link, with a tick for a moment so you know it worked.
+struct CopyLinkIcon: View {
+  let prs: [PrKey]
+  @State private var copied = false
+
+  var body: some View {
+    if prs.count == 1, let pr = prs.first {
+      Button { copy(pr) } label: { ControlIcon(symbol: copied ? "checkmark" : "link", active: copied, activeColor: Tone.good.color) }
+        .buttonStyle(.plain)
+        .clickable()
+        .help("Copy link to #\(pr.number)")
+    } else {
+      Menu {
+        ForEach(prs, id: \.self) { pr in Button("Copy \(pr.repo)#\(pr.number)") { copy(pr) } }
+        Button("Copy All") { copy(prs.map(\.url).joined(separator: "\n")) }
+      } label: {
+        ControlIcon(symbol: copied ? "checkmark" : "link", active: copied, activeColor: Tone.good.color)
+      }
+      .menuStyle(.button)
+      .buttonStyle(.plain)
+      .menuIndicator(.hidden)
+      .fixedSize()
+      .clickable()
+      .help("Copy a PR's link")
+    }
+  }
+
+  private func copy(_ pr: PrKey) { copy(pr.url) }
+
+  private func copy(_ text: String) {
+    copyToPasteboard(text)
+    copied = true
+    Task {
+      try? await Task.sleep(for: .seconds(1.5))
+      copied = false
+    }
+  }
+}
+
+/// Copies the PR's link as a labelled pill, for rows where copying it is the next step (sending
+/// it for review, nudging). Copying isn't sending, so Sent and Nudged stay their own buttons.
+struct CopyLinkButton: View {
+  let url: String
+  @State private var copied = false
+
+  var body: some View {
+    Button(copied ? "Copied" : "Copy link", systemImage: copied ? "checkmark" : "link") {
+      copyToPasteboard(url)
+      copied = true
+      Task {
+        try? await Task.sleep(for: .seconds(2))
+        copied = false
+      }
+    }
+    .buttonStyle(.pill(.info))
+    .clickable()
+    .help("Copy the PR link")
   }
 }
 
@@ -160,7 +229,8 @@ struct NoteButton: View {
           .scaledFont(.caption).foregroundStyle(.secondary).lineLimit(2)
         TextEditor(text: $draft)
           .scaledFont(.callout)
-          .scaledFrame(width: 300, height: 90)
+          .scaledFrame(height: 90)
+          .frame(maxWidth: .infinity)
           .scrollContentBackground(.hidden)
           .padding(4)
           .background(Palette.fill, in: .rect(cornerRadius: 6))
@@ -184,6 +254,9 @@ struct NoteButton: View {
         }
         .scaledControlSize(.small)
       }
+      // A fixed width for the whole popover, so a long title wraps instead of leaving the editor
+      // narrower than the popover.
+      .scaledFrame(width: 320, alignment: .leading)
       .padding(12)
     }
   }
