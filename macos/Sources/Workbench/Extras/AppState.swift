@@ -16,6 +16,7 @@ final class AppState {
   let today = TodayModel()
   let activity = ActivityModel()
   let prDetails = PrDetailModels()
+  let worktrees = WorktreesModel()
   let notifier = Notifier()
   let signIns = SignIns()
 
@@ -53,6 +54,10 @@ final class AppState {
       },
       loop(every: .seconds(60)) { state in
         await state.calendar.sync(state.settings, state.store)
+      },
+      // Local worktrees, for the chip beside each PR that has one.
+      loop(every: .seconds(300)) { state in
+        await state.worktrees.scan(settings: state.settings)
       },
       // Meetings starting soon need checking more often than anything is loaded.
       loop(every: .seconds(20)) { _ in },

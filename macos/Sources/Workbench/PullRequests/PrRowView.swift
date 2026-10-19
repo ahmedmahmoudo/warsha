@@ -62,6 +62,7 @@ struct PrRowView: View {
           }
         }
         Text("→ \(Text(pr.baseRef).font(Typeface.caption.monospaced().font(textScale)))")
+        WorktreeChip(pr: pr)
         if let stackParent {
           Link("stacked on #\(String(stackParent.number))", destination: URL(string: stackParent.url)!).clickable(underline: true)
         }

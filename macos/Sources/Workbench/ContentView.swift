@@ -63,6 +63,7 @@ struct ContentView: View {
       case .pullRequests: NavigationStack { PullRequestsView() }
       case .calendar: NavigationStack { CalendarView() }
       case .activity: NavigationStack { ActivityView() }
+      case .worktrees: NavigationStack { WorktreesView() }
       }
     }
   }

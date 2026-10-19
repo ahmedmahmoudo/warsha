@@ -138,6 +138,7 @@ struct PrDetailView: View {
           Text(pr.author)
         }
         Text("\(pr.headRef) → \(pr.baseRef)").scaledFont(.caption.monospaced())
+        WorktreeChip(pr: pr)
         HStack(spacing: 4) {
           Text("+\(pr.additions)").foregroundStyle(Tone.good.color)
           Text("−\(pr.deletions)").foregroundStyle(Tone.bad.color)

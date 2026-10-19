@@ -18,6 +18,7 @@ struct WorkbenchApp: App {
         .environment(state.calendar)
         .environment(state.today)
         .environment(state.activity)
+        .environment(state.worktrees)
         .tint(.workbenchAccent)
         .textScale(state.settings.textScale)
         .frame(minWidth: 760, minHeight: 480)
@@ -72,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 /// Workbench's pages, in sidebar order.
 enum Page: String, CaseIterable, Identifiable {
-  case today, pullRequests, activity, calendar
+  case today, pullRequests, activity, calendar, worktrees
 
   var id: Self { self }
 
@@ -82,6 +83,7 @@ enum Page: String, CaseIterable, Identifiable {
     case .pullRequests: "Pull Requests"
     case .activity: "Activity"
     case .calendar: "Calendar"
+    case .worktrees: "Worktrees"
     }
   }
 
@@ -91,10 +93,11 @@ enum Page: String, CaseIterable, Identifiable {
     case .pullRequests: "arrow.triangle.pull"
     case .activity: "chart.bar.xaxis"
     case .calendar: "calendar"
+    case .worktrees: "arrow.triangle.branch"
     }
   }
 
-  /// ⌘1…⌘4 in the Go menu.
+  /// ⌘1…⌘5 in the Go menu.
   var shortcut: KeyEquivalent { KeyEquivalent(Character(String(Self.allCases.firstIndex(of: self)! + 1))) }
 }
 
