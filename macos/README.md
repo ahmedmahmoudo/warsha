@@ -52,6 +52,8 @@ Sources/Workbench/
   ContentView.swift     the pages as toolbar tabs, the Dock badge
   Extras/               app-level state and background refresh (AppState), notifications (Notifier),
                         the global shortcut and open at login (HotKey)
+  Profiles.swift        profiles: each one's settings, secrets, database and tabs (ProfileViews: switchers)
+  Skeleton.swift        placeholders shaped like a page, for its first load
   Theme.swift           the web version's palette: background, text, borders and status tones
   DevHooks.swift        launch arguments for opening a page and saving a snapshot of the window
   SettingsView.swift    accounts, general preferences, data import
@@ -68,6 +70,7 @@ Sources/Workbench/
                         table (Meetings), the Calendar page's grids, and the meeting panels
   Activity/             the Activity page: GitHub events and searches, Linear history, the day
                         builder (BuildActivity), and the Day, Week and Month views
+  Worktrees/            the Worktrees page: your clones' worktrees, their PRs, and cleaning them up
   Today/                the Today page: Linear queries, the rules (BuildToday), pin, note and park
                         controls with posting the park reason, and the sections
 Tests/WorkbenchTests/   swift-testing tests; PrParityTests compares with the running web version

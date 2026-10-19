@@ -177,6 +177,8 @@ final class Navigation {
   }
 
   private func saveTabs() {
+    // Launch checks leave your real tabs alone.
+    guard !Keychain.memoryOnly else { return }
     ProfileDefaults().set(tabs.map { "\($0.repo)#\($0.number)" }, forKey: Self.tabsKey)
   }
 
