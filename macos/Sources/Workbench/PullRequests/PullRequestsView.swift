@@ -52,6 +52,10 @@ struct PullRequestsView: View {
       }
       .onChange(of: filter) { page = 0 }
       .onChange(of: search) { page = 0 }
+      .task(id: "\(settings.githubCredential)|\(settings.githubRepos)") {
+        await model.loadTeamOptions(settings: settings)
+        if scope == .team && model.teamOptions?.isEmpty == true { scope = .mine }
+      }
       .onChange(of: scope) {
         filter = nil
         page = 0
@@ -230,9 +234,14 @@ struct PullRequestsView: View {
     return ScrollView(.horizontal, showsIndicators: false) {
       GlassEffectContainer(spacing: 6) {
         HStack(spacing: 6) {
-          Picker("Scope", selection: $scope) {
-            ForEach(PrScope.allCases) { Text($0.label).tag($0) }
+          Picker("Scope", selection: Binding(get: { scope }, set: { next in if next != .team || model.teamAvailable { scope = next } })) {
+            ForEach(PrScope.allCases) { scope in
+              Text(scope.label).tag(scope)
+                // Team follows teams in your repos' orgs; with none there, it's off.
+                .selectionDisabled(scope == .team && !model.teamAvailable)
+            }
           }
+          .help(model.teamAvailable ? "" : "Team is off: choose repos in an organization with GitHub teams (Settings → Accounts)")
           .pickerStyle(.segmented)
           .labelsHidden()
           .controlSize(.large)

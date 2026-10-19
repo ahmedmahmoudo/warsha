@@ -40,10 +40,7 @@ struct AccountsSettings: View {
           TextField("Repos", text: $settings.githubRepos, prompt: Text("All you can see, or owner/repo, owner/other-repo"))
           if settings.hasGitHub { ChooseReposButton() }
         }
-        HStack {
-          TextField("Team", text: $settings.githubTeam, prompt: Text("Everyone in your repos, or logins"))
-          if settings.hasGitHub { ChooseTeamButton() }
-        }
+        TeamSetting()
       } header: {
         Text("GitHub")
       } footer: {

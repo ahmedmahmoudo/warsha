@@ -21,7 +21,8 @@ final class AppSettings {
 
   /// Comma-separated repos to search; empty searches every repo you can see.
   var githubRepos: String { didSet { save(githubRepos, "githubRepos") } }
-  /// Comma-separated GitHub logins whose PRs the Team view shows.
+  /// Comma-separated GitHub teams ("org/slug") whose members' PRs the Team view shows; empty is
+  /// everyone in your repos.
   var githubTeam: String { didSet { save(githubTeam, "githubTeam") } }
   /// OAuth Desktop client for Google Calendar.
   var googleClientId: String { didSet { save(googleClientId, "googleClientId") } }
@@ -97,7 +98,8 @@ final class AppSettings {
     githubSignIn = Self.grant(Keychain.get("githubSignIn"))
     linearSignIn = Self.grant(Keychain.get("linearSignIn"))
     githubRepos = defaults.string(forKey: "githubRepos") ?? ""
-    githubTeam = defaults.string(forKey: "githubTeam") ?? ""
+    // Team used to be people's logins; only teams ("org/slug") count now.
+    githubTeam = AppSettings.list(defaults.string(forKey: "githubTeam") ?? "").filter { $0.contains("/") }.joined(separator: ", ")
     googleClientId = defaults.string(forKey: "googleClientId") ?? ""
     localRepos = defaults.string(forKey: "localRepos") ?? ""
     timeZone = defaults.string(forKey: "timeZone") ?? TimeZone.current.identifier
@@ -152,7 +154,6 @@ final class AppSettings {
     let fields: [(String, ReferenceWritableKeyPath<AppSettings, String>)] = [
       ("GITHUB_TOKEN", \.githubToken),
       ("GITHUB_REPOS", \.githubRepos),
-      ("GITHUB_TEAM", \.githubTeam),
       ("LINEAR_API_KEY", \.linearApiKey),
       ("GOOGLE_CLIENT_ID", \.googleClientId),
       ("GOOGLE_CLIENT_SECRET", \.googleClientSecret),

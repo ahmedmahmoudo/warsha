@@ -40,6 +40,37 @@ final class PullRequestsModel {
     }
   }
 
+  /// The teams Team can follow: those in the orgs that own your repos. Nil until read; empty means
+  /// Team is off.
+  private(set) var teamOptions: [OrgTeam]?
+  private(set) var teamOptionsError: String?
+  private var teamOptionsKey: String?
+
+  /// Team is there to pick only when your repos' orgs have teams.
+  var teamAvailable: Bool { !(teamOptions ?? []).isEmpty }
+
+  /// Reads the teams once per sign-in and choice of repos.
+  func loadTeamOptions(settings: AppSettings) async {
+    let repos = AppSettings.list(settings.githubRepos)
+    let key = "\(settings.githubCredential)|\(repos.joined(separator: ","))"
+    guard key != teamOptionsKey else { return }
+    teamOptionsKey = key
+    guard settings.hasGitHub, !repos.isEmpty else {
+      teamOptions = []
+      teamOptionsError = nil
+      return
+    }
+    teamOptions = nil
+    do {
+      teamOptions = try await GitHub.teams(ofOwners: repoOrgs(repos), token: settings.githubCredential)
+      teamOptionsError = nil
+    } catch {
+      teamOptionsKey = nil
+      teamOptionsError = error.localizedDescription
+      teamOptions = []
+    }
+  }
+
   /// Your open PRs waiting on you and not parked, for the sidebar badge.
   func needsYou(store: Store) -> Int {
     responses[.mine]?.open.filter { $0.waitingOn == .you && store.parked(for: $0) == nil }.count ?? 0

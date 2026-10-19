@@ -256,13 +256,14 @@ private struct ReposPage: View {
   }
 }
 
-/// Whose PRs the Team view follows: your GitHub teammates come ticked, or no one for everyone.
+/// Which GitHub teams the Team view follows, from your repos' orgs: yours come ticked, none is
+/// everyone in your repos. With no teams there, it says Team is off.
 private struct TeamPage: View {
   var body: some View {
     VStack(spacing: 16) {
       VStack(spacing: 8) {
-        Text("Who's on your team?").font(.system(size: 26, weight: .semibold)).tracking(-0.5)
-        Text("Pull Requests → Team shows their PRs. Your GitHub teammates are ticked; leave it empty to follow everyone in your repos.")
+        Text("Which team are you on?").font(.system(size: 26, weight: .semibold)).tracking(-0.5)
+        Text("Pull Requests → Team shows PRs by these GitHub teams, from the organizations that own your repos. Yours are ticked; tick none to follow everyone in your repos.")
           .font(.system(size: 14)).foregroundStyle(.secondary).multilineTextAlignment(.center)
           .frame(maxWidth: 480).fixedSize(horizontal: false, vertical: true)
       }

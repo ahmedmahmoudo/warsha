@@ -1,186 +1,144 @@
 import SwiftUI
 
-/// Someone whose PRs the Team view can follow.
-struct GitHubPerson: Identifiable, Equatable, Sendable {
-  let login: String
-  let name: String?
-  let avatarUrl: String?
-  /// The GitHub teams you share with them.
-  var teams: [String] = []
-  /// PRs they've opened lately in the repos you follow.
-  var recentPrs = 0
-  var id: String { login.lowercased() }
+/// A GitHub team in the organization that owns one of your repos.
+struct OrgTeam: Identifiable, Equatable, Sendable {
+  let org: String
+  let slug: String
+  let name: String
+  let members: Int
+  /// You're on it.
+  let mine: Bool
+  /// How it's saved in Settings → Accounts → Team: "org/slug".
+  var id: String { "\(org)/\(slug)" }
 }
 
 extension GitHub {
-  /// Teams bigger than this are an org's everyone-team (one has half a million people), not a team.
-  private static let teamSizeLimit = 50
-  private static let recentDays = 30
-
-  /// The people you're likely to want on Team: the members of your GitHub teams (small ones only)
-  /// and whoever has opened PRs lately in `repos`, busiest first. You and bots are left out.
-  static func likelyTeammates(token: String, repos: [String]) async throws -> [GitHubPerson] {
+  /// Every team in the organizations among `owners` (a personal account has none), yours marked.
+  static func teams(ofOwners owners: [String], token: String) async throws -> [OrgTeam] {
+    guard !owners.isEmpty else { return [] }
     let login = try await viewer(token: token)
-    struct Teams: Decodable {
-      struct Member: Decodable { let login: String; let name: String?; let avatarUrl: String? }
-      struct Members: Decodable { let totalCount: Int; let nodes: [Member] }
-      struct Team: Decodable { let name: String; let members: Members }
-      struct Org: Decodable { let login: String; let teams: Nodes<Team> }
-      struct Viewer: Decodable { let organizations: Nodes<Org> }
-      let viewer: Viewer
+    struct Owner: Decodable {
+      struct Team: Decodable { struct Count: Decodable { let totalCount: Int }; let slug: String; let name: String; let members: Count }
+      struct Mine: Decodable { let slug: String }
+      let login: String?
+      let all: Nodes<Team>?
+      let mine: Nodes<Mine>?
     }
-    var people: [GitHubPerson] = []
-    func person(_ login: String) -> Int? { people.firstIndex { $0.login.caseInsensitiveCompare(login) == .orderedSame } }
-
-    let teams = try await graphql(
+    let definitions = (owners.indices.map { "$o\($0): String!" } + ["$me: [String!]"]).joined(separator: ", ")
+    let selections = owners.indices.map { index in
       """
-      query MyTeams($login: [String!]) { viewer { organizations(first: 50) { nodes { login teams(first: 20, userLogins: $login) { nodes {
-        name members(first: \(teamSizeLimit)) { totalCount nodes { login name avatarUrl(size: 48) } }
-      } } } } } }
-      """,
-      variables: ["login": [login]], token: token, as: Teams.self
-    )
-    for org in teams.viewer.organizations.nodes {
-      for team in org.teams.nodes where team.members.totalCount <= teamSizeLimit {
-        for member in team.members.nodes where member.login.caseInsensitiveCompare(login) != .orderedSame {
-          if let index = person(member.login) {
-            people[index].teams.append(team.name)
-          } else {
-            people.append(GitHubPerson(login: member.login, name: member.name, avatarUrl: member.avatarUrl, teams: [team.name]))
-          }
-        }
-      }
-    }
-
-    // Who's been opening PRs in your repos; a failure only loses the hint.
-    if !repos.isEmpty {
-      struct Search: Decodable {
-        struct Author: Decodable { let login: String; let avatarUrl: String? }
-        struct Node: Decodable { let author: Author? }
-        struct Results: Decodable { let nodes: [Node] }
-        let search: Results
-      }
-      let since = Date(timeIntervalSinceNow: -Double(recentDays) * 86_400).formatted(.iso8601.year().month().day())
-      let scope = repos.map { "repo:\($0)" }.joined(separator: " ")
-      let authors = (try? await graphql(
-        """
-        query RecentAuthors($q: String!) { search(query: $q, type: ISSUE, first: 100) { nodes { ... on PullRequest {
-          author { login avatarUrl(size: 48) }
-        } } } }
-        """,
-        variables: ["q": "is:pr created:>=\(since) \(scope)"], token: token, as: Search.self
-      ).search.nodes.compactMap(\.author)) ?? []
-      for author in authors where author.login.caseInsensitiveCompare(login) != .orderedSame && !isBot(author.login) {
-        if let index = person(author.login) {
-          people[index].recentPrs += 1
-        } else {
-          people.append(GitHubPerson(login: author.login, name: nil, avatarUrl: author.avatarUrl, recentPrs: 1))
-        }
-      }
-    }
-    return people.sorted { ($0.teams.isEmpty ? 1 : 0, -$0.recentPrs, $0.login.lowercased()) < ($1.teams.isEmpty ? 1 : 0, -$1.recentPrs, $1.login.lowercased()) }
-  }
-
-  /// People whose login or name matches, anywhere on GitHub.
-  static func searchPeople(_ term: String, token: String) async throws -> [GitHubPerson] {
-    struct Search: Decodable {
-      struct Node: Decodable { let login: String?; let name: String?; let avatarUrl: String? }
-      struct Results: Decodable { let nodes: [Node] }
-      let search: Results
-    }
-    return try await graphql(
+      o\(index): repositoryOwner(login: $o\(index)) { ... on Organization {
+        login all: teams(first: 100, orderBy: { field: NAME, direction: ASC }) { nodes { slug name members { totalCount } } }
+        mine: teams(first: 100, userLogins: $me) { nodes { slug } }
+      } }
       """
-      query FindPeople($q: String!) { search(query: $q, type: USER, first: 20) { nodes { ... on User { login name avatarUrl(size: 48) } } } }
-      """,
-      variables: ["q": "\(term) type:user"], token: token, as: Search.self
-    ).search.nodes.compactMap { node in node.login.map { GitHubPerson(login: $0, name: node.name, avatarUrl: node.avatarUrl) } }
-  }
-
-  private static func isBot(_ login: String) -> Bool {
-    login.hasSuffix("[bot]") || ["dependabot", "renovate", "github-actions"].contains(login.lowercased()) || Derive.isCodeRabbit(login)
+    }.joined(separator: "\n")
+    var variables: [String: any Sendable] = ["me": [login]]
+    for (index, owner) in owners.enumerated() { variables["o\(index)"] = owner }
+    let result = try await graphql("query OrgTeams(\(definitions)) {\n\(selections)\n}", variables: variables, token: token, as: [String: Owner?].self)
+    return owners.indices.flatMap { index -> [OrgTeam] in
+      guard let owner = result["o\(index)"] ?? nil, let org = owner.login else { return [] }
+      let mine = Set((owner.mine?.nodes ?? []).map(\.slug))
+      return (owner.all?.nodes ?? []).map { OrgTeam(org: org, slug: $0.slug, name: $0.name, members: $0.members.totalCount, mine: mine.contains($0.slug)) }
+    }
   }
 }
 
-/// Whose PRs the Team view follows: everyone in your repos, or the people ticked here. Suggests
-/// your GitHub teammates and whoever's been opening PRs in your repos, and searches GitHub for
-/// anyone else. Writes Settings → Accounts → Team (comma-separated logins, empty meaning everyone).
+/// The organizations that own the repos you follow: where Team's teams come from.
+func repoOrgs(_ repos: [String]) -> [String] {
+  var owners: [String] = []
+  for repo in repos {
+    guard let owner = repo.split(separator: "/").first.map(String.init), !owners.contains(where: { $0.caseInsensitiveCompare(owner) == .orderedSame }) else { continue }
+    owners.append(owner)
+  }
+  return owners
+}
+
+/// Whose PRs the Team view follows: GitHub teams from the organizations that own your repos, or no
+/// team ticked for everyone in those repos. With no teams there (personal repos, or none chosen),
+/// Team is off and this says why. Writes Settings → Accounts → Team as "org/slug" values.
 struct TeamPicker: View {
   @Environment(AppSettings.self) private var settings
-  /// Ticks your GitHub teammates when no one is chosen yet, as on Get started.
+  @Environment(PullRequestsModel.self) private var model
+  /// Ticks your own teams when none is chosen yet, as on Get started.
   var preselect = false
   var listHeight: CGFloat = 220
-  @State private var people: [GitHubPerson]?
-  @State private var found: [GitHubPerson] = []
-  @State private var searching = false
-  @State private var error: String?
-  @State private var search = ""
 
   private var chosen: [String] { AppSettings.list(settings.githubTeam) }
   private var repos: [String] { AppSettings.list(settings.githubRepos) }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 8) {
-        Image(systemName: "magnifyingglass").foregroundStyle(.tertiary)
-        TextField("Search people by name or login", text: $search).textFieldStyle(.plain)
-        if searching { ProgressView().controlSize(.small) }
-        Text(chosen.isEmpty ? "Everyone" : "\(chosen.count) chosen").scaledFont(.caption).foregroundStyle(.secondary)
-      }
-      .padding(.horizontal, 10).padding(.vertical, 7)
-      .background(Palette.background, in: .rect(cornerRadius: 8))
-      .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.border))
-
       Group {
-        if let error {
-          Text(error).scaledFont(.callout).foregroundStyle(Tone.bad.color).frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let people {
-          list(people)
+        if let error = model.teamOptionsError {
+          message(error, tone: .bad)
+        } else if repos.isEmpty {
+          message("Team needs your repos chosen first: its teams come from the organizations that own them.", tone: .warn)
+        } else if let teams = model.teamOptions {
+          if teams.isEmpty {
+            message("None of the organizations that own your repos (\(repoOrgs(repos).joined(separator: ", "))) has GitHub teams, so Team is off.", tone: .warn)
+          } else {
+            list(teams)
+          }
         } else {
-          VStack(spacing: 0) { ForEach(0 ..< 4, id: \.self) { SkeletonRow(seed: $0) } }
+          VStack(spacing: 0) { ForEach(0 ..< 3, id: \.self) { SkeletonRow(seed: $0) } }
         }
       }
       .frame(height: listHeight)
 
-      HStack(spacing: 12) {
-        Button("Follow Everyone") { settings.githubTeam = "" }
-          .buttonStyle(.link).clickable(underline: true)
-          .disabled(chosen.isEmpty)
-        if let people, people.contains(where: { !$0.teams.isEmpty }) {
-          Button("Choose My Teammates") { settings.githubTeam = people.filter { !$0.teams.isEmpty }.map(\.login).joined(separator: ", ") }
+      if let teams = model.teamOptions, !teams.isEmpty {
+        HStack(spacing: 12) {
+          Button("Everyone in My Repos") { settings.githubTeam = "" }
             .buttonStyle(.link).clickable(underline: true)
+            .disabled(chosen.isEmpty)
+          if teams.contains(where: \.mine) {
+            Button("My Teams") { settings.githubTeam = teams.filter(\.mine).map(\.id).joined(separator: ", ") }
+              .buttonStyle(.link).clickable(underline: true)
+          }
+          Spacer()
         }
-        Spacer()
+        .scaledFont(.caption)
+        Text(chosen.isEmpty
+          ? "With no team ticked, Team shows everyone's PRs in your repos, apart from yours and bots'."
+          : "Team shows PRs by the members of these teams, in your repos.")
+          .scaledFont(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
       }
-      .scaledFont(.caption)
-      Text(footnote).scaledFont(.caption).foregroundStyle(chosen.isEmpty && repos.isEmpty ? Tone.warn.color : .secondary)
-        .fixedSize(horizontal: false, vertical: true)
     }
-    .task(id: "\(settings.githubCredential)|\(settings.githubRepos)") { await load() }
-    .task(id: search) { await find() }
+    .task(id: "\(settings.githubCredential)|\(settings.githubRepos)") {
+      await model.loadTeamOptions(settings: settings)
+      if preselect, chosen.isEmpty, let mine = model.teamOptions?.filter(\.mine), !mine.isEmpty {
+        settings.githubTeam = mine.map(\.id).joined(separator: ", ")
+      }
+    }
   }
 
-  private var footnote: String {
-    if !chosen.isEmpty { return "Team shows PRs by these people\(repos.isEmpty ? "" : " in your repos")." }
-    if repos.isEmpty { return "With no one chosen, Team shows everyone's PRs in your repos, so it needs repos chosen first, or some people here." }
-    return "With no one chosen, Team shows everyone's PRs in your repos, apart from yours and bots'."
+  private func message(_ text: String, tone: Tone) -> some View {
+    VStack(spacing: 8) {
+      Image(systemName: "person.3").scaledFont(.title2).foregroundStyle(.tertiary)
+      Text(text).scaledFont(.callout).foregroundStyle(tone == .bad ? Tone.bad.color : .secondary)
+        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Palette.background, in: .rect(cornerRadius: 8))
+    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.border))
   }
 
-  private func list(_ people: [GitHubPerson]) -> some View {
-    let query = search.trimmingCharacters(in: .whitespaces)
-    var all = people
-    for login in chosen where !all.contains(where: { $0.login.caseInsensitiveCompare(login) == .orderedSame }) {
-      all.append(GitHubPerson(login: login, name: nil, avatarUrl: "https://github.com/\(login).png?size=48"))
-    }
-    for person in found where !all.contains(where: { $0.id == person.id }) { all.append(person) }
-    let shown = all
-      .filter { query.isEmpty || $0.login.localizedCaseInsensitiveContains(query) || ($0.name ?? "").localizedCaseInsensitiveContains(query) }
-      .sorted { (isChosen($0) ? 0 : 1) < (isChosen($1) ? 0 : 1) }
+  private func list(_ teams: [OrgTeam]) -> some View {
+    let orgs = repoOrgs(teams.map(\.id))
     return ScrollView {
-      LazyVStack(alignment: .leading, spacing: 0) {
-        ForEach(shown) { row($0) }
-        if shown.isEmpty {
-          Text(query.isEmpty ? "No teammates found yet. Search to add someone." : searching ? "Searching…" : "No one matches “\(query)”.")
-            .scaledFont(.callout).foregroundStyle(.secondary).padding(.vertical, 20).frame(maxWidth: .infinity)
+      LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
+        ForEach(orgs, id: \.self) { org in
+          Section {
+            ForEach(teams.filter { $0.org == org }.sorted { ($0.mine ? 0 : 1, $0.name.lowercased()) < ($1.mine ? 0 : 1, $1.name.lowercased()) }) { row($0) }
+          } header: {
+            if orgs.count > 1 {
+              Text(org.uppercased()).scaledFont(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Palette.background)
+            }
+          }
         }
       }
     }
@@ -188,29 +146,20 @@ struct TeamPicker: View {
     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.border))
   }
 
-  private func row(_ person: GitHubPerson) -> some View {
-    let on = isChosen(person)
-    return Button { toggle(person) } label: {
+  private func row(_ team: OrgTeam) -> some View {
+    let on = chosen.contains { $0.caseInsensitiveCompare(team.id) == .orderedSame }
+    return Button { toggle(team, on: on) } label: {
       HStack(spacing: 10) {
         Image(systemName: on ? "checkmark.square.fill" : "square")
           .scaledFont(.body)
           .foregroundStyle(on ? AnyShapeStyle(Color.workbenchAccent) : AnyShapeStyle(.tertiary))
-        AvatarView(url: person.avatarUrl, size: 22)
-        VStack(alignment: .leading, spacing: 1) {
-          HStack(spacing: 6) {
-            Text(person.name ?? person.login).scaledFont(.callout.weight(.medium)).lineLimit(1)
-            if person.name != nil { Text(person.login).scaledFont(.caption).foregroundStyle(.tertiary).lineLimit(1) }
-          }
-          if !person.teams.isEmpty {
-            Text(person.teams.joined(separator: ", ")).scaledFont(.caption).foregroundStyle(.secondary).lineLimit(1)
-          }
-        }
+        Image(systemName: "person.2.fill").scaledFont(.caption).foregroundStyle(.secondary)
+        Text(team.name).scaledFont(.callout.weight(.medium)).lineLimit(1)
+        if team.mine { Chip(text: "Your team", tone: .good) }
         Spacer(minLength: 8)
-        if person.recentPrs > 0 {
-          Text("\(person.recentPrs) PR\(person.recentPrs == 1 ? "" : "s") lately").scaledFont(.caption).foregroundStyle(.tertiary)
-        }
+        Text("\(team.members) \(team.members == 1 ? "person" : "people")").scaledFont(.caption).foregroundStyle(.tertiary)
       }
-      .padding(.horizontal, 10).padding(.vertical, 6)
+      .padding(.horizontal, 10).padding(.vertical, 7)
       .contentShape(.rect)
     }
     .buttonStyle(.plain)
@@ -218,67 +167,47 @@ struct TeamPicker: View {
     .accessibilityAddTraits(on ? .isSelected : [])
   }
 
-  private func isChosen(_ person: GitHubPerson) -> Bool {
-    chosen.contains { $0.caseInsensitiveCompare(person.login) == .orderedSame }
-  }
-
-  private func toggle(_ person: GitHubPerson) {
+  private func toggle(_ team: OrgTeam, on: Bool) {
     var next = chosen
-    if isChosen(person) {
-      next.removeAll { $0.caseInsensitiveCompare(person.login) == .orderedSame }
-    } else {
-      next.append(person.login)
-    }
+    if on { next.removeAll { $0.caseInsensitiveCompare(team.id) == .orderedSame } } else { next.append(team.id) }
     settings.githubTeam = next.joined(separator: ", ")
-  }
-
-  private func load() async {
-    guard settings.hasGitHub else { return }
-    error = nil
-    do {
-      let loaded = try await GitHub.likelyTeammates(token: settings.githubCredential, repos: repos)
-      people = loaded
-      if preselect && chosen.isEmpty {
-        let teammates = loaded.filter { !$0.teams.isEmpty }.map(\.login)
-        if !teammates.isEmpty { settings.githubTeam = teammates.joined(separator: ", ") }
-      }
-    } catch is CancellationError {
-    } catch {
-      self.error = error.localizedDescription
-    }
-  }
-
-  /// Looks across GitHub once you've typed a little, after a pause.
-  private func find() async {
-    let term = search.trimmingCharacters(in: .whitespaces)
-    guard term.count >= 2, settings.hasGitHub else { found = []; return }
-    try? await Task.sleep(for: .milliseconds(350))
-    guard !Task.isCancelled else { return }
-    searching = true
-    defer { searching = false }
-    found = (try? await GitHub.searchPeople(term, token: settings.githubCredential)) ?? []
   }
 }
 
-/// Settings → Accounts: the people picker in a sheet, beside the Team field.
-struct ChooseTeamButton: View {
+/// Settings → Accounts: what Team follows, with the team picker in a sheet.
+struct TeamSetting: View {
+  @Environment(AppSettings.self) private var settings
+  @Environment(PullRequestsModel.self) private var model
   @State private var open = false
 
   var body: some View {
-    Button("Choose…") { open = true }
-      .clickable()
-      .sheet(isPresented: $open) {
-        VStack(alignment: .leading, spacing: 12) {
-          Text("Whose PRs Team shows").scaledFont(.headline)
-          TeamPicker(listHeight: 320)
-          HStack {
-            Spacer()
-            Button("Done") { open = false }.keyboardShortcut(.defaultAction).clickable()
-          }
-        }
-        .padding(20)
-        .scaledFrame(width: 520)
-        .workbenchPage()
+    let chosen = AppSettings.list(settings.githubTeam)
+    LabeledContent("Team") {
+      HStack(spacing: 8) {
+        Text(summary(chosen)).foregroundStyle(.secondary).lineLimit(1)
+        Button("Choose…") { open = true }.clickable().disabled(!settings.hasGitHub)
       }
+    }
+    .task(id: "\(settings.githubCredential)|\(settings.githubRepos)") { await model.loadTeamOptions(settings: settings) }
+    .sheet(isPresented: $open) {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("Whose PRs Team shows").scaledFont(.headline)
+        TeamPicker(listHeight: 300)
+        HStack {
+          Spacer()
+          Button("Done") { open = false }.keyboardShortcut(.defaultAction).clickable()
+        }
+      }
+      .padding(20)
+      .scaledFrame(width: 520)
+      .workbenchPage()
+    }
+  }
+
+  private func summary(_ chosen: [String]) -> String {
+    if model.teamOptions?.isEmpty == true || AppSettings.list(settings.githubRepos).isEmpty { return "Off: no teams in your repos' orgs" }
+    if chosen.isEmpty { return "Everyone in your repos" }
+    let names = chosen.map { id in model.teamOptions?.first { $0.id.caseInsensitiveCompare(id) == .orderedSame }?.name ?? id }
+    return names.joined(separator: ", ")
   }
 }

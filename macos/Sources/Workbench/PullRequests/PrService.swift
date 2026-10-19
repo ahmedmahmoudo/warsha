@@ -58,6 +58,8 @@ actor PrService {
   private var tokenChecks: [PrConfig: Task<[String], Never>] = [:]
   private var codeowners: [String: (at: Date, value: Codeowners?)] = [:]
   private var teams: [String: (at: Date, value: [String: Person])] = [:]
+  /// Members of the teams Team follows.
+  private var teamLogins: [String: (at: Date, value: [String])] = [:]
 
   /// The last answer per scope, for callers happy with a recent one.
   private var recent: [PrScope: (config: PrConfig, response: PrsResponse)] = [:]
@@ -78,7 +80,8 @@ actor PrService {
 
   private func build(_ scope: PrScope, config: PrConfig) async throws -> PrsResponse {
     let viewer = try await viewer(config.githubToken)
-    let queries = try Self.searchQueries(scope, login: viewer, config: config)
+    let members = scope == .team ? try await teamMembers(config) : []
+    let queries = try Self.searchQueries(scope, login: viewer, config: config, teamMembers: members)
     async let openResults = searchAll(queries.open, token: config.githubToken)
     async let mergedResults = searchAll(queries.merged, token: config.githubToken)
     let (open, merged) = try await (openResults, mergedResults)
@@ -114,7 +117,44 @@ actor PrService {
     String(Store.timestamp(Date(timeIntervalSinceNow: -Double(days) * 86_400)).prefix(10))
   }
 
-  static func searchQueries(_ scope: PrScope, login: String, config: PrConfig) throws -> (open: [String], merged: [String]) {
+  /// GitHub search queries can't be longer than this, so long author lists are split.
+  private static let queryLimit = 256
+
+  /// The logins of everyone on the chosen teams ("org/slug"), kept with the CODEOWNERS teams.
+  private func teamMembers(_ config: PrConfig) async throws -> [String] {
+    var logins: [String] = []
+    for team in config.githubTeam {
+      let parts = team.split(separator: "/", maxSplits: 1).map(String.init)
+      guard parts.count == 2 else { continue }
+      let key = "members:\(team.lowercased())"
+      let members: [String]
+      if let cached = teamLogins[key], -cached.at.timeIntervalSinceNow < Self.codeownersMaxAge {
+        members = cached.value
+      } else {
+        members = try await GitHub.teamMembers(org: parts[0], slug: parts[1], token: config.githubToken).map(\.id)
+        teamLogins[key] = (Date(), members)
+      }
+      for login in members where !logins.contains(where: { $0.caseInsensitiveCompare(login) == .orderedSame }) { logins.append(login) }
+    }
+    return logins
+  }
+
+  /// One query per slice of `qualifiers` that fits after `base` within GitHub's length limit.
+  static func split(_ base: String, _ qualifiers: [String]) -> [String] {
+    var queries: [String] = []
+    var current = base
+    for qualifier in qualifiers {
+      if current != base && current.count + 1 + qualifier.count > queryLimit {
+        queries.append(current)
+        current = base
+      }
+      current += " " + qualifier
+    }
+    queries.append(current)
+    return queries
+  }
+
+  static func searchQueries(_ scope: PrScope, login: String, config: PrConfig, teamMembers: [String] = []) throws -> (open: [String], merged: [String]) {
     let repos = config.githubRepos.map { "repo:\($0)" }.joined(separator: " ")
     let mergedSince = "merged:>=\(daysAgo(mergedLookbackDays))"
     switch scope {
@@ -131,15 +171,21 @@ actor PrService {
         ["is:pr is:merged reviewed-by:\(login) -author:\(login) \(mergedSince)"]
       )
     case .team:
-      // No one chosen means everyone in your repos but you (yours are under Mine) and the bots.
-      // Without repos that would be all of GitHub, so then it needs one or the other.
-      let authors = config.githubTeam.isEmpty
-        ? "-author:\(login) -author:app/dependabot -author:app/renovate"
-        : config.githubTeam.map { "author:\($0)" }.joined(separator: " ")
-      if config.githubTeam.isEmpty && config.githubRepos.isEmpty {
-        throw NotConfigured("Choose your repos or your teammates in Settings → Accounts to see your team's PRs.")
+      // Teams come from your repos' orgs, so Team needs repos. No team chosen means everyone in
+      // them but you (yours are under Mine) and the bots; otherwise the chosen teams' members.
+      guard !config.githubRepos.isEmpty else {
+        throw NotConfigured("Choose your repos in Settings → Accounts: Team follows teams in the organizations that own them.")
       }
-      return (["is:pr is:open archived:false \(authors) \(repos)"], ["is:pr is:merged \(authors) \(repos) \(mergedSince)"])
+      if config.githubTeam.isEmpty {
+        let everyone = "-author:\(login) -author:app/dependabot -author:app/renovate"
+        return (["is:pr is:open archived:false \(everyone) \(repos)"], ["is:pr is:merged \(everyone) \(repos) \(mergedSince)"])
+      }
+      let authors = teamMembers.filter { $0.caseInsensitiveCompare(login) != .orderedSame }.map { "author:\($0)" }
+      guard !authors.isEmpty else { throw NotConfigured("The chosen teams have no one else on them. Choose others in Settings → Accounts.") }
+      return (
+        split("is:pr is:open archived:false \(repos)", authors),
+        split("is:pr is:merged \(repos) \(mergedSince)", authors)
+      )
     }
   }
 
