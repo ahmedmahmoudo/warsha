@@ -623,9 +623,10 @@ private struct GitHubImage: View {
   @State private var loaded: NSImage?
   @State private var failed = false
 
+  /// The image is drawn over the background rather than beside it, so it takes the space it's
+  /// given: a very wide screenshot filling a thumbnail would otherwise make the thumbnail as wide.
   var body: some View {
-    ZStack {
-      Palette.fill
+    Palette.fill.overlay {
       if let loaded {
         Image(nsImage: loaded).resizable().aspectRatio(contentMode: fit ? .fit : .fill)
       } else if failed {
@@ -637,6 +638,7 @@ private struct GitHubImage: View {
         ProgressView().scaledControlSize(.small)
       }
     }
+    .clipped()
     .task(id: image.src) {
       do {
         let data: Data

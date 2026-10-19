@@ -6,6 +6,7 @@ struct PrDetailView: View {
   let key: PrKey
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
+  @Environment(\.openURL) private var openURL
   @State private var model: PrDetailModel
   /// The page's width, to put the side column beside the main one when there's room, as the web
   /// version does from its `lg` breakpoint.
@@ -56,11 +57,18 @@ struct PrDetailView: View {
 
   @ToolbarContentBuilder
   private var toolbar: some ToolbarContent {
+    // Plain toolbar buttons, all alike: a Link in the toolbar draws as text with its own hover.
     ToolbarItemGroup {
-      if let pr = model.detail?.pr {
-        Link(destination: URL(string: pr.url)!) { Label("Open on GitHub", systemImage: "arrow.up.right.square") }
-          .clickable()
-      }
+      Button("Copy Link", systemImage: "link") { copyToPasteboard(key.url) }
+        .clickable()
+        .keyboardShortcut("c", modifiers: [.command, .shift])
+        .help("Copy the PR's link (⇧⌘C)")
+      Button("Open on GitHub", systemImage: "arrow.up.right.square") { openURL(URL(string: key.url)!) }
+        .clickable()
+        .keyboardShortcut("o", modifiers: [.command, .shift])
+        .help("Open on GitHub (⇧⌘O)")
+    }
+    ToolbarItem {
       Button("Refresh", systemImage: "arrow.clockwise") {
         Task { await model.load(settings: settings) }
       }
