@@ -12,6 +12,10 @@ final class AppState {
   let navigation = Navigation()
   let pullRequests = PullRequestsModel()
   let calendar = CalendarModel()
+  /// What each page has loaded, kept while you look at another page so coming back shows it at once.
+  let today = TodayModel()
+  let activity = ActivityModel()
+  let prDetails = PrDetailModels()
   let notifier = Notifier()
   let signIns = SignIns()
 

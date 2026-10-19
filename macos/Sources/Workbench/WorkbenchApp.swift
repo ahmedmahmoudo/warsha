@@ -16,6 +16,8 @@ struct WorkbenchApp: App {
         .environment(state.navigation)
         .environment(state.pullRequests)
         .environment(state.calendar)
+        .environment(state.today)
+        .environment(state.activity)
         .tint(.workbenchAccent)
         .textScale(state.settings.textScale)
         .frame(minWidth: 760, minHeight: 480)

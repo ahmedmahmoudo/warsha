@@ -50,10 +50,12 @@ struct PullRequestsView: View {
       }
       .onChange(of: filter) { page = 0 }
       .onChange(of: search) { page = 0 }
-      .task(id: scope) {
+      .onChange(of: scope) {
         filter = nil
         page = 0
         selection = []
+      }
+      .task(id: scope) {
         while !Task.isCancelled {
           await model.load(scope, settings: settings, maxAge: .seconds(15))
           try? await Task.sleep(for: PullRequestsModel.refreshInterval)
@@ -186,7 +188,15 @@ struct PullRequestsView: View {
   @ViewBuilder
   private func placeholder(_ data: PrsResponse?) -> some View {
     if data == nil, model.errors[scope] == nil {
-      ProgressView("Loading pull requests…")
+      VStack(spacing: 0) {
+        ForEach(0 ..< 6, id: \.self) { index in
+          if index > 0 { Divider().overlay(Palette.border) }
+          SkeletonRow(seed: index)
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(.horizontal, 20).padding(.top, 12)
+      .accessibilityLabel("Loading pull requests")
     } else if let data, grouped(data).isEmpty, model.errors[scope] == nil {
       if !search.isEmpty {
         ContentUnavailableView.search(text: search)

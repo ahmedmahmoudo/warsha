@@ -5,7 +5,7 @@ import SwiftUI
 struct TodayView: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
-  @State private var model = TodayModel()
+  @Environment(TodayModel.self) private var model
   @Environment(\.textScale) private var textScale
   @State private var width: CGFloat = 0
   /// Before you've ever marked Today as seen, "new" means the last few days. Fixed per visit, so
@@ -62,8 +62,9 @@ struct TodayView: View {
       )
     }
     .task {
+      // Coming back to Today shows what it had; it only reloads once that's a little old.
       while !Task.isCancelled {
-        await model.load(settings: settings)
+        await model.load(settings: settings, maxAge: .seconds(30))
         try? await Task.sleep(for: TodayModel.refreshInterval)
       }
     }
@@ -126,7 +127,8 @@ struct TodayView: View {
         UpNextSection(data: data, since: since)
       } else if model.error == nil {
         // Where Needs you and Up next will be, so nothing moves when they arrive.
-        LoadingPanel(text: "Gathering your day… the first load takes a few seconds.")
+        SkeletonPanel(title: "Needs you now", rows: 4)
+        SkeletonPanel(title: "Up next", rows: 3)
       }
     }
   }
@@ -156,7 +158,10 @@ final class TodayModel {
   private(set) var error: (any Error)?
   private(set) var loading = false
 
-  func load(settings: AppSettings) async {
+  /// `maxAge` skips the load when the last answer is at least that recent. A reload keeps the
+  /// current answer on screen until the new one replaces it.
+  func load(settings: AppSettings, maxAge: Duration? = nil) async {
+    if let maxAge, let fetchedAt = data?.fetchedAt, Date().timeIntervalSince(fetchedAt) < Double(maxAge.components.seconds) { return }
     loading = true
     defer { loading = false }
     do {
@@ -170,23 +175,6 @@ final class TodayModel {
 }
 
 // MARK: Shared bits
-
-/// Shown in place of what's loading. The spinner gets a system colour: it can't draw the
-/// palette's text style, and vanished in light mode.
-struct LoadingPanel: View {
-  let text: String
-
-  var body: some View {
-    VStack(spacing: 10) {
-      ProgressView().scaledControlSize(.regular).tint(Color.secondary)
-      Text(text).scaledFont(.callout).foregroundStyle(Color.secondary)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 40)
-    .background(Palette.card, in: .rect(cornerRadius: 10))
-    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.border))
-  }
-}
 
 /// Opens an item's action: a PR's details here, anything else in the browser.
 struct ActionButton: View {

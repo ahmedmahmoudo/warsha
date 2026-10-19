@@ -11,7 +11,7 @@ struct ActivityView: View {
   @AppStorage("activitySpan") private var span: ActivitySpan = .week
   @AppStorage("activityZone") private var zoneChoice: ZoneChoice = .home
   @State private var date: String? = DevHooks.startDate
-  @State private var model = ActivityModel()
+  @Environment(ActivityModel.self) private var model
 
   private var zone: String { zoneChoice == .local ? TimeZone.current.identifier : settings.timeZone }
   private var today: String { TodayRules.localDate(Date(), zone) }
@@ -26,10 +26,11 @@ struct ActivityView: View {
           Label(error is NotConfigured ? "Setup needed: \(error.localizedDescription)" : error.localizedDescription, systemImage: "exclamationmark.triangle.fill")
             .foregroundStyle(Tone.bad.color)
         }
-        if let data = model.data {
-          content(data).opacity(model.data?.range != range ? 0.5 : 1)
+        // The range asked for if it's been loaded, else the last one shown, dimmed until it arrives.
+        if let data = model.data(for: range) ?? model.data {
+          content(data).opacity(data.range != range ? 0.5 : 1)
         } else if model.error == nil {
-          LoadingPanel(text: "Gathering activity… the first load takes a few seconds.")
+          SkeletonPanel(title: "Activity", rows: 5)
         }
       }
       .padding(.horizontal, 20).padding(.vertical, 16)
@@ -37,10 +38,10 @@ struct ActivityView: View {
     }
     .workbenchPage()
     .navigationTitle("Activity")
-    .navigationSubtitle(model.loading ? "Updating…" : model.data.map { "Updated at \($0.fetchedAt.formatted(date: .omitted, time: .shortened))" } ?? "")
+    .navigationSubtitle(model.loading ? "Updating…" : model.data(for: range).map { "Updated at \($0.fetchedAt.formatted(date: .omitted, time: .shortened))" } ?? "")
     .toolbar {
       ToolbarItemGroup {
-        if let data = model.data { CopySummaryButton(data: data) }
+        if let data = model.data(for: range) { CopySummaryButton(data: data) }
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load(range, settings: settings) } }
           .clickable()
           .keyboardShortcut("r")
@@ -49,7 +50,7 @@ struct ActivityView: View {
     }
     .task(id: "\(span.rawValue)|\(current)|\(zone)") {
       while !Task.isCancelled {
-        await model.load(range, settings: settings)
+        await model.load(range, settings: settings, maxAge: .seconds(60))
         try? await Task.sleep(for: .seconds(60))
       }
     }
@@ -114,15 +115,32 @@ struct ActivityView: View {
 @MainActor
 @Observable
 final class ActivityModel {
+  /// Ranges kept, so going back to a week or month you've seen shows it at once.
+  private static let rangesKept = 12
+
+  /// The last range loaded.
   private(set) var data: ActivityData?
   private(set) var error: (any Error)?
   private(set) var loading = false
+  private var byRange: [ActivityRange: ActivityData] = [:]
 
-  func load(_ range: ActivityRange, settings: AppSettings) async {
+  func data(for range: ActivityRange) -> ActivityData? { byRange[range] }
+
+  /// `maxAge` skips the load when that range's answer is at least that recent.
+  func load(_ range: ActivityRange, settings: AppSettings, maxAge: Duration? = nil) async {
+    if let maxAge, let cached = byRange[range], Date().timeIntervalSince(cached.fetchedAt) < Double(maxAge.components.seconds) {
+      data = cached
+      return
+    }
     loading = true
     defer { loading = false }
     do {
-      data = try await ActivityService.shared.build(range, config: PrConfig(settings))
+      let loaded = try await ActivityService.shared.build(range, config: PrConfig(settings))
+      data = loaded
+      byRange[range] = loaded
+      if byRange.count > Self.rangesKept, let oldest = byRange.min(by: { $0.value.fetchedAt < $1.value.fetchedAt })?.key {
+        byRange[oldest] = nil
+      }
       error = nil
     } catch is CancellationError {
     } catch {

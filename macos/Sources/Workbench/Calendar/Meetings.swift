@@ -143,6 +143,12 @@ final class CalendarModel {
   private(set) var signingIn = false
   private var syncing: Task<Void, Never>?
   private var ranges: [String: (at: Date, meetings: [Meeting])] = [:]
+  /// The last answer for each range the Calendar page showed, so it's there at once when you come back.
+  private(set) var shownRanges: [String: [Meeting]] = [:]
+
+  private static func rangeKey(_ from: Date, _ to: Date) -> String { "\(Store.timestamp(from))|\(Store.timestamp(to))" }
+
+  func shown(from: Date, to: Date) -> [Meeting]? { shownRanges[Self.rangeKey(from, to)] }
 
   // MARK: Connection
 
@@ -196,6 +202,7 @@ final class CalendarModel {
     // Another account's meetings would all look deleted; start over on the next connect.
     store.clearMeetings()
     ranges = [:]
+    shownRanges = [:]
     lastSync = nil
     revision += 1
     if let token { await GoogleCalendar.shared.revoke(refreshToken: token) }
@@ -309,7 +316,7 @@ final class CalendarModel {
   /// marks from the saved ones; deleted meetings come from the saved copies until forgotten.
   func range(from: Date, to: Date, settings: AppSettings, store: Store, force: Bool = false) async throws -> [Meeting] {
     await sync(settings, store, force: force)
-    let key = "\(Store.timestamp(from))|\(Store.timestamp(to))"
+    let key = Self.rangeKey(from, to)
     var live: [Meeting]
     if !force, let cached = ranges[key], -cached.at.timeIntervalSinceNow < Self.rangeMaxAge {
       live = cached.meetings
@@ -330,7 +337,9 @@ final class CalendarModel {
     for meeting in saved.values where meeting.change?.isDeleted == true && CalendarTime.overlaps(meeting, from: from, to: to, zone: settings.timeZone) {
       if ids.insert(meeting.id).inserted { live.append(meeting) }
     }
-    return TodayRules.stableSorted(live) { $0.start < $1.start }
+    let sorted = TodayRules.stableSorted(live) { $0.start < $1.start }
+    if shownRanges[key] != sorted { shownRanges[key] = sorted }
+    return sorted
   }
 
   /// Dismisses a change: a reschedule becomes the known time; a deleted meeting is forgotten now.

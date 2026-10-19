@@ -1,5 +1,24 @@
 import Foundation
 
+/// The details models of the PRs opened lately, so going back to one shows it as it was while it
+/// refreshes. The least recently opened go first.
+@MainActor
+final class PrDetailModels {
+  private static let kept = 30
+  private var models: [PrKey: PrDetailModel] = [:]
+  private var order: [PrKey] = []
+
+  func model(for key: PrKey) -> PrDetailModel {
+    order.removeAll { $0 == key }
+    order.append(key)
+    if let model = models[key] { return model }
+    let model = PrDetailModel(key: key)
+    models[key] = model
+    while order.count > Self.kept { models[order.removeFirst()] = nil }
+    return model
+  }
+}
+
 /// One PR's details, kept fresh: the whole page every 30 seconds, and the checks on their own,
 /// every 10 seconds while any run and every minute otherwise. When a required check or the head
 /// commit changes, the whole page reloads so Merge status agrees.
@@ -29,7 +48,9 @@ final class PrDetailModel {
 
   var isFinished: Bool { detail?.state == .merged || detail?.state == .closed }
 
-  func load(settings: AppSettings) async {
+  /// `maxAge` skips the load when the page was read at least that recently.
+  func load(settings: AppSettings, maxAge: Duration? = nil) async {
+    if let maxAge, let fetchedAt = detail?.fetchedAt, Date().timeIntervalSince(fetchedAt) < Double(maxAge.components.seconds) { return }
     loading = true
     defer { loading = false }
     do {

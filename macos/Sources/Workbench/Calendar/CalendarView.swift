@@ -19,13 +19,18 @@ struct CalendarView: View {
   @AppStorage("calendarSpan") private var span: Span = .week
   @AppStorage("calendarZone") private var zoneChoice: ZoneChoice = .home
   @State private var date: String?
-  @State private var meetings: [Meeting] = []
   @State private var error: String?
   @State private var loading = false
 
   private var zone: String { zoneChoice == .local ? TimeZone.current.identifier : settings.timeZone }
   private var today: String { TodayRules.localDate(Date(), zone) }
   private var current: String { date ?? today }
+  /// What the calendar model last had for the shown range, kept while you're on other pages.
+  private var meetings: [Meeting] {
+    guard calendar.connection(settings, store) == .connected else { return [] }
+    let bounds = Self.bounds(Self.range(span, current))
+    return calendar.shown(from: bounds.from, to: bounds.to) ?? []
+  }
 
   var body: some View {
     let range = Self.range(span, current)
@@ -103,19 +108,21 @@ struct CalendarView: View {
     }
   }
 
+  /// A day either side covers every zone's idea of where the shown days begin and end.
+  private static func bounds(_ range: (days: [String], first: String, last: String)) -> (from: Date, to: Date) {
+    (
+      TodayRules.parseInstant("\(TodayRules.addDays(range.days.first!, -1))T00:00:00Z")!,
+      TodayRules.parseInstant("\(TodayRules.addDays(range.days.last!, 2))T00:00:00Z")!
+    )
+  }
+
   private func load(force: Bool = false) async {
-    guard calendar.connection(settings, store) == .connected else {
-      meetings = []
-      return
-    }
-    let range = Self.range(span, current)
-    // A day either side covers every zone's idea of where the shown days begin and end.
-    let from = TodayRules.parseInstant("\(TodayRules.addDays(range.days.first!, -1))T00:00:00Z")!
-    let to = TodayRules.parseInstant("\(TodayRules.addDays(range.days.last!, 2))T00:00:00Z")!
+    guard calendar.connection(settings, store) == .connected else { return }
+    let bounds = Self.bounds(Self.range(span, current))
     loading = true
     defer { loading = false }
     do {
-      meetings = try await calendar.range(from: from, to: to, settings: settings, store: store, force: force)
+      _ = try await calendar.range(from: bounds.from, to: bounds.to, settings: settings, store: store, force: force)
       error = calendar.lastSync?.error
     } catch {
       self.error = error.localizedDescription

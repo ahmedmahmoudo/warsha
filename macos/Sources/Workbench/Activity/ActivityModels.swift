@@ -100,7 +100,7 @@ enum ActivitySpan: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// A span of whole calendar days in a zone; `from` is inclusive and `to` exclusive.
-struct ActivityRange: Equatable, Sendable {
+struct ActivityRange: Hashable, Sendable {
   let span: ActivitySpan
   /// First and last day (inclusive), YYYY-MM-DD.
   let start: String

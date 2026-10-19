@@ -15,7 +15,7 @@ struct PrDetailView: View {
 
   init(key: PrKey) {
     self.key = key
-    _model = State(initialValue: PrDetailModel(key: key))
+    _model = State(initialValue: AppState.shared.prDetails.model(for: key))
   }
 
   var body: some View {
@@ -26,7 +26,7 @@ struct PrDetailView: View {
         ContentUnavailableView("Couldn't Load This Pull Request", systemImage: "exclamationmark.triangle", description: Text(error.localizedDescription))
           .padding(.top, 80)
       } else {
-        ProgressView("Loading pull request…").padding(.top, 120)
+        PrDetailSkeleton().padding(.horizontal, 24).padding(.vertical, 20)
       }
     }
     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
@@ -36,7 +36,7 @@ struct PrDetailView: View {
     .toolbar { toolbar }
     .task {
       while !Task.isCancelled {
-        await model.load(settings: settings)
+        await model.load(settings: settings, maxAge: .seconds(15))
         try? await Task.sleep(for: PrDetailModel.refreshInterval)
       }
     }
@@ -251,5 +251,32 @@ private struct StateBadge: View {
       .foregroundStyle(tone == .neutral ? AnyShapeStyle(.secondary) : AnyShapeStyle(tone.color))
       .padding(.horizontal, 8).padding(.vertical, 3)
       .background(tone.soft, in: .capsule)
+  }
+}
+
+/// The details page's shape while it loads for the first time: the header, then the panels.
+private struct PrDetailSkeleton: View {
+  @Environment(\.textScale) private var textScale
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 20) {
+      VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 6) {
+          SkeletonBar(width: 90, height: 18)
+          SkeletonBar(width: 70, height: 18)
+        }
+        SkeletonBar(width: 420, height: 20)
+        SkeletonBar(width: 260, height: 10)
+      }
+      HStack(alignment: .top, spacing: 20) {
+        VStack(spacing: 20) {
+          SkeletonPanel(title: "Merge status", rows: 2)
+          SkeletonPanel(title: "Description", rows: 3)
+        }
+        SkeletonPanel(title: "Checks", rows: 4).scaledFrame(width: 352)
+      }
+    }
+    .frame(maxWidth: 1120 * textScale, alignment: .leading)
+    .frame(maxWidth: .infinity)
   }
 }
