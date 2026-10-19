@@ -9,6 +9,9 @@ enum Palette {
   /// `--card`: panels on the details page, and the tint of glass buttons on the page.
   static let card = Color.dynamic(light: 0xFFFFFF, dark: 0x151D2B)
   static let border = Color.dynamic(light: 0xE4E4DF, dark: 0x253045)
+  /// The sidebar, a step back from the page, and its selected row: a soft fill, as in Claude.
+  static let sidebar = Color.dynamic(light: 0xEFEFEC, dark: 0x0A0F18)
+  static let sidebarSelection = Color.dynamic(light: 0xE2E2DE, dark: 0x1D2738)
   /// `--muted` as a fill: neutral chips and placeholders.
   static let fill = Color.dynamic(light: 0xF1F1EE, dark: 0x1D2738)
   /// `--primary` and `--primary-foreground`: today's date marker, as the web draws it.

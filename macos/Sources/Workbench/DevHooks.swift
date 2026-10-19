@@ -62,6 +62,14 @@ enum DevHooks {
         navigation.open(PrKey(repo: String(match.1), number: number))
       }
     }
+    // `-WorkbenchWindowNumber /path` writes the window's number there, for `screencapture -l`,
+    // which draws everything the app's own snapshot can't (Liquid Glass, sidebars).
+    if let path = defaults.string(forKey: "WorkbenchWindowNumber") {
+      try? await Task.sleep(for: .seconds(1))
+      if let window = NSApp.windows.first(where: { $0.isVisible && $0.title != "" }) ?? NSApp.keyWindow {
+        try? String(window.windowNumber).write(toFile: path, atomically: true, encoding: .utf8)
+      }
+    }
     guard let path = defaults.string(forKey: "WorkbenchSnapshot") else { return }
     let delay = defaults.double(forKey: "WorkbenchSnapshotDelay")
     try? await Task.sleep(for: .seconds(delay > 0 ? delay : 15))

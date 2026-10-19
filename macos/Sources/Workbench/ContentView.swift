@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The main window: the pages as tabs in the toolbar, like the web version's top bar, and the
-/// selected page below.
+/// The main window: a sidebar of pages and open PRs, as in Claude, and whichever is selected.
 struct ContentView: View {
   @Environment(Navigation.self) private var navigation
   @Environment(PullRequestsModel.self) private var pullRequests
@@ -11,6 +10,7 @@ struct ContentView: View {
   @Environment(\.openSettings) private var openSettings
   @Environment(\.openWindow) private var openWindow
   @Environment(CalendarModel.self) private var calendar
+  @AppStorage("showSidebar") private var showSidebar = true
 
   var body: some View {
     if AppState.shared.onboarding {
@@ -30,41 +30,23 @@ struct ContentView: View {
   }
 
   private var app: some View {
-    VStack(spacing: 0) {
-      if !navigation.tabs.isEmpty {
-        PrTabStrip()
-        Divider().overlay(Palette.border)
-      }
+    NavigationSplitView(columnVisibility: Binding(
+      get: { showSidebar ? .all : .detailOnly },
+      set: { showSidebar = $0 != .detailOnly }
+    )) {
+      Sidebar()
+        .navigationSplitViewColumnWidth(min: 200, ideal: Sidebar.width, max: 320)
+        .background(Palette.sidebar.ignoresSafeArea())
+    } detail: {
       page
     }
-    .toolbar {
-      if AppState.shared.profiles.count > 1 {
-        ToolbarItem(placement: .navigation) { ProfileMenu() }
-      }
-      ToolbarItem(placement: .principal) {
-        // Shows no page while a PR tab is in front; picking one goes back to it.
-        Picker("Page", selection: Binding(get: { navigation.selectedPage }, set: { $0.map(navigation.show) })) {
-          ForEach(Page.allCases) { page in
-            Text(page.title).tag(Optional(page))
-          }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .fixedSize()
-      }
-    }
     .containerBackground(Palette.background, for: .window)
-    // The toolbar in the page's colour rather than the system's, with the standard glass
-    // controls on it; glass takes its tint from what's behind it.
-    .toolbarBackground(Palette.background, for: .windowToolbar)
-    .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
     .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
     .task {
       settings.applyAppearance()
       DevHooks.borrowGoogleSignIn()
       await DevHooks.apply(to: navigation, openSettings: openSettings)
     }
-
     .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
   }
 

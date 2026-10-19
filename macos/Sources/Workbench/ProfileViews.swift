@@ -1,25 +1,7 @@
 import SwiftUI
 
-/// The profile switcher in the toolbar, once there's more than one profile.
-struct ProfileMenu: View {
-  @Environment(AppState.self) private var state
-  @State private var naming = false
-
-  var body: some View {
-    Menu {
-      ProfileMenuItems(naming: $naming)
-    } label: {
-      Label(state.profile.name, systemImage: "person.crop.circle")
-        .labelStyle(.titleAndIcon)
-    }
-    .help("Switch profile")
-    .clickable()
-    .sheet(isPresented: $naming) { NewProfileSheet() }
-  }
-}
-
-/// Each profile to switch to, the current one ticked, then New Profile…; shared by the toolbar and
-/// the menu bar.
+/// Each profile to switch to, the current one ticked, then New Profile…; shared by the sidebar's
+/// footer and the menu bar.
 struct ProfileMenuItems: View {
   @Binding var naming: Bool
   @Environment(AppState.self) private var state
