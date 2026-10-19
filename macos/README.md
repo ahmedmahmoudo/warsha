@@ -113,6 +113,34 @@ xcrun notarytool submit Workbench.zip --keychain-profile notary --wait
 
 then `xcrun stapler staple Workbench.app`. It needs macOS 26.
 
+## Releases
+
+Releases are on GitHub (Releases on the repo page), built on your Mac, since the signing
+certificate and the sign-in clients in `Secrets.xcconfig` are here:
+
+```bash
+npm run app:release                # the next patch version, e.g. 0.1.0 → 0.1.1
+npm run app:release -- 0.2.0       # a given version
+npm run app:release -- --dry-run   # build, package and show the notes; tag and upload nothing
+```
+
+It needs `macos/` committed. It bumps `MARKETING_VERSION` and the build number in `project.yml`
+and commits that, builds with `build.sh`, zips the app with `ditto` (keeping its signature), writes
+notes from the `feat`/`fix`/`perf` commits since the last release, then tags `vX.Y.Z`, pushes only
+the tag and creates the release with the zip and its SHA-256. Push `main` when you're ready.
+
+On another Mac, with the GitHub CLI signed in to an account that can read the repo:
+
+```bash
+npm run app:get                    # in a checkout: the latest release into ~/Applications
+```
+
+or without a checkout, the command in each release's notes. `gh` downloads aren't quarantined, so
+the app opens straight away; one downloaded with a browser needs System Settings → Privacy &
+Security → Open Anyway once, as builds are signed for development rather than notarized (see
+"Handing over the app"). The zip carries the built-in sign-in clients, so keep releases in the
+private repo.
+
 ## Port plan
 
 Each step ships on its own. Each port keeps the web version's rules (the README at the repo root
