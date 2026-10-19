@@ -16,6 +16,9 @@ enum DevHooks {
 
   static var envFile: String? { defaults.string(forKey: "WorkbenchEnvFile") }
 
+  /// `-WorkbenchOnboardingStep N` opens Get started on that step (0 welcome … 5 done), with `-WorkbenchOpen getstarted`.
+  static var onboardingStep: Int? { defaults.object(forKey: "WorkbenchOnboardingStep") as? Int ?? defaults.string(forKey: "WorkbenchOnboardingStep").flatMap(Int.init) }
+
   /// `-WorkbenchDate YYYY-MM-DD` opens Activity on that date instead of today.
   static var startDate: String? { defaults.string(forKey: "WorkbenchDate") }
 

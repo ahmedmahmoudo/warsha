@@ -81,7 +81,7 @@ struct AccountsSettings: View {
 }
 
 /// Connect or disconnect your Google account, and which one is connected.
-private struct GoogleConnection: View {
+struct GoogleConnection: View {
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @Environment(CalendarModel.self) private var calendar
@@ -205,7 +205,7 @@ private struct GeneralSettings: View {
 }
 
 /// Open at login, through macOS's login items.
-private struct OpenAtLogin: View {
+struct OpenAtLogin: View {
   @State private var status = LoginItem.status
   @State private var error: String?
 
@@ -229,7 +229,7 @@ private struct OpenAtLogin: View {
 }
 
 /// The shortcut that brings Workbench forward from any app: on or off, and which keys.
-private struct ShortcutSetting: View {
+struct ShortcutSetting: View {
   @State private var enabled = GlobalShortcut.isEnabled
   @State private var combo = GlobalShortcut.combo
   @State private var recording = false

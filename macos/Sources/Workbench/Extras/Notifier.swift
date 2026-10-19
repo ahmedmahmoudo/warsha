@@ -71,6 +71,20 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     ])
   }
 
+  /// Whether macOS lets Workbench notify: not asked yet, allowed, or turned off.
+  func permission() async -> UNAuthorizationStatus {
+    guard available else { return .denied }
+    return await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+  }
+
+  /// Asks macOS for permission now (onboarding) rather than on the first check.
+  func requestPermission() async -> Bool {
+    guard available else { return false }
+    asked = true
+    authorized = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+    return authorized
+  }
+
   // MARK: Checking
 
   func check(_ state: AppState) async {
