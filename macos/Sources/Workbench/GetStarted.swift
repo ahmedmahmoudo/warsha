@@ -143,143 +143,19 @@ struct GetStartedSheet: View {
   }
 }
 
-// MARK: The board
-
-/// One of the four tiles in Workbench's icon, in the brand kit's colours.
-enum BoardTile: CaseIterable {
-  case pullRequests, meetings, tickets, notes
-
-  var color: Color {
-    switch self {
-    case .pullRequests: Color(red: 0x5C / 255, green: 0xC7 / 255, blue: 0x9A / 255)
-    case .meetings: Color(red: 0xE8 / 255, green: 0xB4 / 255, blue: 0x5A / 255)
-    case .tickets: Color(red: 0x8F / 255, green: 0xB0 / 255, blue: 0xF5 / 255)
-    case .notes: Color(red: 0xE4 / 255, green: 0xE9 / 255, blue: 0xF1 / 255)
-    }
-  }
-
-  /// The tile's glyph from the icon (design/website/brand/logo-mark.svg), in the tile's own
-  /// 21.5-unit square, for stroking at 2.4 units.
-  var glyph: Path {
-    var path = Path()
-    switch self {
-    case .pullRequests:
-      path.addEllipse(in: CGRect(x: 4.3, y: 4.3, width: 4.4, height: 4.4))
-      path.addEllipse(in: CGRect(x: 12.8, y: 12.8, width: 4.4, height: 4.4))
-      path.move(to: CGPoint(x: 6.5, y: 8.7)); path.addLine(to: CGPoint(x: 6.5, y: 17.2))
-      path.move(to: CGPoint(x: 10.5, y: 6.5)); path.addLine(to: CGPoint(x: 13, y: 6.5))
-      path.addArc(tangent1End: CGPoint(x: 15, y: 6.5), tangent2End: CGPoint(x: 15, y: 8.5), radius: 2)
-      path.addLine(to: CGPoint(x: 15, y: 12.8))
-    case .meetings:
-      path.addRoundedRect(in: CGRect(x: 5, y: 6, width: 11.5, height: 10.5), cornerSize: CGSize(width: 1.8, height: 1.8))
-      path.move(to: CGPoint(x: 5, y: 10)); path.addLine(to: CGPoint(x: 16.5, y: 10))
-      path.move(to: CGPoint(x: 8, y: 4)); path.addLine(to: CGPoint(x: 8, y: 7))
-      path.move(to: CGPoint(x: 13.5, y: 4)); path.addLine(to: CGPoint(x: 13.5, y: 7))
-    case .tickets:
-      // A stub with rounded corners and a notch in each side.
-      path.move(to: CGPoint(x: 4.25, y: 8.25))
-      path.addArc(tangent1End: CGPoint(x: 4.25, y: 6.25), tangent2End: CGPoint(x: 6.25, y: 6.25), radius: 2)
-      path.addLine(to: CGPoint(x: 15.25, y: 6.25))
-      path.addArc(tangent1End: CGPoint(x: 17.25, y: 6.25), tangent2End: CGPoint(x: 17.25, y: 8.25), radius: 2)
-      path.addLine(to: CGPoint(x: 17.25, y: 8.75))
-      path.addArc(center: CGPoint(x: 17.25, y: 10.75), radius: 2, startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: true)
-      path.addLine(to: CGPoint(x: 17.25, y: 13.25))
-      path.addArc(tangent1End: CGPoint(x: 17.25, y: 15.25), tangent2End: CGPoint(x: 15.25, y: 15.25), radius: 2)
-      path.addLine(to: CGPoint(x: 6.25, y: 15.25))
-      path.addArc(tangent1End: CGPoint(x: 4.25, y: 15.25), tangent2End: CGPoint(x: 4.25, y: 13.25), radius: 2)
-      path.addLine(to: CGPoint(x: 4.25, y: 12.75))
-      path.addArc(center: CGPoint(x: 4.25, y: 10.75), radius: 2, startAngle: .degrees(90), endAngle: .degrees(-90), clockwise: true)
-      path.closeSubpath()
-    case .notes:
-      for (y, length) in [(6.5, 10.0), (10.7, 10.0), (14.9, 6.0)] {
-        path.move(to: CGPoint(x: 6, y: y)); path.addLine(to: CGPoint(x: 6 + length, y: y))
-      }
-    }
-    return path
-  }
-
-  var label: String {
-    switch self {
-    case .pullRequests: "Pull requests"
-    case .meetings: "Meetings"
-    case .tickets: "Tickets"
-    case .notes: "Notes"
-    }
-  }
-}
-
-/// The midnight of the icon's tile, and the ink its glyphs are drawn in.
-private let midnight = Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x20 / 255)
-private let midnightTop = Color(red: 0x1D / 255, green: 0x27 / 255, blue: 0x38 / 255)
-
-/// A tile in its colour with its glyph in midnight ink, as in the icon; unlit, an empty outline.
-struct TileView: View {
-  let tile: BoardTile
-  let size: CGFloat
-  var lit = true
-
-  var body: some View {
-    RoundedRectangle(cornerRadius: size * 0.23)
-      .fill(lit ? AnyShapeStyle(tile.color) : AnyShapeStyle(Palette.fill))
-      .overlay(RoundedRectangle(cornerRadius: size * 0.23).strokeBorder(lit ? .clear : Palette.border))
-      .overlay {
-        // The icon's glyph, scaled from its 21.5-unit tile; a touch heavier when small.
-        let scale = size / 21.5
-        tile.glyph
-          .applying(CGAffineTransform(scaleX: scale, y: scale))
-          .stroke(lit ? AnyShapeStyle(midnight) : AnyShapeStyle(Palette.faint),
-                  style: StrokeStyle(lineWidth: max(2.4 * scale, 1.2), lineCap: .round, lineJoin: .round))
-      }
-      .frame(width: size, height: size)
-  }
-}
-
-/// The 2×2 board, its tiles lit or not; `current` gets a ring.
-struct BoardMark: View {
-  let size: CGFloat
-  var lit: Set<BoardTile> = Set(BoardTile.allCases)
-  var current: BoardTile?
-
-  var body: some View {
-    let tile = (size - 3) / 2
-    Grid(horizontalSpacing: 3, verticalSpacing: 3) {
-      GridRow { cell(.pullRequests, tile); cell(.meetings, tile) }
-      GridRow { cell(.tickets, tile); cell(.notes, tile) }
-    }
-  }
-
-  private func cell(_ item: BoardTile, _ side: CGFloat) -> some View {
-    TileView(tile: item, size: side, lit: lit.contains(item))
-      .overlay {
-        if item == current {
-          RoundedRectangle(cornerRadius: side * 0.23 + 2.5).strokeBorder(item.color, lineWidth: 1.5).padding(-2.5)
-        }
-      }
-  }
-}
-
 // MARK: Welcome
 
-/// The board puts itself together, tile by tile, then says what Workbench is.
+/// The app icon builds itself (body, tiles, then each glyph drawn), then says what Workbench is.
 private struct WelcomePage: View {
   let start: () -> Void
-  @State private var placed = 0
-  @State private var shown = false
+  @State private var built = DevHooks.iconProgress ?? 0
+  @State private var shown = DevHooks.iconProgress != nil
 
   var body: some View {
-    VStack(spacing: 26) {
+    VStack(spacing: 18) {
       Spacer(minLength: 0)
-      ZStack {
-        RoundedRectangle(cornerRadius: 34)
-          .fill(LinearGradient(colors: [midnightTop, midnight], startPoint: .top, endPoint: .bottom))
-          .overlay(RoundedRectangle(cornerRadius: 34).strokeBorder(Color(red: 0xE4 / 255, green: 0xE9 / 255, blue: 0xF1 / 255).opacity(0.14)))
-          .frame(width: 150, height: 150)
-          .shadow(color: midnight.opacity(0.35), radius: 24, y: 14)
-        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
-          GridRow { piece(.pullRequests, 0); piece(.meetings, 1) }
-          GridRow { piece(.tickets, 2); piece(.notes, 3) }
-        }
-      }
+      // The icon at its Dock size: 186 points of canvas is a 150-point body inside Apple's margin.
+      AppIcon(size: 186, progress: built)
       VStack(spacing: 10) {
         Text("Welcome to Workbench")
           .font(.system(size: 34, weight: .semibold))
@@ -297,22 +173,17 @@ private struct WelcomePage: View {
         .keyboardShortcut(.defaultAction)
         .clickable()
         .opacity(shown ? 1 : 0)
+        .padding(.top, 8)
       Spacer(minLength: 0)
     }
     .padding(.bottom, 30)
     .task {
-      for index in 1 ... 4 {
-        try? await Task.sleep(for: .milliseconds(index == 1 ? 150 : 110))
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { placed = index }
-      }
+      guard DevHooks.iconProgress == nil else { return }
+      try? await Task.sleep(for: .milliseconds(150))
+      withAnimation(.easeInOut(duration: 1.7)) { built = 1 }
+      try? await Task.sleep(for: .milliseconds(1250))
       withAnimation(.easeOut(duration: 0.45)) { shown = true }
     }
-  }
-
-  private func piece(_ tile: BoardTile, _ index: Int) -> some View {
-    TileView(tile: tile, size: 52)
-      .scaleEffect(placed > index ? 1 : 0.4)
-      .opacity(placed > index ? 1 : 0)
   }
 }
 
@@ -449,9 +320,8 @@ private struct DonePage: View {
   var body: some View {
     VStack(spacing: 20) {
       Spacer(minLength: 0)
-      BoardMark(size: 96)
+      AppIcon(size: 132)
         .scaleEffect(shown ? 1 : 0.85)
-        .shadow(color: midnight.opacity(0.25), radius: 20, y: 10)
       VStack(spacing: 8) {
         Text("You're all set").font(.system(size: 30, weight: .semibold)).tracking(-0.6)
         Text("A few keys worth knowing:").font(.system(size: 14)).foregroundStyle(.secondary)

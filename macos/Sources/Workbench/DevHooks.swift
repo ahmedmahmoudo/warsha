@@ -19,6 +19,9 @@ enum DevHooks {
   /// `-WorkbenchOnboardingStep N` opens Get started on that step (0 welcome … 5 done), with `-WorkbenchOpen getstarted`.
   static var onboardingStep: Int? { defaults.object(forKey: "WorkbenchOnboardingStep") as? Int ?? defaults.string(forKey: "WorkbenchOnboardingStep").flatMap(Int.init) }
 
+  /// `-WorkbenchIconProgress 0…1` holds Get started's icon at that point of its build animation.
+  static var iconProgress: Double? { defaults.string(forKey: "WorkbenchIconProgress").flatMap(Double.init) }
+
   /// `-WorkbenchDate YYYY-MM-DD` opens Activity on that date instead of today.
   static var startDate: String? { defaults.string(forKey: "WorkbenchDate") }
 

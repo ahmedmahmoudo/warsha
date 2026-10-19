@@ -52,3 +52,7 @@ Colours: tile `#1d2738` → `#0e1420`, text on dark `#e4e9f1`, text on light `#1
 tiles `#5cc79a` (PRs), `#e8b45a` (meetings), `#8fb0f5` (tickets), `#e4e9f1` (notes).
 
 Sources: `design/icon-v2/c-board.svg` (web/favicon) and `design/icon-v2/c-board-macos.svg` (Mac app).
+
+The Mac app also draws the icon in code, from `c-board-macos.svg`'s numbers, so it can animate it
+(Get started builds it tile by tile and draws each glyph): `macos/Sources/Workbench/BrandIcon.swift`.
+When the icon changes, change that file with it.
