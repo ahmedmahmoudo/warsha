@@ -137,9 +137,9 @@ struct DeriveTests {
     #expect(need?.kind == .slowReview)
     #expect(need?.title == "Waiting on code owners")
     #expect(need?.detail == "web · approved by pal")
-    let nudged = Ping(nudgedAt: Store.timestamp(Date()))
+    let nudged = Ping(nudgedAt: Store.timestamp(Date(timeIntervalSinceNow: -2 * 3600)))
     #expect(TodayRules.recentlyPinged(nudged, kind: .slowReview, nudgeAgainHours: 24))
-    #expect(!TodayRules.recentlyPinged(nudged, kind: .slowReview, nudgeAgainHours: 0))
+    #expect(!TodayRules.recentlyPinged(nudged, kind: .slowReview, nudgeAgainHours: 1))
   }
 
   @Test func updatesSayWhatChanged() throws {
