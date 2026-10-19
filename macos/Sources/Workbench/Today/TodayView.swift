@@ -137,6 +137,7 @@ struct TodayView: View {
     LazyVStack(alignment: .leading, spacing: 20) {
       MeetingsTodaySection()
       if let data { NewForYouSection(data: data, since: since) }
+      if data != nil { UpdatesSection() }
       TodosSection(timeZone: data?.timeZone ?? settings.timeZone)
       ParkedSection()
       if let data {
@@ -165,8 +166,13 @@ final class TodayModel {
     loading = true
     defer { loading = false }
     do {
-      data = try await TodayService.shared.build(config: PrConfig(settings), timeZone: settings.timeZone, newPrHours: settings.newPrHours)
+      let loaded = try await TodayService.shared.build(config: PrConfig(settings), timeZone: settings.timeZone, newPrHours: settings.newPrHours)
+      data = loaded
       error = nil
+      // Tickets turning up for the first time are the baseline for "updated since you looked".
+      AppState.shared.store.markSeen(
+        Dictionary(loaded.tickets.map { (ticketRef($0.key), Seen($0)) }, uniquingKeysWith: { first, _ in first }), onlyNew: true
+      )
     } catch is CancellationError {
     } catch {
       self.error = error
@@ -221,9 +227,12 @@ private struct PrLine<Accessory: View>: View {
   let pr: Pr
   @ViewBuilder let accessory: Accessory
   @Environment(Navigation.self) private var navigation
+  @Environment(Store.self) private var store
+  @Environment(PullRequestsModel.self) private var prs
 
   var body: some View {
     HStack(spacing: 8) {
+      UpdatedDot(changes: store.changes(pr, viewer: prs.responses[.mine]?.viewer ?? ""))
       Button {
         navigation.open(PrKey(pr))
       } label: {
@@ -243,7 +252,7 @@ private struct PrLine<Accessory: View>: View {
 
 /// The first few of a long list, then a link for the rest: a long list of heavy rows is what
 /// made Today slow to scroll.
-private struct Capped<Item: Identifiable, Row: View>: View {
+struct Capped<Item: Identifiable, Row: View>: View {
   let items: [Item]
   let limit: Int
   @ViewBuilder let row: (_ index: Int, _ item: Item) -> Row
@@ -258,7 +267,7 @@ private struct Capped<Item: Identifiable, Row: View>: View {
   }
 }
 
-private struct SmallLink: View {
+struct SmallLink: View {
   let title: String
   let action: () -> Void
 

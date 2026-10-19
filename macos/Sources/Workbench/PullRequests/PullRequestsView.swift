@@ -7,6 +7,8 @@ struct PullRequestsView: View {
   enum Filter: Hashable {
     case waitingOn(WaitingOn)
     case mismatches
+    /// Changed since you last saw them.
+    case updated
   }
 
   @Environment(AppSettings.self) private var settings
@@ -164,15 +166,21 @@ struct PullRequestsView: View {
   /// or with mismatches.
   private func grouped(_ data: PrsResponse) -> Groups {
     let mismatchesOnly = filter == .mismatches
-    let visible = { (prs: [Pr]) in prs.filter { (!mismatchesOnly || !$0.mismatches.isEmpty) && matches($0) } }
+    let updatedOnly = filter == .updated
+    let anyWaiting = mismatchesOnly || updatedOnly
+    let visible = { (prs: [Pr]) in
+      prs.filter {
+        (!mismatchesOnly || !$0.mismatches.isEmpty) && (!updatedOnly || !store.changes($0, viewer: data.viewer).isEmpty) && matches($0)
+      }
+    }
     let open = visible(data.open.filter { store.parked(for: $0) == nil })
     var groups = Groups()
     groups.sections = WaitingOn.allCases
-      .filter { filter == nil || mismatchesOnly || filter == .waitingOn($0) }
+      .filter { filter == nil || anyWaiting || filter == .waitingOn($0) }
       .map { waitingOn in (waitingOn, open.filter { $0.waitingOn == waitingOn }) }
       .filter { !$0.prs.isEmpty }
     groups.parked = filter == nil ? data.open.filter { store.parked(for: $0) != nil && matches($0) } : []
-    groups.merged = filter == nil || mismatchesOnly ? visible(data.recentlyMerged) : []
+    groups.merged = filter == nil || anyWaiting ? visible(data.recentlyMerged) : []
     return groups
   }
 
@@ -218,6 +226,7 @@ struct PullRequestsView: View {
   private func topBar(_ data: PrsResponse?) -> some View {
     let active = data?.open.filter { store.parked(for: $0) == nil } ?? []
     let mismatches = (active + (data?.recentlyMerged ?? [])).filter { !$0.mismatches.isEmpty }.count
+    let updated = scope == .team ? 0 : (active + (data?.recentlyMerged ?? [])).filter { !store.changes($0, viewer: data?.viewer ?? "").isEmpty }.count
     return ScrollView(.horizontal, showsIndicators: false) {
       GlassEffectContainer(spacing: 6) {
         HStack(spacing: 6) {
@@ -239,6 +248,9 @@ struct PullRequestsView: View {
             FilterButton(count: mismatches, label: "Ticket mismatches", isOn: filter == .mismatches, warn: true) {
               toggle(.mismatches)
             }
+            if scope != .team {
+              FilterButton(count: updated, label: "Updated", isOn: filter == .updated) { toggle(.updated) }
+            }
           }
         }
         .padding(.horizontal, 16)
@@ -255,6 +267,7 @@ struct PullRequestsView: View {
     switch filter {
     case let .waitingOn(waitingOn): waitingOn.title(scope)
     case .mismatches: "Ticket mismatches"
+    case .updated: "Updated"
     }
   }
 
@@ -296,6 +309,9 @@ struct PullRequestsView: View {
         if let ticket = pr.tickets.first {
           Button("Open \(ticket.key) in Linear") { NSWorkspace.shared.open(URL(string: ticket.url)!) }
         }
+      }
+      if let viewer = model.responses[scope]?.viewer, prs.contains(where: { !store.changes($0, viewer: viewer).isEmpty }) {
+        Button("Mark as Seen") { for pr in prs { store.markSeen(pr, viewer: viewer) } }
       }
       Button(prs.count == 1 ? "Copy Link" : "Copy Links") {
         NSPasteboard.general.clearContents()

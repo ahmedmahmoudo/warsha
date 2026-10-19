@@ -142,6 +142,22 @@ struct DeriveTests {
     #expect(!TodayRules.recentlyPinged(nudged, kind: .slowReview, nudgeAgainHours: 0))
   }
 
+  @Test func updatesSayWhatChanged() throws {
+    let before = Seen(Derive.pr(try pr(), tickets: nil, review: review), viewer: "me")
+    #expect(Updates.changes(from: before, to: before).isEmpty)
+    let approved = Derive.pr(try pr([
+      "updatedAt": "2026-10-03T00:00:00Z",
+      "latestOpinionatedReviews": ["nodes": [["state": "APPROVED", "author": ["login": "pal", "avatarUrl": "b"], "onBehalfOf": ["nodes": [["slug": "web"]]]]]],
+    ]), tickets: nil, review: review)
+    #expect(Updates.changes(from: before, to: Seen(approved, viewer: "me")) == ["Now ready to merge", "Approved by pal"])
+    let touched = Derive.pr(try pr(["updatedAt": "2026-10-03T00:00:00Z"]), tickets: nil, review: review)
+    #expect(Updates.changes(from: before, to: Seen(touched, viewer: "me")) == ["New activity"])
+    // Your own pushes aren't news; someone else's are.
+    let pushed = Derive.pr(try pr(["additions": 40]), tickets: nil, review: review)
+    #expect(Updates.changes(from: before, to: Seen(pushed, viewer: "me")).isEmpty)
+    #expect(Updates.changes(from: Seen(Derive.pr(try pr(), tickets: nil, review: review), viewer: "pal"), to: Seen(pushed, viewer: "pal")) == ["New commits"])
+  }
+
   @Test func stacksLinkToTheBranchTheyTarget() throws {
     let base = Derive.pr(try pr(["number": 1, "url": "u1", "headRefName": "a"]), tickets: nil)
     let top = Derive.pr(try pr(["number": 2, "url": "u2", "headRefName": "b", "baseRefName": "a"]), tickets: nil)

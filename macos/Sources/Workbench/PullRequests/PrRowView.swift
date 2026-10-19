@@ -11,6 +11,7 @@ struct PrRowView: View {
   @Environment(\.textScale) private var textScale
 
   private var itemRef: Ref { pr.tickets.first.map { ticketRef($0.key) } ?? prRef(pr.repo, pr.number) }
+  private var changes: [String] { store.changes(pr, viewer: viewer) }
   private var controlTitle: String { pr.tickets.first.map { "\($0.key) \($0.title)" } ?? pr.title }
 
   var body: some View {
@@ -38,6 +39,7 @@ struct PrRowView: View {
       }
 
       HStack(spacing: 6) {
+        UpdatedDot(changes: changes)
         // Double-click or Return opens the details; the list owns that, so the title is plain text.
         Text(pr.title).scaledFont(.body.weight(.medium)).lineLimit(1).truncationMode(.tail)
         // Pin, note and park follow the ticket when there is one, as on Today.
@@ -45,6 +47,7 @@ struct PrRowView: View {
       }
 
       NoteLine(ref: itemRef)
+      UpdateLine(changes: changes) { store.markSeen(pr, viewer: viewer) }
 
       if pr.author == viewer && pr.mergedAt == nil && TodayRules.prNeed(pr, ageMessage: nil)?.kind == .slowReview {
         NudgeLine(pr: pr)

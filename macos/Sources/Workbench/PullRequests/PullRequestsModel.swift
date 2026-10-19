@@ -22,8 +22,18 @@ final class PullRequestsModel {
     loading.insert(scope)
     defer { loading.remove(scope) }
     do {
-      responses[scope] = try await PrService.shared.load(scope, config: PrConfig(settings))
+      let response = try await PrService.shared.load(scope, config: PrConfig(settings))
+      responses[scope] = response
       errors[scope] = nil
+      // PRs turning up for the first time are the baseline for "updated since you looked". The
+      // team's PRs aren't tracked: they'd all be news.
+      if scope != .team {
+        AppState.shared.store.markSeen(
+          Dictionary((response.open + response.recentlyMerged).map { (prRef($0.repo, $0.number), Seen($0, viewer: response.viewer)) },
+                     uniquingKeysWith: { first, _ in first }),
+          onlyNew: true
+        )
+      }
     } catch is CancellationError {
     } catch {
       errors[scope] = error

@@ -40,6 +40,15 @@ struct PrDetailView: View {
         try? await Task.sleep(for: PrDetailModel.refreshInterval)
       }
     }
+    // Looking at a PR is seeing it: whatever it shows now is no longer news.
+    .onChange(of: model.detail?.fetchedAt, initial: true) {
+      // The list's copy is what the dots compare with, so it's the one marked when there is one.
+      let responses = AppState.shared.pullRequests.responses
+      guard let detail = model.detail?.pr, let viewer = responses[.mine]?.viewer else { return }
+      let listed = [PrScope.mine, .reviewing].lazy.compactMap { responses[$0] }.flatMap { $0.open + $0.recentlyMerged }
+        .first { $0.repo == key.repo && $0.number == key.number }
+      store.markSeen(listed ?? detail, viewer: viewer)
+    }
     .task(id: model.detail == nil) {
       guard model.detail != nil else { return }
       while !Task.isCancelled && !model.isFinished {

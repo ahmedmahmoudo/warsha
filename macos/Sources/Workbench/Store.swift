@@ -57,6 +57,8 @@ final class Store {
   private var settings: [String: String] = [:]
   /// When you sent each PR (by URL) for review or last nudged its reviewers.
   private(set) var pings: [String: Ping] = [:]
+  /// Each PR and ticket as you last saw it, to tell what's been updated since.
+  private(set) var seen: [Ref: Seen] = [:]
   /// The last failure, shown where the data is; nil once something works again.
   private(set) var error: String?
 
@@ -89,6 +91,10 @@ final class Store {
       declined integer not null default 0, previous_start text, previous_end text,
       rescheduled_at text, deleted_at text, first_seen_at text not null, updated_at text not null
     );
+    """,
+    // Workbench for macOS only: what each PR and ticket looked like when you last saw it.
+    """
+    create table seen (ref text primary key, snapshot text not null, seen_at text not null);
     """,
   ]
 
@@ -172,6 +178,13 @@ final class Store {
       parkedByRef = Dictionary(parked.map { ($0.ref, $0) }, uniquingKeysWith: { first, _ in first })
       settings = Dictionary(
         try db.query("select key, value from settings").map { ($0.string("key")!, $0.string("value")!) },
+        uniquingKeysWith: { first, _ in first }
+      )
+      let decoder = JSONDecoder()
+      seen = Dictionary(
+        try db.query("select ref, snapshot from seen").compactMap { row in
+          (try? decoder.decode(Seen.self, from: Data(row.string("snapshot")!.utf8))).map { (row.string("ref")!, $0) }
+        },
         uniquingKeysWith: { first, _ in first }
       )
       pings = settings[Self.pingsKey]
@@ -299,6 +312,30 @@ final class Store {
         )
       } else {
         try $0.run("delete from settings where key = ?", .text(key))
+      }
+    }
+  }
+
+  /// Remembers items as seen now. `onlyNew` keeps what's already remembered: the first time an item
+  /// turns up it's the baseline, so nothing shows as updated before you've had a chance to see it.
+  func markSeen(_ snapshots: [Ref: Seen], onlyNew: Bool = false) {
+    let changed = snapshots.filter { onlyNew ? seen[$0.key] == nil : seen[$0.key] != $0.value }
+    guard !changed.isEmpty else { return }
+    let encoder = JSONEncoder()
+    let now = Self.now()
+    write { db in
+      // One transaction, as a first load can baseline a hundred items.
+      try db.execute("begin")
+      defer { try? db.execute("commit") }
+      for (ref, snapshot) in changed {
+        guard let json = try? encoder.encode(snapshot) else { continue }
+        try db.run(
+          """
+          insert into seen (ref, snapshot, seen_at) values (?, ?, ?)
+          on conflict(ref) do update set snapshot = excluded.snapshot, seen_at = excluded.seen_at
+          """,
+          .text(ref), .text(String(decoding: json, as: UTF8.self)), .text(now)
+        )
       }
     }
   }
