@@ -36,7 +36,10 @@ struct AccountsSettings: View {
       ProfilesSection()
       Section {
         GitHubAccount()
-        TextField("Repos", text: $settings.githubRepos, prompt: Text("owner/repo, owner/other-repo"))
+        HStack {
+          TextField("Repos", text: $settings.githubRepos, prompt: Text("All you can see, or owner/repo, owner/other-repo"))
+          if settings.hasGitHub { ChooseReposButton() }
+        }
         TextField("Team", text: $settings.githubTeam, prompt: Text("Comma-separated logins"))
       } header: {
         Text("GitHub")

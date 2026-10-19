@@ -10,12 +10,12 @@ import UserNotifications
 /// the brand kit (design/website) and the app's own light and dark palette.
 struct GetStartedView: View {
   enum Step: Int, CaseIterable {
-    case welcome, github, calendar, linear, permissions, done
+    case welcome, github, repos, calendar, linear, permissions, done
 
     /// The board tile the step stands for.
     var tile: BoardTile? {
       switch self {
-      case .github: .pullRequests
+      case .github, .repos: .pullRequests
       case .calendar: .meetings
       case .linear: .tickets
       case .permissions: .notes
@@ -100,7 +100,7 @@ struct GetStartedView: View {
     switch step {
     case .welcome: "Get Started"
     case .done: "Open Workbench"
-    case .github, .permissions: "Continue"
+    case .github, .repos, .permissions: "Continue"
     case .linear, .calendar: connected ? "Continue" : "Skip"
     }
   }
@@ -113,7 +113,9 @@ struct GetStartedView: View {
   }
 
   private func go(_ by: Int) {
-    guard let next = Step(rawValue: step.rawValue + by) else { return finish() }
+    guard var next = Step(rawValue: step.rawValue + by) else { return finish() }
+    // Choosing repos needs a GitHub account; without one it's passed over both ways.
+    if next == .repos && !settings.hasGitHub, let beyond = Step(rawValue: next.rawValue + by) { next = beyond }
     forward = by > 0
     withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) { step = next }
   }
@@ -129,6 +131,7 @@ struct GetStartedView: View {
         tile: .pullRequests, title: "Connect GitHub", connected: settings.hasGitHub,
         detail: "Your pull requests, the reviews asked of you, checks and code owners. Sign in with GitHub, or paste a token."
       ) { GitHubConnect() }
+    case .repos: ReposPage()
     case .calendar:
       AccountPage(
         tile: .meetings, title: "Connect Google Calendar", connected: calendar.connection(settings, store) == .connected,
@@ -226,6 +229,29 @@ private struct AccountPage<Controls: View>: View {
         .animation(.snappy, value: connected)
       Spacer(minLength: 0)
     }
+  }
+}
+
+// MARK: Repos
+
+/// Which repos to follow, straight after GitHub: the ones you've opened PRs in lately come ticked,
+/// and search finds the rest in your account and orgs.
+private struct ReposPage: View {
+  var body: some View {
+    VStack(spacing: 16) {
+      VStack(spacing: 8) {
+        Text("Choose your repos").font(.system(size: 26, weight: .semibold)).tracking(-0.5)
+        Text("These are the repos you work in; the ones with your recent PRs are ticked. Search to add any other repo from your account or orgs. Change it any time in Settings → Accounts.")
+          .font(.system(size: 14)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+          .frame(maxWidth: 480).fixedSize(horizontal: false, vertical: true)
+      }
+      RepoPicker(preselect: true, listHeight: 250)
+        .padding(18)
+        .frame(width: 560)
+        .onboardingCard()
+      Spacer(minLength: 0)
+    }
+    .padding(.top, 4)
   }
 }
 
