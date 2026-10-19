@@ -65,14 +65,19 @@ actor PrService {
 
   /// The last answer per scope, for callers happy with a recent one.
   private var recent: [PrScope: (config: PrConfig, response: PrsResponse)] = [:]
+  /// Each scope's merged PRs as last searched. Merged is done, so the list is searched again only
+  /// this often, or on Refresh.
+  private var mergedLists: [PrScope: (config: PrConfig, at: Date, result: (prs: [GithubPr], truncated: Bool))] = [:]
+  private static let mergedMaxAge: TimeInterval = 15 * 60
 
   /// `maxAge` takes a recent answer when there is one, as Today does with the lists it's built from.
-  func load(_ scope: PrScope, config: PrConfig, maxAge: TimeInterval? = nil) async throws -> PrsResponse {
+  /// `force` is Refresh: merged PRs are searched again too, rather than every 15 minutes.
+  func load(_ scope: PrScope, config: PrConfig, maxAge: TimeInterval? = nil, force: Bool = false) async throws -> PrsResponse {
     if let maxAge, let last = recent[scope], last.config == config, -last.response.fetchedAt.timeIntervalSinceNow < maxAge {
       return last.response
     }
     if let running = inflight[scope], running.config == config { return try await running.task.value }
-    let task = Task { try await build(scope, config: config) }
+    let task = Task { try await build(scope, config: config, force: force) }
     inflight[scope] = (config, task)
     defer { if inflight[scope]?.task == task { inflight[scope] = nil } }
     let response = try await task.value
@@ -80,13 +85,19 @@ actor PrService {
     return response
   }
 
-  private func build(_ scope: PrScope, config: PrConfig) async throws -> PrsResponse {
+  private func build(_ scope: PrScope, config: PrConfig, force: Bool) async throws -> PrsResponse {
     let viewer = try await viewer(config.githubToken)
     let members = scope == .team ? try await teamMembers(config) : []
     let queries = try Self.searchQueries(scope, login: viewer, config: config, teamMembers: members)
     async let openResults = searchAll(queries.open, token: config.githubToken)
-    async let mergedResults = searchAll(queries.merged, token: config.githubToken)
-    let (open, merged) = try await (openResults, mergedResults)
+    let merged: (prs: [GithubPr], truncated: Bool)
+    if !force, let last = mergedLists[scope], last.config == config, -last.at.timeIntervalSinceNow < Self.mergedMaxAge {
+      merged = last.result
+    } else {
+      merged = try await searchAll(queries.merged, token: config.githubToken)
+      mergedLists[scope] = (config, Date(), merged)
+    }
+    let open = try await openResults
     let reviews = await reviewContexts(open.prs, token: config.githubToken)
 
     var warnings = await tokenProblems(config)
@@ -206,6 +217,8 @@ actor PrService {
     for ref in results.flatMap(\.refs) where !refs.contains(where: { $0.id == ref.id }) { refs.append(ref) }
     let stale = refs.filter { ref in
       guard let cached = details[ref.id] else { return true }
+      // A merged PR has nothing left to change that Workbench shows: read once, kept.
+      if cached.pr.mergedAt != nil { return false }
       return cached.fingerprint != ref.fingerprint || -cached.at.timeIntervalSinceNow > Self.detailsMaxAge
     }
     if !stale.isEmpty {
@@ -216,8 +229,9 @@ actor PrService {
         details[pr.id] = (ref.fingerprint, now, pr)
       }
     }
-    // PRs no search has returned for an hour (merged long ago, or another scope's) are let go.
-    details = details.filter { -$0.value.at.timeIntervalSinceNow < 3600 }
+    // Open PRs are re-read every few minutes, so one an hour old has left the searches; merged
+    // ones are read once, so they're kept for a day.
+    details = details.filter { -$0.value.at.timeIntervalSinceNow < ($0.value.pr.mergedAt == nil ? 3600 : 86_400) }
     return (refs.compactMap { details[$0.id]?.pr }, results.contains { $0.truncated })
   }
 

@@ -35,8 +35,10 @@ struct PrDetailView: View {
     .navigationSubtitle(subtitle)
     .toolbar { toolbar }
     .task {
-      while !Task.isCancelled {
+      // A merged or closed PR has nothing left to watch: loaded once, then Refresh if you want it.
+      while !Task.isCancelled && !model.isFinished {
         await model.load(settings: settings, maxAge: .seconds(15))
+        if model.isFinished { break }
         try? await Task.sleep(for: PrDetailModel.refreshInterval)
       }
     }

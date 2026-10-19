@@ -24,7 +24,8 @@ final class PullRequestsModel {
     loading.insert(scope)
     defer { loading.remove(scope) }
     do {
-      let response = try await PrService.shared.load(scope, config: PrConfig(settings))
+      // Without maxAge it's Refresh, which looks at merged PRs again too.
+      let response = try await PrService.shared.load(scope, config: PrConfig(settings), force: maxAge == nil)
       responses[scope] = response
       errors[scope] = nil
       // PRs turning up for the first time are the baseline for "updated since you looked". The
