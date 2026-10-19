@@ -41,7 +41,8 @@ actor GoogleCalendar {
     let secret: String
   }
 
-  private var accessToken: (value: String, expiresAt: Date)?
+  /// The access token and the refresh token it came from: each profile has its own Google account.
+  private var accessToken: (value: String, expiresAt: Date, refreshToken: String)?
 
   // MARK: Sign-in
 
@@ -91,7 +92,7 @@ actor GoogleCalendar {
     guard (tokens["scope"] as? String)?.contains("calendar.readonly") == true else {
       throw IntegrationError("Calendar access was not granted. Connect again and tick the calendar permission.")
     }
-    accessToken = (access, Date().addingTimeInterval(tokens["expires_in"] as? Double ?? 0))
+    accessToken = (access, Date().addingTimeInterval(tokens["expires_in"] as? Double ?? 0), refresh)
     return (refresh, (tokens["id_token"] as? String).flatMap(Self.email(fromIdToken:)))
   }
 
@@ -124,13 +125,13 @@ actor GoogleCalendar {
   }
 
   private func validAccessToken(client: Client, refreshToken: String) async throws -> String {
-    if let accessToken, accessToken.expiresAt.timeIntervalSinceNow > 60 { return accessToken.value }
+    if let accessToken, accessToken.refreshToken == refreshToken, accessToken.expiresAt.timeIntervalSinceNow > 60 { return accessToken.value }
     let tokens = try await tokenRequest([
       "client_id": client.id, "client_secret": client.secret, "refresh_token": refreshToken, "grant_type": "refresh_token",
     ])
     if tokens["error"] as? String == "invalid_grant" { throw Revoked() }
     guard let access = tokens["access_token"] as? String else { throw IntegrationError("Google token refresh failed") }
-    accessToken = (access, Date().addingTimeInterval(tokens["expires_in"] as? Double ?? 0))
+    accessToken = (access, Date().addingTimeInterval(tokens["expires_in"] as? Double ?? 0), refreshToken)
     return access
   }
 

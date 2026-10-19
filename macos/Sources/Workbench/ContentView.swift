@@ -22,6 +22,9 @@ struct ContentView: View {
       page
     }
     .toolbar {
+      if AppState.shared.profiles.count > 1 {
+        ToolbarItem(placement: .navigation) { ProfileMenu() }
+      }
       ToolbarItem(placement: .principal) {
         // Shows no page while a PR tab is in front; picking one goes back to it.
         Picker("Page", selection: Binding(get: { navigation.selectedPage }, set: { $0.map(navigation.show) })) {

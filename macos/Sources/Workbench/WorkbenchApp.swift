@@ -10,41 +10,45 @@ struct WorkbenchApp: App {
 
   var body: some Scene {
     Window("Workbench", id: "main") {
-      ContentView()
-        .environment(state.settings)
-        .environment(state.store)
-        .environment(state.navigation)
-        .environment(state.pullRequests)
-        .environment(state.calendar)
-        .environment(state.today)
-        .environment(state.activity)
-        .environment(state.worktrees)
-        .tint(.workbenchAccent)
-        .textScale(state.settings.textScale)
-        .frame(minWidth: 760, minHeight: 480)
+      ProfileScoped { ContentView().frame(minWidth: 760, minHeight: 480) }
     }
     .defaultSize(width: 1280, height: 860)
     .commands {
-      PageCommands(navigation: state.navigation)
-      TextSizeCommands(settings: state.settings)
+      PageCommands(state: state)
+      TextSizeCommands(state: state)
     }
 
     Settings {
-      SettingsView()
-        .environment(state.settings)
-        .environment(state.store)
-        .environment(state.calendar)
-        .tint(.workbenchAccent)
-        .textScale(state.settings.textScale)
+      ProfileScoped { SettingsView() }
     }
 
     MenuBarExtra {
-      MenuBarMenu()
-        .environment(state.pullRequests)
-        .environment(state.store)
+      ProfileScoped { MenuBarMenu() }
     } label: {
       MenuBarLabel()
     }
+  }
+}
+
+/// The profile's models as the environment, rebuilt from scratch when you switch profile.
+private struct ProfileScoped<Content: View>: View {
+  @ViewBuilder let content: Content
+  @State private var state = AppState.shared
+
+  var body: some View {
+    content
+      .environment(state.settings)
+      .environment(state.store)
+      .environment(state.navigation)
+      .environment(state.pullRequests)
+      .environment(state.calendar)
+      .environment(state.today)
+      .environment(state.activity)
+      .environment(state.worktrees)
+      .environment(state)
+      .tint(.workbenchAccent)
+      .textScale(state.settings.textScale)
+      .id(state.profile.id)
   }
 }
 
@@ -173,11 +177,11 @@ final class Navigation {
   }
 
   private func saveTabs() {
-    UserDefaults.standard.set(tabs.map { "\($0.repo)#\($0.number)" }, forKey: Self.tabsKey)
+    ProfileDefaults().set(tabs.map { "\($0.repo)#\($0.number)" }, forKey: Self.tabsKey)
   }
 
   private static func savedTabs() -> [PrKey] {
-    (UserDefaults.standard.stringArray(forKey: tabsKey) ?? []).compactMap { saved in
+    (ProfileDefaults().stringArray(forKey: tabsKey) ?? []).compactMap { saved in
       guard let match = saved.wholeMatch(of: /(.+)#(\d+)/), let number = Int(match.2) else { return nil }
       return PrKey(repo: String(match.1), number: number)
     }
@@ -185,7 +189,8 @@ final class Navigation {
 }
 
 private struct PageCommands: Commands {
-  let navigation: Navigation
+  let state: AppState
+  private var navigation: Navigation { state.navigation }
 
   var body: some Commands {
     CommandMenu("Go") {
@@ -216,7 +221,8 @@ private struct PageCommands: Commands {
 
 /// View → Zoom In, Zoom Out and Actual Size, for the text size (also in Settings → General).
 private struct TextSizeCommands: Commands {
-  let settings: AppSettings
+  let state: AppState
+  private var settings: AppSettings { state.settings }
 
   var body: some Commands {
     CommandGroup(after: .toolbar) {
@@ -278,6 +284,13 @@ private struct MenuBarMenu: View {
       Button(page.title) { state.show(page: page) }
     }
     Divider()
+    Menu("Profile: \(state.profile.name)") {
+      ForEach(state.profiles) { profile in
+        Toggle(profile.name, isOn: Binding(get: { state.profile.id == profile.id }, set: { if $0 { state.switchProfile(to: profile.id) } }))
+      }
+      Divider()
+      SettingsLink { Text("Manage Profiles…") }
+    }
     SettingsLink { Text("Settings…") }
       .keyboardShortcut(",")
     Divider()

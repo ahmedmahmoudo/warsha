@@ -33,6 +33,7 @@ struct AccountsSettings: View {
   var body: some View {
     @Bindable var settings = settings
     Form {
+      ProfilesSection()
       Section {
         GitHubAccount()
         TextField("Repos", text: $settings.githubRepos, prompt: Text("owner/repo, owner/other-repo"))

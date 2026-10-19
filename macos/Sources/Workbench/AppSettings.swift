@@ -38,11 +38,11 @@ final class AppSettings {
   /// How long after sending or nudging before Today suggests a nudge again (hours).
   var nudgeAgainHours: Int { didSet { defaults.set(nudgeAgainHours, forKey: "nudgeAgainHours") } }
   /// Text size across the app, 1 being macOS's own (View → Zoom In, Zoom Out, Actual Size).
-  var textScale: Double { didSet { defaults.set(textScale, forKey: "textScale") } }
+  var textScale: Double { didSet { appDefaults.set(textScale, forKey: "textScale") } }
   /// Light, dark, or whatever macOS is set to, like the web version's theme switch.
   var appearance: Appearance {
     didSet {
-      save(appearance.rawValue, "appearance")
+      if persists { appDefaults.set(appearance.rawValue, forKey: "appearance") }
       applyAppearance()
     }
   }
@@ -59,7 +59,9 @@ final class AppSettings {
     }
   }
 
-  @ObservationIgnored private let defaults = UserDefaults.standard
+  /// Settings belong to the profile in use; text size and appearance are the app's, for every profile.
+  @ObservationIgnored private let defaults = ProfileDefaults()
+  @ObservationIgnored private let appDefaults = UserDefaults.standard
   /// False when the settings came from a file for this launch only (`-WorkbenchEnvFile`): nothing
   /// is saved, and the Keychain isn't touched.
   @ObservationIgnored private var persists = true
@@ -78,8 +80,8 @@ final class AppSettings {
     afterMergeStates = "Merged"
     newPrHours = 24
     nudgeAgainHours = 24
-    textScale = defaults.object(forKey: "textScale") == nil ? 1 : defaults.double(forKey: "textScale")
-    appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
+    textScale = appDefaults.object(forKey: "textScale") == nil ? 1 : appDefaults.double(forKey: "textScale")
+    appearance = appDefaults.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .system
     if let file = DevHooks.envFile {
       persists = false
       _ = try? importEnvFile(URL(fileURLWithPath: file))

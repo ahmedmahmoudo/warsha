@@ -45,9 +45,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
   private var available: Bool { Bundle.main.bundleIdentifier != nil && !Keychain.memoryOnly }
 
   override init() {
-    seen = UserDefaults.standard.stringArray(forKey: Self.seenKey) ?? []
-    baselined = Set(UserDefaults.standard.stringArray(forKey: Self.baselinedKey) ?? [])
+    seen = ProfileDefaults().stringArray(forKey: Self.seenKey) ?? []
+    baselined = Set(ProfileDefaults().stringArray(forKey: Self.baselinedKey) ?? [])
     super.init()
+  }
+
+  /// What's been notified is the profile's: switching reads the new one's.
+  func reloadProfile() {
+    seen = ProfileDefaults().stringArray(forKey: Self.seenKey) ?? []
+    baselined = Set(ProfileDefaults().stringArray(forKey: Self.baselinedKey) ?? [])
   }
 
   func isEnabled(_ kind: Kind) -> Bool { defaults.object(forKey: kind.settingKey) as? Bool ?? true }
@@ -141,14 +147,14 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     let quiet = baseline && !baselined.contains(kind.rawValue)
     if quiet {
       baselined.insert(kind.rawValue)
-      defaults.set(Array(baselined), forKey: Self.baselinedKey)
+      ProfileDefaults().set(Array(baselined), forKey: Self.baselinedKey)
     }
     for item in fresh {
       seen.append(item.key)
       if !quiet && isEnabled(kind) { post(item) }
     }
     if seen.count > Self.maxSeen { seen.removeFirst(seen.count - Self.maxSeen) }
-    defaults.set(seen, forKey: Self.seenKey)
+    ProfileDefaults().set(seen, forKey: Self.seenKey)
   }
 
   private func post(_ item: Item) {

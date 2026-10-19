@@ -23,7 +23,10 @@ enum Keychain {
   /// tests (see DevHooks), so nothing prompts and nothing real is touched.
   static var memoryOnly: Bool { DevHooks.envFile != nil || DevHooks.isHostingTests }
 
+  /// Keys belong to the profile in use: the default profile's are as they always were, others'
+  /// are prefixed, all in the same item.
   static func get(_ key: String) -> String? {
+    let key = Profiles.scoped(key)
     if memoryOnly { return values[key] }
     load()
     return values[key]
@@ -31,6 +34,7 @@ enum Keychain {
 
   /// An empty or nil value removes the key.
   static func set(_ key: String, _ value: String?) {
+    let key = Profiles.scoped(key)
     if memoryOnly {
       values[key] = value?.isEmpty == false ? value : nil
       return
@@ -39,6 +43,14 @@ enum Keychain {
     guard readable else { return }
     if let value, !value.isEmpty { values[key] = value } else { values[key] = nil }
     save()
+  }
+
+  /// Forgets every secret whose key starts with `prefix`: a deleted profile's.
+  static func removeAll(prefixed prefix: String) {
+    if !memoryOnly { load() }
+    guard memoryOnly || readable else { return }
+    values = values.filter { !$0.key.hasPrefix(prefix) }
+    if !memoryOnly { save() }
   }
 
   private static func load() {
