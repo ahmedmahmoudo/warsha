@@ -78,7 +78,7 @@ enum Git {
   }
 }
 
-/// Your clones and their worktrees, found on this Mac, and cleaning them up. Clones are the ones
+/// Your clones of the repos you follow and their worktrees, and cleaning them up. Clones are the ones
 /// in Settings → General → Local repos, and any in the usual code folders in your home (~/dev,
 /// ~/Developer, ~/code…), at their top level or one in. Other folders are left alone: reading
 /// Documents or Desktop would ask for permission, and can hang while it does.
@@ -102,16 +102,27 @@ final class WorktreesModel {
       .worktrees.first { !$0.isMain && $0.branch == branch }
   }
 
+  /// The repos chosen in Settings → Accounts when the last scan ran; empty when all are followed.
+  private(set) var chosenRepos: [String] = []
+  /// Chosen repos with no clone found on this Mac.
+  private(set) var notCloned: [String] = []
+
+  /// Only the clones of the repos you follow (Settings → Accounts → Repos), or every clone found
+  /// when you follow all of them. A change of repos rescans whatever the last scan's age.
   func scan(settings: AppSettings, force: Bool = false) async {
-    if !force, let scannedAt, -scannedAt.timeIntervalSinceNow < Self.maxAge { return }
+    let chosen = AppSettings.list(settings.githubRepos)
+    let sameRepos = chosen.map { $0.lowercased() } == chosenRepos.map { $0.lowercased() }
+    if !force, sameRepos, let scannedAt, -scannedAt.timeIntervalSinceNow < Self.maxAge { return }
     guard !scanning else { return }
     scanning = true
     defer { scanning = false }
+    let wanted = Set(chosen.map { $0.lowercased() })
     let listed = settings.localRepos
     let clones = await Task.detached { Self.clones(listed: listed) }.value
     var found: [LocalRepo] = []
     for clone in clones {
       guard let origin = try? await Git.run(clone, ["remote", "get-url", "origin"]), let repo = Git.githubRepo(origin),
+            wanted.isEmpty || wanted.contains(repo.lowercased()),
             !found.contains(where: { $0.path == clone }),
             let porcelain = try? await Git.run(clone, ["worktree", "list", "--porcelain"])
       else { continue }
@@ -132,6 +143,8 @@ final class WorktreesModel {
       found.append(LocalRepo(repo: repo, path: clone, worktrees: worktrees))
     }
     repos = found.sorted { ($0.worktrees.count > 1 ? 0 : 1, $0.repo.lowercased()) < ($1.worktrees.count > 1 ? 0 : 1, $1.repo.lowercased()) }
+    chosenRepos = chosen
+    notCloned = chosen.filter { name in !found.contains { $0.repo.caseInsensitiveCompare(name) == .orderedSame } }
     scannedAt = Date()
     error = nil
   }

@@ -30,13 +30,19 @@ struct WorktreesView: View {
         } else if withWorktrees.isEmpty {
           ContentUnavailableView(
             "No Worktrees", systemImage: "arrow.triangle.branch",
-            description: Text("None of the clones found here has extra worktrees. Clones are looked for in your code folders (~/dev, ~/Developer, ~/code, ~/src, ~/projects and the like) and under Settings → General → Local repos.")
+            description: Text(model.chosenRepos.isEmpty
+              ? "None of the clones found here has extra worktrees. Clones are looked for in your code folders (~/dev, ~/Developer, ~/code, ~/src, ~/projects and the like) and under Settings → General → Local repos."
+              : "Your repos' clones have no extra worktrees. Clones are looked for in your code folders (~/dev, ~/Developer, ~/code, ~/src, ~/projects and the like) and under Settings → General → Local repos.")
           )
         }
         ForEach(withWorktrees) { repo in RepoPanel(repo: repo, pr: pr, remove: { pending = Removal(worktree: $0, repo: repo) }) }
         let plain = model.repos.filter { $0.worktrees.count <= 1 }
+        if model.scannedAt != nil && !model.notCloned.isEmpty {
+          Text("Not cloned on this Mac: \(model.notCloned.joined(separator: ", ")). Add a clone's folder under Settings → General → Local repos if it's somewhere else.")
+            .scaledFont(.caption).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+        }
         if !plain.isEmpty {
-          Text("Also found, with no worktrees: \(plain.map(\.repo).joined(separator: ", "))")
+          Text("Also cloned, with no worktrees: \(plain.map(\.repo).joined(separator: ", "))")
             .scaledFont(.caption).foregroundStyle(.tertiary)
         }
       }
@@ -55,7 +61,7 @@ struct WorktreesView: View {
           .disabled(model.scanning)
       }
     }
-    .task { await model.scan(settings: settings) }
+    .task(id: settings.githubRepos) { await model.scan(settings: settings) }
     .confirmationDialog(
       pending.map { "Remove the worktree \($0.worktree.name)?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
       presenting: pending
@@ -93,11 +99,16 @@ struct WorktreesView: View {
 
   private func header(_ merged: [Removal]) -> some View {
     let all = model.repos.flatMap { $0.worktrees.filter { !$0.isMain } }
+    let withWorktrees = model.repos.filter { $0.worktrees.count > 1 }.count
     return HStack(alignment: .firstTextBaseline) {
       VStack(alignment: .leading, spacing: 2) {
         Text("Worktrees").scaledFont(.title2.weight(.semibold))
-        Text("\(all.count) worktree\(all.count == 1 ? "" : "s") in \(model.repos.filter { $0.worktrees.count > 1 }.count) repos · \(all.filter { $0.changedFiles > 0 }.count) with uncommitted changes")
+        Text("\(all.count) worktree\(all.count == 1 ? "" : "s") in \(withWorktrees) repo\(withWorktrees == 1 ? "" : "s") · \(all.filter { $0.changedFiles > 0 }.count) with uncommitted changes")
           .foregroundStyle(.secondary)
+        Text(model.chosenRepos.isEmpty
+          ? "Every clone found, as you follow all repos. Choose repos in Settings → Accounts to see just theirs."
+          : "For your \(model.chosenRepos.count) chosen repo\(model.chosenRepos.count == 1 ? "" : "s"): \(model.chosenRepos.joined(separator: ", "))")
+          .scaledFont(.caption).foregroundStyle(.tertiary).lineLimit(2)
       }
       Spacer()
       if !merged.isEmpty {
