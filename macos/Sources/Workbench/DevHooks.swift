@@ -46,9 +46,8 @@ enum DevHooks {
       } else if target == "getstarted" {
         navigation.gettingStarted = true
       } else if let page = Page.allCases.first(where: { $0.rawValue.lowercased().hasPrefix(target.lowercased()) }) {
-        navigation.page = page
+        navigation.show(page)
       } else if let match = target.wholeMatch(of: /([\w.-]+\/[\w.-]+)#(\d+)/), let number = Int(match.2) {
-        navigation.page = .pullRequests
         navigation.open(PrKey(repo: String(match.1), number: number))
       }
     }

@@ -8,6 +8,9 @@ final class PrDetailModels {
   private var models: [PrKey: PrDetailModel] = [:]
   private var order: [PrKey] = []
 
+  /// The model already made for a PR, without making one.
+  func existing(_ key: PrKey) -> PrDetailModel? { models[key] }
+
   func model(for key: PrKey) -> PrDetailModel {
     order.removeAll { $0 == key }
     order.append(key)

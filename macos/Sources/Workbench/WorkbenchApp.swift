@@ -98,23 +98,86 @@ enum Page: String, CaseIterable, Identifiable {
   var shortcut: KeyEquivalent { KeyEquivalent(Character(String(Self.allCases.firstIndex(of: self)! + 1))) }
 }
 
-/// Which page the window shows; the menu bar item and the Go menu change it too.
+/// Which page or PR tab the window shows; the menu bar item and the Go menu change it too. Each PR
+/// you open gets a tab beside the pages, like a browser's, so opening one never loses your place;
+/// the tabs are remembered between launches.
 @MainActor
 @Observable
 final class Navigation {
-  var page: Page = .today
-  /// Each page's back stack of PR details, so Back returns to the page a PR was opened from.
-  var paths: [Page: [PrKey]] = [:]
+  private static let tabsKey = "openPrTabs"
+  private static let tabsKept = 20
+
+  /// The page shown when no PR tab is.
+  private(set) var page: Page = .today
+  /// Open PR tabs, in the order they sit in the tab strip.
+  private(set) var tabs: [PrKey] = Navigation.savedTabs()
+  /// The PR tab showing, or nil for the page.
+  private(set) var openTab: PrKey?
   /// The Get started sheet, for someone new (or Help → Get Started).
   var gettingStarted = false
 
-  /// Opens a PR's details on the page you're on.
-  func open(_ pr: PrKey) {
-    paths[page, default: []].append(pr)
+  /// What the page picker shows: nothing while a PR tab is in front.
+  var selectedPage: Page? { openTab == nil ? page : nil }
+
+  func show(_ page: Page) {
+    self.page = page
+    openTab = nil
   }
 
-  func path(_ page: Page) -> Binding<[PrKey]> {
-    Binding(get: { self.paths[page] ?? [] }, set: { self.paths[page] = $0 })
+  /// Opens a PR in its own tab, just after the one in front, or brings its tab forward.
+  func open(_ pr: PrKey) {
+    if !tabs.contains(pr) {
+      let after = openTab.flatMap { tabs.firstIndex(of: $0) }.map { $0 + 1 } ?? tabs.endIndex
+      tabs.insert(pr, at: after)
+      if tabs.count > Self.tabsKept, let oldest = tabs.first(where: { $0 != pr }) { tabs.removeAll { $0 == oldest } }
+      saveTabs()
+    }
+    openTab = pr
+  }
+
+  /// Closes a tab; closing the one in front shows its neighbour, or the page when it was the last.
+  func close(_ pr: PrKey) {
+    guard let index = tabs.firstIndex(of: pr) else { return }
+    tabs.remove(at: index)
+    if openTab == pr { openTab = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)] }
+    saveTabs()
+  }
+
+  func closeOthers(_ pr: PrKey) {
+    tabs = tabs.filter { $0 == pr }
+    if openTab != nil { openTab = pr }
+    saveTabs()
+  }
+
+  func closeAll() {
+    tabs = []
+    openTab = nil
+    saveTabs()
+  }
+
+  /// The next or previous tab, pages first and then PRs, wrapping round.
+  func cycle(_ step: Int) {
+    let all: [PrKey?] = [nil] + tabs.map(Optional.some)
+    guard all.count > 1, let index = all.firstIndex(of: openTab) else { return }
+    openTab = all[(index + step + all.count) % all.count]
+  }
+
+  func move(_ pr: PrKey, before target: PrKey) {
+    guard pr != target, let from = tabs.firstIndex(of: pr) else { return }
+    tabs.remove(at: from)
+    tabs.insert(pr, at: tabs.firstIndex(of: target) ?? tabs.endIndex)
+    saveTabs()
+  }
+
+  private func saveTabs() {
+    UserDefaults.standard.set(tabs.map { "\($0.repo)#\($0.number)" }, forKey: Self.tabsKey)
+  }
+
+  private static func savedTabs() -> [PrKey] {
+    (UserDefaults.standard.stringArray(forKey: tabsKey) ?? []).compactMap { saved in
+      guard let match = saved.wholeMatch(of: /(.+)#(\d+)/), let number = Int(match.2) else { return nil }
+      return PrKey(repo: String(match.1), number: number)
+    }
   }
 }
 
@@ -124,8 +187,22 @@ private struct PageCommands: Commands {
   var body: some Commands {
     CommandMenu("Go") {
       ForEach(Page.allCases) { page in
-        Button(page.title) { navigation.page = page }
+        Button(page.title) { navigation.show(page) }
           .keyboardShortcut(page.shortcut)
+      }
+      Divider()
+      Button("Next Tab") { navigation.cycle(1) }
+        .keyboardShortcut("]", modifiers: [.command, .shift])
+        .disabled(navigation.tabs.isEmpty)
+      Button("Previous Tab") { navigation.cycle(-1) }
+        .keyboardShortcut("[", modifiers: [.command, .shift])
+        .disabled(navigation.tabs.isEmpty)
+    }
+    // ⌘W closes the PR tab in front; with a page in front it closes the window as usual.
+    CommandGroup(before: .saveItem) {
+      if let tab = navigation.openTab {
+        Button("Close Tab") { navigation.close(tab) }
+          .keyboardShortcut("w")
       }
     }
     CommandGroup(replacing: .help) {

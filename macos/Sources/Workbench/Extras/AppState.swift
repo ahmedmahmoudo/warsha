@@ -28,10 +28,9 @@ final class AppState {
   /// Brings Workbench forward with the window showing, optionally on a page or a PR.
   func show(page: Page? = nil, pr: PrKey? = nil) {
     if let pr {
-      // On the page you're on, so Back returns there.
       navigation.open(pr)
     } else if let page {
-      navigation.page = page
+      navigation.show(page)
     }
     openMainWindow()
     NSApp.activate()

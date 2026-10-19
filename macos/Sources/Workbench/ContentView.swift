@@ -14,51 +14,56 @@ struct ContentView: View {
 
   var body: some View {
     @Bindable var navigation = navigation
-    page
-      .toolbar {
-        ToolbarItem(placement: .principal) {
-          Picker("Page", selection: $navigation.page) {
-            ForEach(Page.allCases) { page in
-              Text(page.title).tag(page)
-            }
+    VStack(spacing: 0) {
+      if !navigation.tabs.isEmpty {
+        PrTabStrip()
+        Divider().overlay(Palette.border)
+      }
+      page
+    }
+    .toolbar {
+      ToolbarItem(placement: .principal) {
+        // Shows no page while a PR tab is in front; picking one goes back to it.
+        Picker("Page", selection: Binding(get: { navigation.selectedPage }, set: { $0.map(navigation.show) })) {
+          ForEach(Page.allCases) { page in
+            Text(page.title).tag(Optional(page))
           }
-          .pickerStyle(.segmented)
-          .labelsHidden()
-          .fixedSize()
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
       }
-      .containerBackground(Palette.background, for: .window)
-      // The toolbar in the page's colour rather than the system's, with the standard glass
-      // controls on it; glass takes its tint from what's behind it.
-      .toolbarBackground(Palette.background, for: .windowToolbar)
-      .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
-      .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
-      .sheet(isPresented: $navigation.gettingStarted) { GetStartedSheet() }
-      .task {
-        settings.applyAppearance()
-        if !settings.hasGitHub { navigation.gettingStarted = true }
-        DevHooks.borrowGoogleSignIn()
-        await DevHooks.apply(to: navigation, openSettings: openSettings)
-      }
+    }
+    .containerBackground(Palette.background, for: .window)
+    // The toolbar in the page's colour rather than the system's, with the standard glass
+    // controls on it; glass takes its tint from what's behind it.
+    .toolbarBackground(Palette.background, for: .windowToolbar)
+    .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+    .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
+    .sheet(isPresented: $navigation.gettingStarted) { GetStartedSheet() }
+    .task {
+      settings.applyAppearance()
+      if !settings.hasGitHub { navigation.gettingStarted = true }
+      DevHooks.borrowGoogleSignIn()
+      await DevHooks.apply(to: navigation, openSettings: openSettings)
+    }
 
-      .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
+    .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
   }
 
-  /// Each page has its own navigation stack: a PR opened from a page goes back to that page, and
-  /// each page keeps its back stack while you look at another.
+  /// The PR tab in front, or the page. Pages and PRs keep what they've loaded in their models, so
+  /// switching back shows them at once.
   @ViewBuilder
   private var page: some View {
-    switch navigation.page {
-    case .today: stack(.today) { TodayView() }
-    case .pullRequests: stack(.pullRequests) { PullRequestsView() }
-    case .calendar: stack(.calendar) { CalendarView() }
-    case .activity: stack(.activity) { ActivityView() }
-    }
-  }
-
-  private func stack<Root: View>(_ page: Page, @ViewBuilder root: () -> Root) -> some View {
-    NavigationStack(path: navigation.path(page)) {
-      root().navigationDestination(for: PrKey.self) { PrDetailView(key: $0) }
+    if let tab = navigation.openTab {
+      NavigationStack { PrDetailView(key: tab) }.id(tab)
+    } else {
+      switch navigation.page {
+      case .today: NavigationStack { TodayView() }
+      case .pullRequests: NavigationStack { PullRequestsView() }
+      case .calendar: NavigationStack { CalendarView() }
+      case .activity: NavigationStack { ActivityView() }
+      }
     }
   }
 }
