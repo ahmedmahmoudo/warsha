@@ -3,12 +3,12 @@ import UserNotifications
 
 /// What someone new sees first: a short guided tour that connects GitHub, Linear and Google
 /// Calendar, asks for the permissions Workbench uses, and ends with the shortcuts worth knowing.
-/// It comes up until there's a GitHub account (for each profile), and Help → Get Started brings it
-/// back. It's built on the board in Workbench's icon: each step is one of its tiles (GitHub the
+/// It has the whole window the first time (for each profile), before anything loads, and Help →
+/// Get Started brings it back; finishing it starts the app with the accounts it set up. It's built on the board in Workbench's icon: each step is one of its tiles (GitHub the
 /// green PR tile, Calendar the amber meeting tile, Linear the blue ticket tile, permissions the
 /// notes tile), and the board in the header fills in as you go. Colours, type and buttons follow
 /// the brand kit (design/website) and the app's own light and dark palette.
-struct GetStartedSheet: View {
+struct GetStartedView: View {
   enum Step: Int, CaseIterable {
     case welcome, github, calendar, linear, permissions, done
 
@@ -24,7 +24,8 @@ struct GetStartedSheet: View {
     }
   }
 
-  @Environment(\.dismiss) private var dismiss
+  /// Starts the app.
+  let finish: () -> Void
   @Environment(AppSettings.self) private var settings
   @Environment(Store.self) private var store
   @Environment(CalendarModel.self) private var calendar
@@ -47,7 +48,8 @@ struct GetStartedSheet: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       bottomBar
     }
-    .frame(width: 760, height: 560)
+    .frame(maxWidth: 760, maxHeight: 620)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(OnboardingBackground(tile: step.tile))
     .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
   }
@@ -107,11 +109,11 @@ struct GetStartedSheet: View {
   private var skipTitle: String? { step == .github && !connected ? "Skip for Now" : nil }
 
   private func primary() {
-    if step == .done { dismiss() } else { go(1) }
+    if step == .done { finish() } else { go(1) }
   }
 
   private func go(_ by: Int) {
-    guard let next = Step(rawValue: step.rawValue + by) else { return dismiss() }
+    guard let next = Step(rawValue: step.rawValue + by) else { return finish() }
     forward = by > 0
     withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) { step = next }
   }
@@ -246,10 +248,10 @@ private struct PermissionsPage: View {
           case .authorized, .provisional, .ephemeral:
             Label("Allowed", systemImage: "checkmark.circle.fill").font(.system(size: 13, weight: .medium)).foregroundStyle(Tone.good.color)
           case .denied:
-            Button("Open Settings") {
-              NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!)
-            }
-            .buttonStyle(OnboardingSecondaryButtonStyle(compact: true)).clickable()
+            // macOS won't ask twice: once refused, only its settings can turn them on.
+            Button("Turn On in Settings…") { Notifier.openSettings() }
+              .buttonStyle(OnboardingPrimaryButtonStyle(compact: true)).clickable()
+              .help("Notifications were turned off for Workbench. This opens its page in System Settings; turn on Allow notifications, then come back.")
           default:
             Button("Allow") {
               Task {
@@ -273,6 +275,10 @@ private struct PermissionsPage: View {
       Spacer(minLength: 0)
     }
     .task { notifications = await AppState.shared.notifier.permission() }
+    // Coming back from System Settings shows what was chosen there.
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      Task { notifications = await AppState.shared.notifier.permission() }
+    }
   }
 }
 

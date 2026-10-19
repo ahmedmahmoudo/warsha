@@ -23,13 +23,44 @@ final class AppState {
   private(set) var profile = Profiles.current
   @ObservationIgnored let notifier = Notifier()
   @ObservationIgnored let signIns = SignIns()
+  /// Get started has the window: nothing loads until it's finished, so the app starts with the
+  /// accounts it set up rather than without them.
+  private(set) var onboarding = false
+
+  init() {
+    onboarding = !Profiles.isOnboarded(hasGitHub: settings.hasGitHub)
+  }
+
+  /// Help → Get Started: the window goes back to the tour, and background work stops until it's done.
+  func startOnboarding() {
+    stopBackground()
+    onboarding = true
+  }
+
+  /// The tour is done: every page starts over with the accounts it set up, and loading begins.
+  func finishOnboarding() {
+    Profiles.markOnboarded()
+    stopBackground()
+    pullRequests = PullRequestsModel()
+    calendar = CalendarModel()
+    today = TodayModel()
+    activity = ActivityModel()
+    prDetails = PrDetailModels()
+    worktrees = WorktreesModel()
+    onboarding = false
+    startBackground()
+  }
+
+  private func stopBackground() {
+    for task in background { task.cancel() }
+    background = []
+  }
 
   /// Switches every model to another profile and starts its background refresh.
   func switchProfile(to id: String) {
     guard id != profile.id else { return }
     Profiles.currentID = id
-    for task in background { task.cancel() }
-    background = []
+    stopBackground()
     settings = AppSettings()
     store = Store.open(at: Profiles.databasePath())
     navigation = Navigation()
@@ -40,6 +71,7 @@ final class AppState {
     prDetails = PrDetailModels()
     worktrees = WorktreesModel()
     profile = Profiles.current
+    onboarding = !Profiles.isOnboarded(hasGitHub: settings.hasGitHub)
     notifier.reloadProfile()
     NSApp.dockTile.badgeLabel = nil
     settings.applyAppearance()
@@ -92,7 +124,7 @@ final class AppState {
   /// Your PRs, review requests and calendar stay fresh whichever page is open, or none: for the
   /// Dock and menu bar counts and for notifications.
   func startBackground() {
-    guard background.isEmpty else { return }
+    guard background.isEmpty, !onboarding else { return }
     // A sign-in can expire while the Mac sleeps: renew it on waking, before anything loads.
     if !observingWake {
       observingWake = true

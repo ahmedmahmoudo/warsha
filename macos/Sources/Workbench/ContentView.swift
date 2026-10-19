@@ -13,7 +13,23 @@ struct ContentView: View {
   @Environment(CalendarModel.self) private var calendar
 
   var body: some View {
-    @Bindable var navigation = navigation
+    if AppState.shared.onboarding {
+      // The tour has the whole window, without the pages' toolbar.
+      GetStartedView { AppState.shared.finishOnboarding() }
+        .containerBackground(Palette.background, for: .window)
+        .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .task {
+          settings.applyAppearance()
+          await DevHooks.apply(to: navigation, openSettings: openSettings)
+        }
+        .onAppear { AppState.shared.openMainWindow = { openWindow(id: "main") } }
+    } else {
+      app
+    }
+  }
+
+  private var app: some View {
     VStack(spacing: 0) {
       if !navigation.tabs.isEmpty {
         PrTabStrip()
@@ -43,10 +59,8 @@ struct ContentView: View {
     .toolbarBackground(Palette.background, for: .windowToolbar)
     .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
     .foregroundStyle(Palette.foreground, Palette.muted, Palette.faint)
-    .sheet(isPresented: $navigation.gettingStarted) { GetStartedSheet() }
     .task {
       settings.applyAppearance()
-      if !settings.hasGitHub { navigation.gettingStarted = true }
       DevHooks.borrowGoogleSignIn()
       await DevHooks.apply(to: navigation, openSettings: openSettings)
     }

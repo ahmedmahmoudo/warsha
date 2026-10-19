@@ -38,7 +38,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
   private var seen: [String]
   private var baselined: Set<String>
   private var authorized = false
-  private var asked = false
 
   /// Notifications need a real app bundle, and stay quiet while the app hosts tests or runs from
   /// a settings file for checks.
@@ -77,22 +76,30 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     return await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
   }
 
-  /// Asks macOS for permission now (onboarding) rather than on the first check.
+  /// Shows macOS's own prompt. It only appears while the answer is "not asked yet": once refused,
+  /// only System Settings can turn notifications on (see `openSettings`).
   func requestPermission() async -> Bool {
     guard available else { return false }
-    asked = true
     authorized = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
     return authorized
+  }
+
+  static func allows(_ status: UNAuthorizationStatus) -> Bool { [.authorized, .provisional].contains(status) }
+
+  /// Workbench's own page in System Settings → Notifications.
+  static func openSettings() {
+    let id = Bundle.main.bundleIdentifier ?? "com.workbench.app"
+    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)")!)
   }
 
   // MARK: Checking
 
   func check(_ state: AppState) async {
     guard available, Kind.allCases.contains(where: isEnabled) else { return }
-    if !asked {
-      asked = true
-      authorized = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
-    }
+    // Only Get started asks (with its Allow button, where it's clear why): asking at launch, before
+    // anyone knows what Workbench is, is how it ends up refused for good. Here it's only read, so
+    // turning notifications on in System Settings takes effect on the next check.
+    authorized = await Self.allows(permission())
     guard authorized else { return }
 
     if let mine = state.pullRequests.responses[.mine] {

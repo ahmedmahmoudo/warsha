@@ -46,6 +46,23 @@ enum Profiles {
     id == defaultID ? Store.defaultPath : Store.defaultPath.deletingLastPathComponent().appendingPathComponent("workbench-\(id).sqlite")
   }
 
+  private static let onboardedKey = "onboarded"
+  /// Launch checks keep it in memory, so a check never marks your real profile done.
+  private static var onboardedInMemory = false
+
+  /// Whether the profile has been through Get started. Someone who set Workbench up before it
+  /// existed (GitHub already connected) counts as done.
+  static func isOnboarded(hasGitHub: Bool) -> Bool {
+    if Keychain.memoryOnly { return onboardedInMemory || hasGitHub }
+    if let done = ProfileDefaults().object(forKey: onboardedKey) as? Bool { return done }
+    if hasGitHub { markOnboarded() }
+    return hasGitHub
+  }
+
+  static func markOnboarded() {
+    if Keychain.memoryOnly { onboardedInMemory = true } else { ProfileDefaults().set(true, forKey: onboardedKey) }
+  }
+
   static func create(named name: String) -> Profile {
     let profile = Profile(id: UUID().uuidString.prefix(8).lowercased(), name: name)
     all.append(profile)

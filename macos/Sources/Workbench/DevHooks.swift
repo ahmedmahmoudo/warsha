@@ -39,8 +39,13 @@ enum DevHooks {
   /// The app is hosting Xcode's tests: it leaves the Keychain and your settings alone.
   static var isHostingTests: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
 
+  @MainActor private static var applied = false
+
+  /// Runs once per launch, whichever view (Get started or the pages) appears first.
   @MainActor
   static func apply(to navigation: Navigation, openSettings: OpenSettingsAction) async {
+    guard !applied else { return }
+    applied = true
     switch defaults.string(forKey: "WorkbenchAppearance") {
     case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
     case "light": NSApp.appearance = NSAppearance(named: .aqua)
@@ -50,7 +55,7 @@ enum DevHooks {
       if target == "settings" {
         openSettings()
       } else if target == "getstarted" {
-        navigation.gettingStarted = true
+        AppState.shared.startOnboarding()
       } else if let page = Page.allCases.first(where: { $0.rawValue.lowercased().hasPrefix(target.lowercased()) }) {
         navigation.show(page)
       } else if let match = target.wholeMatch(of: /([\w.-]+\/[\w.-]+)#(\d+)/), let number = Int(match.2) {

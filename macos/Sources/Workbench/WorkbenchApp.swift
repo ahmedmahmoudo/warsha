@@ -120,8 +120,6 @@ final class Navigation {
   private(set) var tabs: [PrKey] = Navigation.savedTabs()
   /// The PR tab showing, or nil for the page.
   private(set) var openTab: PrKey?
-  /// The Get started sheet, for someone new (or Help → Get Started).
-  var gettingStarted = false
 
   /// What the page picker shows: nothing while a PR tab is in front.
   var selectedPage: Page? { openTab == nil ? page : nil }
@@ -216,7 +214,7 @@ private struct PageCommands: Commands {
       }
     }
     CommandGroup(replacing: .help) {
-      Button("Get Started…") { navigation.gettingStarted = true }
+      Button("Get Started…") { state.startOnboarding() }
     }
   }
 }
