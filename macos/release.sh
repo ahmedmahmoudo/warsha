@@ -1,8 +1,9 @@
 #!/bin/bash
-# Publishes a Warsha release on GitHub: bumps the version, builds the signed app with build.sh,
-# zips it (signature intact), writes notes from the commits since the last release, tags it and
-# uploads it. Built here rather than on GitHub's runners, because the signing certificate and the
-# sign-in clients (Secrets.xcconfig) live on this Mac. Only the tag is pushed, not main.
+# Publishes a Warsha release on GitHub: bumps the version on a release/vX.Y.Z branch, builds the
+# signed app with build.sh, zips it (signature intact), merges the bump into main through a pull
+# request (main only takes PRs; your bypass merges it without a review), then tags it and uploads it
+# with notes from the commits since the last release. Built here rather than on GitHub's runners,
+# because the signing certificate and the sign-in clients (Secrets.xcconfig) live on this Mac.
 #
 #   npm run app:release                 next patch version (0.1.0 → 0.1.1)
 #   npm run app:release -- 0.2.0        a given version
@@ -33,6 +34,12 @@ if [ -n "$(git status --porcelain -- macos package.json package-lock.json)" ]; t
   echo "error: macos/ or package.json has uncommitted changes; commit or stash them first" >&2
   git status --short -- macos package.json package-lock.json >&2
   exit 1
+fi
+# Released from main as it is on GitHub, so the bump's pull request merges cleanly.
+if ! $DRY; then
+  [ "$(git branch --show-current)" = main ] || { echo "error: run releases from main" >&2; exit 1; }
+  git fetch -q origin main
+  [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "error: main isn't the same as origin/main; pull (or open a PR for your commits) first" >&2; exit 1; }
 fi
 
 CURRENT="$(awk '/MARKETING_VERSION:/ { print $2; exit }' "$SPEC")"
@@ -69,13 +76,18 @@ RANGE="${LAST_TAG:+$LAST_TAG..}HEAD"
   echo "Downloaded with a browser instead, macOS asks once: System Settings → Privacy & Security → Open Anyway."
 } >"$NOTES"
 
+BRANCH="release/$TAG"
 if ! $DRY; then
+  # Until the bump is pushed, a failure puts you back on main with no trace of the release.
+  git switch -q -c "$BRANCH"
+  trap 'git switch -q main && git branch -q -D "$BRANCH"; echo "Release stopped; back on main" >&2' EXIT
   # The version goes into the app and the history before it's built.
   sed -i '' -E "s/^( *MARKETING_VERSION: ).*/\\1$VERSION/; s/^( *CURRENT_PROJECT_VERSION: ).*/\\1$((BUILD + 1))/" "$SPEC"
   # package.json (and its lockfile) carry the same version, so the repo has one.
   npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
   git add "$SPEC" package.json package-lock.json
   git commit -q -m "chore(macos): release $TAG"
+  COMMIT="$(git rev-parse HEAD)"
 fi
 
 "$MACOS/build.sh"
@@ -99,9 +111,16 @@ if $DRY; then
   exit 0
 fi
 
-git tag -a "$TAG" -m "Warsha $VERSION"
+# The bump reaches main through a pull request, merged with your bypass (no review needed for your
+# own). A merge commit, not a squash, so the tagged commit is part of main's history.
+git push -q -u origin "$BRANCH"
+trap - EXIT
+PR="$(gh pr create --base main --head "$BRANCH" --title "chore(macos): release $TAG" --body-file "$NOTES")"
+gh pr merge "$PR" --merge --admin --delete-branch
+# The bump itself is tagged: merging switched this checkout back to main.
+git tag -a "$TAG" -m "Warsha $VERSION" "$COMMIT"
 git push -q origin "$TAG"
 gh release create "$TAG" "$ZIP" "$ZIP.sha256" --verify-tag --title "Warsha $VERSION" --notes-file "$NOTES"
 rm -f "$NOTES"
-echo "Released $TAG: $(gh release view "$TAG" --json url -q .url)"
-echo "The version bump is committed on $(git branch --show-current) but not pushed; push it when you're ready."
+git switch -q main 2>/dev/null; git pull -q --ff-only origin main || true; git branch -q -D "$BRANCH" 2>/dev/null || true
+echo "Released $TAG: $(gh release view "$TAG" --json url -q .url) (version bump merged in $PR)"
