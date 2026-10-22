@@ -11,3 +11,4 @@ macos/Warsha.xcodeproj
 macos/Generated
 macos/Local.xcconfig
 macos/Secrets.xcconfig
+website/dist
