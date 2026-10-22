@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy · Warsha</title>
+    <meta name="description" content="What Warsha reads from GitHub, Linear and Google, where it keeps it (on your Mac), and how to remove it." />
+    <link rel="icon" href="../favicon.ico" sizes="32x32" />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://warshahq.app/privacy/" />
+    <meta name="theme-color" content="#0e1420" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="../" aria-label="Warsha home">
+          <img src="../logo-mark.svg" alt="" width="28" height="28" />
+          <span>Warsha</span>
+        </a>
+        <nav class="nav-links" aria-label="Site">
+          <a href="../#features">Features</a>
+          <a href="https://github.com/ahmedmahmoudo/warsha">GitHub</a>
+          <a class="button button-small" href="https://github.com/ahmedmahmoudo/warsha/releases/latest">Download</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="doc wrap">
+      <h1>Privacy Policy</h1>
+      <p class="doc-date">Effective 22 October 2026</p>
+
+      <p class="doc-lede">
+        Warsha is a Mac app that shows your GitHub pull requests, Linear tickets, Google Calendar meetings and your own
+        notes in one window. It runs entirely on your Mac. There is no Warsha server and no Warsha account, and the
+        developer never receives your data.
+      </p>
+
+      <h2>Who this covers</h2>
+      <p>
+        This policy covers the Warsha app for macOS, distributed from
+        <a href="https://github.com/ahmedmahmoudo/warsha/releases">GitHub Releases</a>, and this website. Warsha is
+        developed by Ahmed Mahmoud (<a href="https://github.com/ahmedmahmoudo">@ahmedmahmoudo</a> on GitHub).
+      </p>
+
+      <h2>What Warsha reads, and why</h2>
+      <p>Warsha only reads what you connect in Settings → Accounts, and only to show it back to you.</p>
+
+      <h3>Google (Google Calendar)</h3>
+      <p>When you connect Google, Warsha asks for these permissions:</p>
+      <ul>
+        <li><strong>Your email address</strong> (<code>openid</code>, <code>email</code>), to show which Google account is connected.</li>
+        <li>
+          <strong>Read-only access to your calendar</strong> (<code>calendar.readonly</code>), to show your meetings on the
+          Today and Calendar pages, notify you before they start, and tell you when one is moved, cancelled or added.
+        </li>
+      </ul>
+      <p>
+        Warsha reads events from your primary calendar only. For each one it keeps the title, start and end time,
+        whether it's all day, its location, its video-call link, its link in Google Calendar, and whether you
+        declined it. To find a Zoom, Google Meet or Microsoft Teams link, it looks through the event's location and
+        description, but it doesn't keep the description. It doesn't keep the list of other attendees. Warsha can't
+        create, change or delete anything in your calendar.
+      </p>
+
+      <h3>GitHub</h3>
+      <p>
+        Pull requests, reviews, checks, comments and branch rules for the repositories you work in, plus your profile,
+        to work out what needs you. Warsha can act on GitHub only when you ask it to, for example Update branch on a
+        pull request, or posting the reason you parked one.
+      </p>
+
+      <h3>Linear</h3>
+      <p>
+        Your assigned tickets, your inbox, cycles and projects, to rank what's up next and show tickets beside their
+        pull requests. Warsha only posts to Linear when you ask it to, for example the reason you parked a ticket.
+      </p>
+
+      <h3>What you add yourself</h3>
+      <p>Pins, notes, todos, parked items and your settings.</p>
+
+      <h2>Where it's kept</h2>
+      <ul>
+        <li><strong>Sign-ins</strong> (access and refresh tokens) are kept in your Mac's login Keychain.</li>
+        <li>
+          <strong>Everything else</strong>, including your meetings and notes, is kept in a database on your Mac, in
+          <code>~/Library/Application Support/Warsha</code>, and in the app's preferences.
+        </li>
+      </ul>
+      <p>
+        Warsha connects straight from your Mac to GitHub, Linear and Google. Images in pull request descriptions and
+        people's avatars load from wherever they're hosted. Warsha has no analytics, no crash reporting and no
+        advertising, and it never sells your data or shares it with anyone.
+      </p>
+      <p>
+        When you choose <strong>Open in Claude</strong> on a pull request, Warsha passes a prompt about that pull
+        request to the Claude app on your Mac. Nothing from your calendar is included.
+      </p>
+
+      <h2>Google user data</h2>
+      <p>
+        Warsha's use and transfer to any other app of information received from Google APIs will adhere to the
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+        including the Limited Use requirements. In particular, Google user data is used only to show you your own
+        meetings in Warsha. It isn't transferred to anyone, used for advertising, or read by any person, and it's
+        never used to develop, improve or train AI or machine learning models.
+      </p>
+
+      <h2>Removing your data</h2>
+      <ul>
+        <li>
+          <strong>Disconnect an account</strong> in Settings → Accounts. Disconnecting Google revokes Warsha's access at
+          Google and deletes the meetings Warsha stored.
+        </li>
+        <li>
+          <strong>Revoke access from Google's side</strong> at any time at
+          <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a> (or GitHub's and
+          Linear's settings for those accounts).
+        </li>
+        <li>
+          <strong>Delete everything</strong> by deleting the Warsha app, the
+          <code>~/Library/Application Support/Warsha</code> folder, and the "Warsha" item in Keychain Access.
+        </li>
+      </ul>
+
+      <h2>This website</h2>
+      <p>
+        warshahq.app is a static site hosted on GitHub Pages. It sets no cookies and runs no analytics. GitHub may keep
+        server logs, such as IP addresses, under
+        <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">its own privacy statement</a>,
+        and the page's font loads from Google Fonts.
+      </p>
+
+      <h2>Children</h2>
+      <p>Warsha is a tool for software developers and isn't directed at children under 13.</p>
+
+      <h2>Changes</h2>
+      <p>
+        If this policy changes, the new version will be posted here with a new effective date, and its history is
+        public in the <a href="https://github.com/ahmedmahmoudo/warsha/commits/main/website/privacy/index.html">repository</a>.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about privacy? Open an issue on
+        <a href="https://github.com/ahmedmahmoudo/warsha/issues">GitHub</a>.
+      </p>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <span class="brand brand-small"><img src="../logo-mark.svg" alt="" width="20" height="20" /> Warsha</span>
+        <nav aria-label="Links">
+          <a href="../privacy/">Privacy</a>
+          <a href="../terms/">Terms</a>
+          <a href="https://github.com/ahmedmahmoudo/warsha">Source</a>
+          <a href="https://github.com/ahmedmahmoudo/warsha/issues">Report a problem</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

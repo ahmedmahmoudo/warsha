@@ -203,3 +203,18 @@ section { scroll-margin-top: 70px; }
   html { scroll-behavior: auto; }
   .button { transition: none; }
 }
+
+/* Privacy Policy and Terms */
+.doc { max-width: 720px; padding: 64px 0 96px; }
+.doc h1 { margin: 0; max-width: none; font-size: clamp(32px, 5vw, 44px); }
+.doc-date { margin: 8px 0 32px; color: var(--faint); font-size: 14px; }
+.doc-lede { font-size: 18px; color: var(--text); }
+.doc h2 { margin: 44px 0 10px; font-size: 22px; letter-spacing: -0.02em; }
+.doc h3 { margin: 28px 0 6px; font-size: 17px; }
+.doc p, .doc li { color: var(--muted); }
+.doc ul { padding-left: 1.2em; }
+.doc li { margin: 6px 0; }
+.doc strong { color: var(--text); font-weight: 600; }
+.doc a { color: var(--blue); }
+.private .more { margin-top: 16px; font-size: 15px; }
+.private .more a { color: var(--blue); }
