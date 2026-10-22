@@ -203,7 +203,7 @@ const detailCache = createSwrCache<string, PrDetail>({
  * Actions change things, so they need a header a page on another site can't send without
  * asking first (CORS preflight, which this server never approves).
  */
-const ACTION_HEADER = 'x-workbench-action'
+const ACTION_HEADER = 'x-warsha-action'
 
 function prKey(params: { owner: string; repo: string; number: string }): string | null {
   const { owner, repo, number } = params
@@ -248,7 +248,7 @@ export const prsRoute = new Hono()
   .post('/:owner/:repo/:number/resolve-conflicts', async (c) => {
     const key = prKey(c.req.param())
     if (!key) return c.json({ error: 'Not a pull request' }, 400)
-    if (!canRunLocally) return c.json({ error: 'Opening Claude only works when Workbench runs on your machine' }, 403)
+    if (!canRunLocally) return c.json({ error: 'Opening Claude only works when Warsha runs on your machine' }, 403)
 
     const detail = await detailCache.get(key)
     if (!detail.actions.conflicts) return c.json({ error: 'This PR has no merge conflicts' }, 409)

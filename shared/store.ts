@@ -1,5 +1,5 @@
 /**
- * Workbench's own data, kept in its database. A `ref` names what an item is about:
+ * Warsha's own data, kept in its database. A `ref` names what an item is about:
  * "ticket:MX-2481" or "pr:everlab-au/ev-admin#18820".
  */
 

@@ -3,15 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Workbench</title>
+    <title>Warsha</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Applies the saved theme before first paint so dark mode never flashes light. Mirrors src/theme/theme.ts. -->
     <script>
+      // Warsha was called Workbench: its saved preferences (workbench-*) move to warsha-*.
       try {
-        var preference = localStorage.getItem('workbench-theme') || 'system'
+        var keys = []
+        for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i))
+        keys.forEach(function (key) {
+          if (!key || key.indexOf('workbench-') !== 0) return
+          var renamed = 'warsha-' + key.slice('workbench-'.length)
+          if (localStorage.getItem(renamed) === null) localStorage.setItem(renamed, localStorage.getItem(key))
+          localStorage.removeItem(key)
+        })
+      } catch (_) {}
+      try {
+        var preference = localStorage.getItem('warsha-theme') || 'system'
         var dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.classList.toggle('dark', dark)
       } catch (_) {}

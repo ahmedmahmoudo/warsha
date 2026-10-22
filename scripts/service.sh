@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs Workbench as a macOS background service (a launchd agent): it starts when you log in,
+# Runs Warsha as a macOS background service (a launchd agent): it starts when you log in,
 # restarts if it crashes, and keeps running with no terminal open.
 #
 #   npm run service:install   build, then install and start it on http://localhost:5180
@@ -8,15 +8,18 @@
 #   npm run service:logs      follow its output
 set -euo pipefail
 
-LABEL=com.workbench.app
+LABEL=com.warsha.app
 PORT=5180
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-LOG="$HOME/Library/Logs/workbench.log"
+LOG="$HOME/Library/Logs/warsha.log"
 DOMAIN="gui/$(id -u)"
 
 stop() {
   launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  # Warsha was called Workbench: its agent goes too, so the two never fight over the port.
+  launchctl bootout "$DOMAIN/com.workbench.app" 2>/dev/null || true
+  rm -f "$HOME/Library/LaunchAgents/com.workbench.app.plist"
 }
 
 install() {
@@ -42,7 +45,7 @@ install() {
   <key>EnvironmentVariables</key>
   <dict>
     <key>NODE_ENV</key><string>production</string>
-    <key>WORKBENCH_LOCAL</key><string>1</string>
+    <key>WARSHA_LOCAL</key><string>1</string>
     <key>PORT</key><string>$PORT</string>
     <key>PATH</key><string>$(dirname "$node"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
@@ -55,7 +58,7 @@ install() {
 PLIST
   stop
   launchctl bootstrap "$DOMAIN" "$PLIST"
-  echo "Workbench is running on http://localhost:$PORT (logs: $LOG)"
+  echo "Warsha is running on http://localhost:$PORT (logs: $LOG)"
 }
 
 case "${1:-}" in
@@ -63,7 +66,7 @@ case "${1:-}" in
   stop)
     stop
     rm -f "$PLIST"
-    echo "Workbench service stopped and removed"
+    echo "Warsha service stopped and removed"
     ;;
   logs) tail -f "$LOG" ;;
   *)

@@ -34,7 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => applyTheme(resolved), [resolved])
 
-  // Keeps other open Workbench tabs in step when the choice changes in one of them.
+  // Keeps other open Warsha tabs in step when the choice changes in one of them.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key === THEME_STORAGE_KEY) setPreferenceState(readPreference())

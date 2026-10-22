@@ -1,6 +1,6 @@
 /** The contract between `/api/calendar/*` and the Today and Calendar pages. */
 
-/** What happened to a meeting since Workbench last saw it. */
+/** What happened to a meeting since Warsha last saw it. */
 export type MeetingChange =
   /** Its time moved; `previous*` is the time you last knew it at. */
   | { kind: 'rescheduled'; previousStart: string; previousEnd: string; at: string }

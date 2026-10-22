@@ -1,10 +1,10 @@
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { env } from '../env'
 
 /**
- * Workbench's own data: what you pin, note and plan. SQLite through Node's built-in driver, in one
+ * Warsha's own data: what you pin, note and plan. SQLite through Node's built-in driver, in one
  * file (gitignored). Everything else in the app is read live from GitHub and Linear.
  */
 
@@ -62,9 +62,17 @@ const MIGRATIONS = [
    );`,
 ]
 
+/** Warsha was called Workbench: its data/workbench.sqlite (with -wal and -shm) becomes warsha.sqlite. */
+function moveFromWorkbench(path: string) {
+  const old = resolve(dirname(path), 'workbench.sqlite')
+  if (!path.endsWith('/warsha.sqlite') || existsSync(path) || !existsSync(old)) return
+  for (const suffix of ['', '-wal', '-shm']) if (existsSync(old + suffix)) renameSync(old + suffix, path + suffix)
+}
+
 function open(): DatabaseSync {
   const path = resolve(env.dbPath)
   mkdirSync(dirname(path), { recursive: true })
+  moveFromWorkbench(path)
   const db = new DatabaseSync(path)
   db.exec('pragma journal_mode = wal; pragma foreign_keys = on;')
   const { user_version: version } = db.prepare('pragma user_version').get() as { user_version: number }

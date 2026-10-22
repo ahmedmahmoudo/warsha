@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
 /** Collapsed panels by title, shared across PRs: collapsing "Description" keeps it collapsed everywhere. */
-const COLLAPSED_STORAGE_KEY = 'workbench-pr-collapsed-panels'
+const COLLAPSED_STORAGE_KEY = 'warsha-pr-collapsed-panels'
 
 function readCollapsed(): Set<string> {
   try {

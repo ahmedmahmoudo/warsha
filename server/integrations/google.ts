@@ -6,7 +6,7 @@ import { IntegrationNotConfigured } from './errors'
 
 /**
  * Google Calendar through OAuth with a Desktop client: Google accepts any localhost port as the
- * redirect, so nothing is registered per port. The refresh token lives in Workbench's own
+ * redirect, so nothing is registered per port. The refresh token lives in Warsha's own
  * (gitignored) database; access tokens are kept in memory only.
  */
 
@@ -89,7 +89,7 @@ export async function completeSignIn(code: string, state: string): Promise<void>
     error_description?: string
   }
   if (!response.ok || !tokens.access_token) throw new GoogleAuthError(`Google refused the sign-in: ${tokens.error_description ?? response.status}`)
-  if (!tokens.refresh_token) throw new GoogleAuthError('Google sent no refresh token. Remove Workbench from your Google account access and connect again.')
+  if (!tokens.refresh_token) throw new GoogleAuthError('Google sent no refresh token. Remove Warsha from your Google account access and connect again.')
   if (!tokens.scope?.includes('calendar.readonly')) throw new GoogleAuthError('Calendar access was not granted. Connect again and tick the calendar permission.')
 
   settings.set(REFRESH_TOKEN, tokens.refresh_token)
@@ -109,7 +109,7 @@ function emailFromIdToken(idToken: string): string | null {
   }
 }
 
-/** Forgets the account here and revokes Workbench's access at Google. */
+/** Forgets the account here and revokes Warsha's access at Google. */
 export async function disconnect(): Promise<void> {
   const token = settings.get(REFRESH_TOKEN)
   settings.remove(REFRESH_TOKEN)
@@ -156,7 +156,7 @@ type RawEvent = {
   end?: { dateTime?: string; date?: string }
 }
 
-/** A Google event as Workbench keeps it: timed events in UTC ISO, all-day ones as YYYY-MM-DD (end exclusive). */
+/** A Google event as Warsha keeps it: timed events in UTC ISO, all-day ones as YYYY-MM-DD (end exclusive). */
 export type GoogleEvent = {
   id: string
   cancelled: boolean

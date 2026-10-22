@@ -2,7 +2,7 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 /** Also read by the inline script in index.html, which applies the theme before first paint. */
-export const THEME_STORAGE_KEY = 'workbench-theme'
+export const THEME_STORAGE_KEY = 'warsha-theme'
 
 const PREFERENCES: readonly ThemePreference[] = ['light', 'dark', 'system']
 

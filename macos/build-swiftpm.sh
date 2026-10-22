@@ -1,25 +1,25 @@
 #!/bin/bash
-# Builds Workbench.app with SwiftPM alone, no Xcode project: the fallback for build.sh. It's
+# Builds Warsha.app with SwiftPM alone, no Xcode project: the fallback for build.sh. It's
 # always ad-hoc signed, so the Keychain asks again after every rebuild.
 #
-#   macos/build-swiftpm.sh            build macos/build/Workbench.app
+#   macos/build-swiftpm.sh            build macos/build/Warsha.app
 #   macos/build-swiftpm.sh install    build, copy to ~/Applications and open it
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MACOS="$ROOT/macos"
-APP="$MACOS/build/Workbench.app"
+APP="$MACOS/build/Warsha.app"
 VERSION=0.1.0
 
 swift build -c release --package-path "$MACOS"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$MACOS/.build/release/Workbench" "$APP/Contents/MacOS/Workbench"
+cp "$MACOS/.build/release/Warsha" "$APP/Contents/MacOS/Warsha"
 # SwiftPM records the deployment target as the SDK version, and AppKit picks the design from that:
 # an app that says it was built against an older SDK keeps the old look. Record the real SDK.
 xcrun vtool -set-build-version macos 26.0 "$(xcrun --show-sdk-version)" -replace \
-  -output "$APP/Contents/MacOS/Workbench" "$APP/Contents/MacOS/Workbench"
+  -output "$APP/Contents/MacOS/Warsha" "$APP/Contents/MacOS/Warsha"
 
 # The Dock icon, from the web app's 512px icon.
 ICONSET="$(mktemp -d)/AppIcon.iconset"
@@ -48,10 +48,10 @@ cat >"$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Workbench</string>
-  <key>CFBundleDisplayName</key><string>Workbench</string>
-  <key>CFBundleIdentifier</key><string>com.workbench.app</string>
-  <key>CFBundleExecutable</key><string>Workbench</string>
+  <key>CFBundleName</key><string>Warsha</string>
+  <key>CFBundleDisplayName</key><string>Warsha</string>
+  <key>CFBundleIdentifier</key><string>com.warsha.app</string>
+  <key>CFBundleExecutable</key><string>Warsha</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$(date +%Y%m%d%H%M)</string>
@@ -70,10 +70,13 @@ codesign --force --sign - "$APP"
 echo "Built $APP"
 
 if [ "${1:-}" = "install" ]; then
+  osascript -e 'quit app id "com.warsha.app"' 2>/dev/null || true
+  # Warsha was called Workbench: the old app goes, so only one of them runs (Warsha takes over its data).
   osascript -e 'quit app id "com.workbench.app"' 2>/dev/null || true
   rm -rf "$HOME/Applications/Workbench.app"
+  rm -rf "$HOME/Applications/Warsha.app"
   mkdir -p "$HOME/Applications"
-  cp -R "$APP" "$HOME/Applications/Workbench.app"
-  open "$HOME/Applications/Workbench.app"
-  echo "Installed ~/Applications/Workbench.app"
+  cp -R "$APP" "$HOME/Applications/Warsha.app"
+  open "$HOME/Applications/Warsha.app"
+  echo "Installed ~/Applications/Warsha.app"
 fi

@@ -21,7 +21,7 @@ const STORE_KEY = ['store']
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api/store${path}`, {
     method,
-    headers: { 'content-type': 'application/json', 'x-workbench-action': '1' },
+    headers: { 'content-type': 'application/json', 'x-warsha-action': '1' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const result = (await response.json().catch(() => ({}))) as T & { error?: string }

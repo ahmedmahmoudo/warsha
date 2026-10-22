@@ -1,5 +1,5 @@
 #!/bin/bash
-# Publishes a Workbench release on GitHub: bumps the version, builds the signed app with build.sh,
+# Publishes a Warsha release on GitHub: bumps the version, builds the signed app with build.sh,
 # zips it (signature intact), writes notes from the commits since the last release, tags it and
 # uploads it. Built here rather than on GitHub's runners, because the signing certificate and the
 # sign-in clients (Secrets.xcconfig) live on this Mac. Only the tag is pushed, not main.
@@ -29,9 +29,9 @@ command -v gh >/dev/null || { echo "error: needs the GitHub CLI (brew install gh
 cd "$ROOT"
 
 # The release is built from what's committed: anything uncommitted in the app would ship unrecorded.
-if [ -n "$(git status --porcelain -- macos)" ]; then
-  echo "error: macos/ has uncommitted changes; commit or stash them first" >&2
-  git status --short -- macos >&2
+if [ -n "$(git status --porcelain -- macos package.json package-lock.json)" ]; then
+  echo "error: macos/ or package.json has uncommitted changes; commit or stash them first" >&2
+  git status --short -- macos package.json package-lock.json >&2
   exit 1
 fi
 
@@ -61,9 +61,9 @@ RANGE="${LAST_TAG:+$LAST_TAG..}HEAD"
   echo "## Install"
   echo
   echo '```bash'
-  echo "gh release download $TAG --repo $(gh repo view --json nameWithOwner -q .nameWithOwner) --pattern 'Workbench-*.zip' --dir /tmp/workbench --clobber \\"
-  echo "  && rm -rf ~/Applications/Workbench.app && ditto -x -k /tmp/workbench/Workbench-$VERSION.zip ~/Applications \\"
-  echo "  && open ~/Applications/Workbench.app"
+  echo "gh release download $TAG --repo $(gh repo view --json nameWithOwner -q .nameWithOwner) --pattern 'Warsha-*.zip' --dir /tmp/warsha --clobber \\"
+  echo "  && rm -rf ~/Applications/Warsha.app && ditto -x -k /tmp/warsha/Warsha-$VERSION.zip ~/Applications \\"
+  echo "  && open ~/Applications/Warsha.app"
   echo '```'
   echo
   echo "Downloaded with a browser instead, macOS asks once: System Settings → Privacy & Security → Open Anyway."
@@ -72,18 +72,20 @@ RANGE="${LAST_TAG:+$LAST_TAG..}HEAD"
 if ! $DRY; then
   # The version goes into the app and the history before it's built.
   sed -i '' -E "s/^( *MARKETING_VERSION: ).*/\\1$VERSION/; s/^( *CURRENT_PROJECT_VERSION: ).*/\\1$((BUILD + 1))/" "$SPEC"
-  git add "$SPEC"
+  # package.json (and its lockfile) carry the same version, so the repo has one.
+  npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
+  git add "$SPEC" package.json package-lock.json
   git commit -q -m "chore(macos): release $TAG"
 fi
 
 "$MACOS/build.sh"
-APP="$MACOS/build/Workbench.app"
+APP="$MACOS/build/Warsha.app"
 SHIPPED="$(defaults read "$APP/Contents/Info.plist" CFBundleShortVersionString)"
 $DRY || [ "$SHIPPED" = "$VERSION" ] || { echo "error: built $SHIPPED, expected $VERSION" >&2; exit 1; }
 codesign --verify --deep --strict "$APP"
 
 rm -rf "$OUT" && mkdir -p "$OUT"
-ZIP="$OUT/Workbench-$VERSION.zip"
+ZIP="$OUT/Warsha-$VERSION.zip"
 # ditto keeps the bundle's signature, extended attributes and symlinks, which zip doesn't.
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 (cd "$OUT" && shasum -a 256 "$(basename "$ZIP")" >"$(basename "$ZIP").sha256")
@@ -97,9 +99,9 @@ if $DRY; then
   exit 0
 fi
 
-git tag -a "$TAG" -m "Workbench $VERSION"
+git tag -a "$TAG" -m "Warsha $VERSION"
 git push -q origin "$TAG"
-gh release create "$TAG" "$ZIP" "$ZIP.sha256" --verify-tag --title "Workbench $VERSION" --notes-file "$NOTES"
+gh release create "$TAG" "$ZIP" "$ZIP.sha256" --verify-tag --title "Warsha $VERSION" --notes-file "$NOTES"
 rm -f "$NOTES"
 echo "Released $TAG: $(gh release view "$TAG" --json url -q .url)"
 echo "The version bump is committed on $(git branch --show-current) but not pushed; push it when you're ready."

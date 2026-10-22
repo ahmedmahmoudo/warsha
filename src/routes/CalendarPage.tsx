@@ -11,7 +11,7 @@ import { Segmented } from '../components/Segmented'
 
 const REFRESH_MS = 60_000
 const SYDNEY = 'Australia/Sydney'
-const ZONE_STORAGE_KEY = 'workbench-calendar-zone'
+const ZONE_STORAGE_KEY = 'warsha-calendar-zone'
 const VIEWS: { value: ActivityView; label: string }[] = [
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },

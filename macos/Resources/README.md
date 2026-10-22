@@ -14,5 +14,5 @@ yours instead, as it does for every app.
 Xcode compiles the catalog (`ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` in `project.yml`).
 `build-swiftpm.sh` compiles it with `actool`, which needs Xcode's first-launch setup
 (`xcodebuild -runFirstLaunch`); without it, that build skips the catalog and the app still applies the
-same colour through SwiftUI's `.tint` (`Color.workbenchAccent` in `Theme.swift`), everywhere but list
+same colour through SwiftUI's `.tint` (`Color.warshaAccent` in `Theme.swift`), everywhere but list
 selection.

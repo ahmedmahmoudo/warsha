@@ -1,13 +1,13 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
-// Workbench as a native macOS app: SwiftUI pages, a menu bar item, and Workbench's own data in
-// SQLite, with no server. `macos/build.sh` turns it into Workbench.app.
+// Warsha as a native macOS app: SwiftUI pages, a menu bar item, and Warsha's own data in
+// SQLite, with no server. `macos/build.sh` turns it into Warsha.app.
 let package = Package(
-  name: "Workbench",
+  name: "Warsha",
   platforms: [.macOS(.v26)],
   targets: [
-    .executableTarget(name: "Workbench", path: "Sources/Workbench"),
-    .testTarget(name: "WorkbenchTests", dependencies: ["Workbench"], path: "Tests/WorkbenchTests"),
+    .executableTarget(name: "Warsha", path: "Sources/Warsha"),
+    .testTarget(name: "WarshaTests", dependencies: ["Warsha"], path: "Tests/WarshaTests"),
   ]
 )

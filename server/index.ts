@@ -16,11 +16,11 @@ const app = new Hono()
 
 /**
  * Every write needs a header a page on another site can't send without a CORS preflight, which
- * this server never approves, so only Workbench's own pages can change things.
+ * this server never approves, so only Warsha's own pages can change things.
  */
 app.use('/api/*', async (c, next) => {
-  if (c.req.method !== 'GET' && c.req.method !== 'HEAD' && c.req.header('x-workbench-action') !== '1')
-    return c.json({ error: 'Missing x-workbench-action header' }, 403)
+  if (c.req.method !== 'GET' && c.req.method !== 'HEAD' && c.req.header('x-warsha-action') !== '1')
+    return c.json({ error: 'Missing x-warsha-action header' }, 403)
   await next()
 })
 
@@ -45,6 +45,6 @@ if (process.env.NODE_ENV === 'production') {
 const hostname = env.local ? '127.0.0.1' : undefined
 serve({ fetch: app.fetch, port: env.port, hostname }, ({ port }) => {
   console.log(`API on http://localhost:${port}`)
-  // Catch up on what changed in your calendar while Workbench was closed.
+  // Catch up on what changed in your calendar while Warsha was closed.
   void syncMeetings()
 })

@@ -3,7 +3,7 @@ import type { Note, Parked, Pin, Todo } from '../../shared/store'
 import type { GoogleEvent } from '../integrations/google'
 import { db } from './db'
 
-/** All reads and writes of Workbench's own data go through here, so the storage can change later. */
+/** All reads and writes of Warsha's own data go through here, so the storage can change later. */
 
 type PinRow = { ref: string; title: string; url: string | null; pinned_at: string }
 type NoteRow = { ref: string; body: string; updated_at: string }

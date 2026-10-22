@@ -13,7 +13,7 @@ import { timeAgo } from '../format'
 const REFRESH_MS = 60_000
 const COPIED_MS = 2000
 const SYDNEY = 'Australia/Sydney'
-const ZONE_STORAGE_KEY = 'workbench-activity-zone'
+const ZONE_STORAGE_KEY = 'warsha-activity-zone'
 const VIEWS: { value: ActivityView; label: string }[] = [
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },

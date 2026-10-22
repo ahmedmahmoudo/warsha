@@ -37,7 +37,7 @@ const ACTION_GROUPS: { id: string; title: string; kinds: NeedsYouKind[]; bar: st
   { id: 'merge', title: 'Merge', kinds: ['ready'], bar: 'bg-good' },
   { id: 'housekeeping', title: 'Housekeeping', kinds: ['merged-not-done'], bar: 'bg-faint' },
 ]
-const FILTER_STORAGE_KEY = 'workbench-needs-you-filter'
+const FILTER_STORAGE_KEY = 'warsha-needs-you-filter'
 
 function readFilter(): string {
   try {

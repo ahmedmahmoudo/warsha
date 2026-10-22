@@ -28,7 +28,7 @@ function originMatches(url: string, repo: string): boolean {
 
 /**
  * The main clone of a repo: LOCAL_REPOS when set, otherwise a folder named after the repo next
- * to this project (~/everlab/ev-admin beside ~/everlab/workbench), if its origin is that repo.
+ * to this project (~/everlab/ev-admin beside ~/everlab/warsha), if its origin is that repo.
  */
 async function localClone(repo: string): Promise<string | null> {
   const candidate = env.localRepos.get(repo.toLowerCase()) ?? resolve(process.cwd(), '..', basename(repo))

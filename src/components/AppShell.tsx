@@ -6,7 +6,7 @@ export function AppShell() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-6xl items-center gap-6 px-4">
-          <span className="text-sm font-semibold tracking-tight">Workbench</span>
+          <span className="text-sm font-semibold tracking-tight">Warsha</span>
           <nav className="flex items-center gap-1 text-sm">
             <Link
               to="/"

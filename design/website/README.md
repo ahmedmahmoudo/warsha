@@ -1,6 +1,6 @@
 # Website brand kit
 
-Everything the Workbench download site needs, from the v2 board icon. `public/` drops straight into
+Everything the Warsha download site needs, from the v2 board icon. `public/` drops straight into
 the site's web root; `brand/` holds logos and artwork for pages, the README and press.
 
 ## public/ (web root)
@@ -23,7 +23,7 @@ the site's web root; `brand/` holds logos and artwork for pages, the README and 
 <link rel="manifest" href="/site.webmanifest" />
 <meta name="theme-color" content="#0e1420" />
 
-<meta property="og:title" content="Workbench" />
+<meta property="og:title" content="Warsha" />
 <meta property="og:description" content="PRs, meetings, Linear tickets and notes in one place." />
 <meta property="og:image" content="https://YOUR-DOMAIN/og-image.png" />
 <meta property="og:image:width" content="1200" />
@@ -39,7 +39,7 @@ the site's web root; `brand/` holds logos and artwork for pages, the README and 
 | --- | --- |
 | `logo-light.svg` / `-64.png` / `-128.png` | Mark + wordmark on light backgrounds |
 | `logo-dark.svg` / `-64.png` / `-128.png` | Mark + wordmark on dark backgrounds |
-| `wordmark-light.svg`, `wordmark-dark.svg` | "Workbench" alone |
+| `wordmark-light.svg`, `wordmark-dark.svg` | "Warsha" alone |
 | `logo-mark.svg`, `logo-mark-512.png` | The board icon alone, rounded tile |
 | `icon-square.svg` | Full-bleed square, for places that crop or round it themselves (avatars, OAuth) |
 | `macos-app-icon.svg` / `-512.png` / `-1024.png` | The Mac app icon as it looks in the Dock, for the download hero |
@@ -54,5 +54,5 @@ tiles `#5cc79a` (PRs), `#e8b45a` (meetings), `#8fb0f5` (tickets), `#e4e9f1` (not
 Sources: `design/icon-v2/c-board.svg` (web/favicon) and `design/icon-v2/c-board-macos.svg` (Mac app).
 
 The Mac app also draws the icon in code, from `c-board-macos.svg`'s numbers, so it can animate it
-(Get started builds it tile by tile and draws each glyph): `macos/Sources/Workbench/BrandIcon.swift`.
+(Get started builds it tile by tile and draws each glyph): `macos/Sources/Warsha/BrandIcon.swift`.
 When the icon changes, change that file with it.

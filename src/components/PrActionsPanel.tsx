@@ -72,7 +72,7 @@ function ConflictAction({ detail, conflicts }: { detail: PrDetail; conflicts: No
         </p>
       ) : (
         <p className="mt-1.5 text-xs text-warn">
-          No local clone of {pr.repo} found next to Workbench. Set <code>LOCAL_REPOS</code> in <code>.env.local</code> to
+          No local clone of {pr.repo} found next to Warsha. Set <code>LOCAL_REPOS</code> in <code>.env.local</code> to
           run it from here, or copy the prompt.
         </p>
       )}

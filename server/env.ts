@@ -27,7 +27,7 @@ const production = process.env.NODE_ENV === 'production'
 
 export const env = {
   /** Running on your own machine: listen on 127.0.0.1 only, and allow local actions like opening Claude. */
-  local: !production || process.env.WORKBENCH_LOCAL === '1',
+  local: !production || process.env.WARSHA_LOCAL === '1',
   /** The port this server listens on; in production it serves the pages too. */
   port: Number(process.env.PORT) || API_PORT,
   githubToken: process.env.GITHUB_TOKEN || null,
@@ -41,6 +41,6 @@ export const env = {
   localRepos: repoPaths(process.env.LOCAL_REPOS),
   /** Where "a day" and "a week" start for the Activity page. */
   timeZone: process.env.TIMEZONE || 'Australia/Sydney',
-  /** Workbench's own data (pins, notes, todos). */
-  dbPath: process.env.DB_PATH || 'data/workbench.sqlite',
+  /** Warsha's own data (pins, notes, todos). */
+  dbPath: process.env.DB_PATH || 'data/warsha.sqlite',
 }

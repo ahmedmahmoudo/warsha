@@ -50,7 +50,7 @@ export async function runPrAction(
 ): Promise<{ ok: true; path?: string; settled?: boolean }> {
   const response = await fetch(`/api/prs/${repo}/${number}/${action}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-workbench-action': '1' },
+    headers: { 'content-type': 'application/json', 'x-warsha-action': '1' },
     body: JSON.stringify(body),
   })
   const result = (await response.json().catch(() => ({}))) as { error?: string; ok?: true; path?: string; settled?: boolean }
@@ -90,7 +90,7 @@ export async function fetchToday(fresh = false): Promise<TodayResponse> {
 }
 
 export async function markTodaySeen(): Promise<{ lastSeenAt: string }> {
-  const response = await fetch('/api/today/seen', { method: 'POST', headers: { 'x-workbench-action': '1' } })
+  const response = await fetch('/api/today/seen', { method: 'POST', headers: { 'x-warsha-action': '1' } })
   if (!response.ok) throw new ApiError(`Couldn't mark as seen (${response.status})`, false)
   return response.json() as Promise<{ lastSeenAt: string }>
 }
@@ -102,7 +102,7 @@ export async function fetchGoogleStatus(): Promise<GoogleStatus> {
 }
 
 export async function disconnectGoogle(): Promise<void> {
-  const response = await fetch('/api/google/disconnect', { method: 'POST', headers: { 'x-workbench-action': '1' } })
+  const response = await fetch('/api/google/disconnect', { method: 'POST', headers: { 'x-warsha-action': '1' } })
   if (!response.ok) throw new ApiError(`Couldn't disconnect Google (${response.status})`, false)
 }
 
@@ -125,6 +125,6 @@ export async function fetchCalendarRange(start: string, end: string, fresh = fal
 }
 
 export async function dismissMeetingChange(id: string): Promise<void> {
-  const response = await fetch(`/api/calendar/changes/${encodeURIComponent(id)}/dismiss`, { method: 'POST', headers: { 'x-workbench-action': '1' } })
+  const response = await fetch(`/api/calendar/changes/${encodeURIComponent(id)}/dismiss`, { method: 'POST', headers: { 'x-warsha-action': '1' } })
   if (!response.ok) throw new ApiError(`Couldn't dismiss (${response.status})`, false)
 }

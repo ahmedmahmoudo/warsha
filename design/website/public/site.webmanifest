@@ -1,6 +1,6 @@
 {
-  "name": "Workbench",
-  "short_name": "Workbench",
+  "name": "Warsha",
+  "short_name": "Warsha",
   "description": "PRs, meetings, Linear tickets and notes in one place, for developers with too much going on.",
   "start_url": "/",
   "display": "standalone",

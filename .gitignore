@@ -7,7 +7,7 @@ data/
 macos/.build
 macos/build
 .DS_Store
-macos/Workbench.xcodeproj
+macos/Warsha.xcodeproj
 macos/Generated
 macos/Local.xcconfig
 macos/Secrets.xcconfig

@@ -1,4 +1,4 @@
-# Workbench
+# Warsha
 
 A personal dashboard: what needs you today, open PRs with their Linear tickets and the real gate
 state, and a calendar of what you did.
@@ -19,14 +19,14 @@ http://localhost:5180, only on this machine, so it can run alongside `npm run de
 npm run service:install      # build, install and start
 npm run service:restart      # rebuild and restart after code changes
 npm run service:stop         # stop and remove
-npm run service:logs         # follow ~/Library/Logs/workbench.log
+npm run service:logs         # follow ~/Library/Logs/warsha.log
 ```
 
 A native macOS version (Swift, no server) is being ported page by page in `macos/`. See
 [macos/README.md](macos/README.md):
 
 ```bash
-npm run app:install          # build Workbench.app, copy to ~/Applications and open it
+npm run app:install          # build Warsha.app, copy to ~/Applications and open it
 ```
 
 ## Layout
@@ -38,7 +38,7 @@ server/
   lib/swrCache.ts       serve cached, refresh in the background (upstream calls are seconds away);
                         `?maxAge=<s>` makes a request wait for a copy that recent, `?fresh=1` rebuilds
   integrations/         one file per external API (GitHub, Linear)
-  store/                Workbench's own data in SQLite (node:sqlite): pins, notes, todos, parked, settings
+  store/                Warsha's own data in SQLite (node:sqlite): pins, notes, todos, parked, settings
   today/                the Today page: ranking, needs-you rules, deadlines
   prs/                  the Pull Requests list and details pages: routes, CODEOWNERS matching,
                         pure derivation of status, merge blockers and activity (detail.ts)
@@ -102,7 +102,7 @@ Shown above Merge status when there's something to do about the branch:
 - **Behind the base**: GitHub's "Update branch" (a merge commit pushed to the PR), after a confirm.
   It's refused if the branch moved since the page loaded.
 
-Both are POSTs that need the `x-workbench-action` header, and in development the API only listens
+Both are POSTs that need the `x-warsha-action` header, and in development the API only listens
 on 127.0.0.1, since it can open Terminal and act with your token.
 
 ## Activity
@@ -155,8 +155,8 @@ With a reason, parking can also post it as a comment ("Parked: …", plus the re
 Linear ticket and the item's open PRs, as you; each target is a checkbox with a preview, on by default
 the first time you park. The park is saved even if a post fails, and the popover says which posted.
 
-Pins (Focus), notes, todos and parked items live in Workbench's own SQLite file (`DB_PATH`, default
-`data/workbench.sqlite`, gitignored). Notes attach to a ticket (or a PR without one) and show wherever
+Pins (Focus), notes, todos and parked items live in Warsha's own SQLite file (`DB_PATH`, default
+`data/warsha.sqlite`, gitignored). Notes attach to a ticket (or a PR without one) and show wherever
 it appears: Today, the PR list and details page, and Activity's day cards. A todo that mentions a
 ticket key links to that ticket. Deploying needs a persistent disk for the file.
 
