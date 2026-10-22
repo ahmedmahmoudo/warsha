@@ -14,7 +14,7 @@ the site's web root; `brand/` holds logos and artwork for pages, the README and 
 | `icon-192.png`, `icon-512.png` | Web manifest icons |
 | `icon-maskable-512.png` | Android adaptive icon; the board stays inside the 80% safe zone |
 | `site.webmanifest` | Name, colours and icons |
-| `og-image.png` | Link previews on Slack, X, LinkedIn, iMessage (1200×630) |
+| `og-image.png` | Link previews on Slack, X, LinkedIn, iMessage (1200×630), rendered from `og-image.html` |
 
 ```html
 <link rel="icon" href="/favicon.ico" sizes="32x32" />

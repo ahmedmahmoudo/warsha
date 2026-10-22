@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- The source of public/og-image.png (1200×630), rendered with headless Chrome:
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
+       --window-size=1200,630 --virtual-time-budget=5000 \
+       --screenshot=design/website/public/og-image.png design/website/og-image.html -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=block" rel="stylesheet" />
+    <style>
+      html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+      body {
+        display: flex; align-items: center; gap: 72px; padding: 0 100px; box-sizing: border-box;
+        background: radial-gradient(70% 90% at 15% 0%, #1d2738, #0e1420 70%);
+        font-family: Inter, sans-serif; color: #e4e9f1;
+      }
+      img { width: 330px; height: 330px; flex: none; margin: 0 -8px; }
+      h1 { margin: 0; font-size: 96px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+      p { margin: 22px 0 0; font-size: 34px; line-height: 1.35; color: #9aa7bb; max-width: 560px; }
+      .button { display: inline-block; margin-top: 36px; padding: 16px 30px; border-radius: 14px; background: #e4e9f1; color: #0e1420; font-size: 25px; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <img src="brand/macos-app-icon.svg" alt="" />
+    <div>
+      <h1>Warsha</h1>
+      <p>PRs, meetings, Linear tickets and notes in one place.</p>
+      <span class="button">Download for macOS</span>
+    </div>
+  </body>
+</html>
