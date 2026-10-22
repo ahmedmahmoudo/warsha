@@ -1,6 +1,6 @@
 {
   "name": "warsha",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Personal dashboard: PRs + Linear, and a weekly activity view",
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
