@@ -25,13 +25,13 @@ the site's web root; `brand/` holds logos and artwork for pages, the README and 
 
 <meta property="og:title" content="Warsha" />
 <meta property="og:description" content="PRs, meetings, Linear tickets and notes in one place." />
-<meta property="og:image" content="https://YOUR-DOMAIN/og-image.png" />
+<meta property="og:image" content="https://warshahq.app/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 ```
 
-`og:image` must be an absolute URL, so replace `YOUR-DOMAIN` once the site has one.
+`og:image` must be an absolute URL: the site is https://warshahq.app (GitHub Pages, from `website/`).
 
 ## brand/
 
