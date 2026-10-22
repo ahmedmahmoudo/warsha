@@ -124,10 +124,13 @@ npm run app:release -- 0.2.0       # a given version
 npm run app:release -- --dry-run   # build, package and show the notes; tag and upload nothing
 ```
 
-It needs `macos/` committed. It bumps `MARKETING_VERSION` and the build number in `project.yml`
-and commits that, builds with `build.sh`, zips the app with `ditto` (keeping its signature), writes
-notes from the `feat`/`fix`/`perf` commits since the last release, then tags `vX.Y.Z`, pushes only
-the tag and creates the release with the zip and its SHA-256. Push `main` when you're ready.
+It runs from `main`, up to date with GitHub and with `macos/` committed. It bumps
+`MARKETING_VERSION` and the build number in `project.yml` (and the version in `package.json`) on a
+`release/vX.Y.Z` branch, builds with `build.sh` and zips the app with `ditto` (keeping its
+signature). `main` only takes pull requests, so it then opens one for the bump and merges it with
+your bypass (a merge commit, no review needed), tags the bump `vX.Y.Z` and creates the release with
+the zip, its SHA-256 and notes from the `feat`/`fix`/`perf` commits since the last release. If the
+build fails, you're back on `main` with nothing left behind.
 
 On another Mac, with the GitHub CLI signed in to an account that can read the repo:
 
